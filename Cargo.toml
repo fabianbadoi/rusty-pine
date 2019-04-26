@@ -1,0 +1,7 @@
+[package]
+name = "rusty-pine"
+version = "0.1.0"
+authors = ["Fabian Badoi <fb@penneo.com>"]
+edition = "2018"
+
+[dependencies]
