@@ -1,29 +1,20 @@
-pub type Pine = Positioned<Vec<Positioned<Operation>>>;
+pub type PineNode = Node<Pine>;
+pub type OperationNode = Node<Operation>;
+pub type FilterNode = Node<Filter>;
+pub type ConditionNode =Node<Condition>;
+pub type TableNameNode = Node<TableName>;
+pub type ColumnNameNode = Node<ColumnName>;
+pub type ValueNode = Node<Value>;
 
 #[derive(Debug)]
-pub struct Position {
-    pub start: usize,
-    pub end: usize
+pub struct Pine {
+    pub operations: Vec<OperationNode>
 }
-
-#[derive(Debug)]
-pub struct Positioned<T> {
-    pub inner: T,
-    pub position: Position
-}
-
-pub type TableName = Positioned<String>;
-pub type ColumnName = Positioned<String>;
-pub type Value = Positioned<String>;
-
-// make type -> typeNode pairs for everything
-pub type FilterNode = Positioned<Filter>;
-pub type ConditionNode =Positioned<Condition>;
 
 #[derive(Debug)]
 pub enum Operation {
-    From(TableName),
-    Select(Vec<ColumnName>),
+    From(TableNameNode),
+    Select(Vec<ColumnNameNode>),
     Filter(Vec<FilterNode>),
 }
 
@@ -41,11 +32,28 @@ impl Operation {
 
 #[derive(Debug)]
 pub struct Filter {
-    pub column: ColumnName,
+    pub column: ColumnNameNode,
     pub condition: ConditionNode,
 }
 
 #[derive(Debug)]
 pub enum Condition {
-    Equals(Value)
+    Equals(ValueNode)
+}
+
+pub type Identifier = String;
+pub type TableName = Identifier;
+pub type ColumnName = Identifier;
+pub type Value = String;
+
+#[derive(Debug)]
+pub struct Position {
+    pub start: usize,
+    pub end: usize
+}
+
+#[derive(Debug)]
+pub struct Node<T> {
+    pub position: Position,
+    pub inner: T,
 }

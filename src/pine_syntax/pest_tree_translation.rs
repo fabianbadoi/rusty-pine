@@ -1,23 +1,22 @@
-use super::Pine;
-use super::{Positioned, Position};
-use super::{Operation, TableName, Filter, FilterNode, Condition, ConditionNode, Value};
+use super::ast::*;
 use super::pest::Rule;
 use ::pest::iterators::Pair;
 
 // Look at the test to better understand the tree structures involved
 
-type Node<'a> = Pair<'a, Rule>;
+type PestNode<'a> = Pair<'a, Rule>;
 
-pub fn translate(root_node: Node) -> Pine {
+pub fn translate(root_node: PestNode) -> PineNode {
     expect(Rule::pine, &root_node);
 
     let position = node_to_position(&root_node);
     let operations : Vec<_> = root_node.into_inner().map(translate_operation).collect();
+    let inner = Pine { operations };
 
-    Pine { position, inner: operations }
+    PineNode { position, inner }
 }
 
-fn translate_operation(node: Node) -> Positioned<Operation> {
+fn translate_operation(node: PestNode) -> OperationNode {
     let position = node_to_position(&node);
     let operation = match node.as_rule() {
         Rule::from => translate_from(node),
@@ -26,10 +25,10 @@ fn translate_operation(node: Node) -> Positioned<Operation> {
         _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule())
     };
 
-    Positioned { position, inner: operation }
+    OperationNode { position, inner: operation }
 }
 
-fn translate_from(node: Node) -> Operation {
+fn translate_from(node: PestNode) -> Operation {
     let table_name = translate_sql_name(
         node.into_inner().next().expect("Found from without table name")
     );
@@ -37,19 +36,19 @@ fn translate_from(node: Node) -> Operation {
     Operation::From(table_name)
 }
 
-fn translate_select(node: Node) -> Operation {
+fn translate_select(node: PestNode) -> Operation {
     let columns : Vec<_> = node.into_inner().map(translate_sql_name).collect();
 
     Operation::Select(columns)
 }
 
-fn translate_filters(node: Node) -> Operation {
+fn translate_filters(node: PestNode) -> Operation {
     let filters : Vec<_> = node.into_inner().map(translate_filter).collect();
 
     Operation::Filter(filters)
 }
 
-fn translate_filter(node: Node) -> FilterNode {
+fn translate_filter(node: PestNode) -> FilterNode {
     expect(Rule::filter, &node);
 
     let position = node_to_position(&node);
@@ -70,7 +69,7 @@ fn translate_filter(node: Node) -> FilterNode {
     FilterNode { inner, position }
 }
 
-fn translate_condition(node: Node) -> ConditionNode {
+fn translate_condition(node: PestNode) -> ConditionNode {
     expect(Rule::equals, &node);
 
     let position = node_to_position(&node);
@@ -80,36 +79,36 @@ fn translate_condition(node: Node) -> ConditionNode {
     ConditionNode { position, inner }
 }
 
-fn translate_value(node: Node) -> Value {
+fn translate_value(node: PestNode) -> ValueNode {
     expect(Rule::numeric_value, &node);
 
     let position = node_to_position(&node);
     let inner = node.as_str().trim().to_string();
 
-    Value { inner, position }
+    ValueNode { inner, position }
 }
 
-fn translate_sql_name(node: Node) -> TableName {
+fn translate_sql_name(node: PestNode) -> TableNameNode {
     expect_one_of(vec![Rule::column_name, Rule::table_name], &node);
 
     let position = node_to_position(&node);
 
-    TableName { inner: node.as_str().to_string(), position }
+    TableNameNode { inner: node.as_str().to_string(), position }
 }
 
-fn expect(expected_type: Rule, node: &Node) {
+fn expect(expected_type: Rule, node: &PestNode) {
     if node.as_rule() != expected_type {
         panic!("node be a '{:?}' expression, found '{:?}'", expected_type, node.as_rule());
     }
 }
 
-fn expect_one_of(expected_types: Vec<Rule>, node: &Node) {
+fn expect_one_of(expected_types: Vec<Rule>, node: &PestNode) {
     if !expected_types.contains(&node.as_rule()) {
         panic!("node be a one of {:?}, found '{:?}'", expected_types, node.as_rule());
     }
 }
 
-fn node_to_position(node: &Node) -> Position {
+fn node_to_position(node: &PestNode) -> Position {
     let span = node.as_span();
 
     Position {start: span.start(), end: span.end() }
