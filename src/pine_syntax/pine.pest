@@ -1,0 +1,9 @@
+pine = { operation ~ ("|" ~ operation)* }
+operation = { from }
+from = { "from:" ~ table_name }
+table_name = { sql_name }
+sql_name = _{ (ASCII_ALPHANUMERIC | "_")+ }
+
+// special rule, makes all ~ accept whitespace
+WHITESPACE = _{ " " }
+

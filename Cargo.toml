@@ -5,3 +5,7 @@ authors = ["Fabian Badoi <fb@penneo.com>"]
 edition = "2018"
 
 [dependencies]
+log = "^0.4"
+env_logger = "^0.6"
+pest = "^2.1"
+pest_derive = "^2.1"
