@@ -12,7 +12,7 @@ pub fn translate(root_pair: Pair) -> Pine {
     let position = pair_to_position(&root_pair);
     let operations : Vec<_> = root_pair.into_inner().map(translate_operation).collect();
 
-    Pine { position, item: operations }
+    Pine { position, inner: operations }
 }
 
 fn translate_operation(pair: Pair) -> Positioned<Operation> {
@@ -29,7 +29,7 @@ fn translate_operation(pair: Pair) -> Positioned<Operation> {
         _ => panic!("Expected a operation variant, got '{:?}'", operation_pair.as_rule())
     };
 
-    Positioned { position, item: operation }
+    Positioned { position, inner: operation }
 }
 
 fn translate_from(pair: Pair) -> Operation {
@@ -68,9 +68,9 @@ fn translate_filter(pair: Pair) -> FilterNode {
     let column = parts.pop().expect("First part of a filter must be the column");
     let column = translate_sql_name(column);
 
-    let item = Filter { column, condition };
+    let inner = Filter { column, condition };
 
-    FilterNode { item, position }
+    FilterNode { inner, position }
 }
 
 fn translate_condition(pair: Pair) -> ConditionNode {
@@ -78,7 +78,7 @@ fn translate_condition(pair: Pair) -> ConditionNode {
 
     let position = pair_to_position(&pair);
     let value = translate_value(pair.into_inner().next().expect("For now, conditions must have a value"));
-    let item = Condition::Equals(value);
+    let inner = Condition::Equals(value);
 
     ConditionNode { position, inner }
 }
@@ -87,9 +87,9 @@ fn translate_value(pair: Pair) -> Value {
     expect(Rule::numeric_value, &pair);
 
     let position = pair_to_position(&pair);
-    let item = pair.as_str().trim().to_string();
+    let inner = pair.as_str().trim().to_string();
 
-    Value { item, position }
+    Value { inner, position }
 }
 
 fn translate_sql_name(pair: Pair) -> TableName {
@@ -97,7 +97,7 @@ fn translate_sql_name(pair: Pair) -> TableName {
 
     let position = pair_to_position(&pair);
 
-    TableName { item: pair.as_str().to_string(), position }
+    TableName { inner: pair.as_str().to_string(), position }
 }
 
 fn expect(expected_type: Rule, pair: &Pair) {

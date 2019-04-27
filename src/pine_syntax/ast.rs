@@ -8,7 +8,7 @@ pub struct Position {
 
 #[derive(Debug)]
 pub struct Positioned<T> {
-    pub item: T,
+    pub inner: T,
     pub position: Position
 }
 
