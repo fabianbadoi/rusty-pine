@@ -1,11 +1,19 @@
 pine = { operation ~ ("|" ~ operation)* }
-operation = { (from | select) }
+operation = { (from | select | filters) }
 
 from = { "from:" ~ table_name }
 table_name = { sql_name }
 
 select = { "select:" ~ column_name ~ ("," ~ column_name)* }
+
+filters = { "where:" ~ filter+ }
+filter = { column_name ~ condition }
+condition = _{ equals }
+
+equals = { "=" ~ value }
 column_name = { sql_name }
+value = _{ numeric_value }
+numeric_value = { (ASCII_DIGIT | "_")+ }
 
 sql_name = _{ (ASCII_ALPHANUMERIC | "_")+ }
 

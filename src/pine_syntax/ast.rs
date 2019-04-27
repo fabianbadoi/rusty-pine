@@ -1,3 +1,5 @@
+pub type Pine = Positioned<Vec<Positioned<Operation>>>;
+
 #[derive(Debug)]
 pub struct Position {
     pub start: usize,
@@ -12,11 +14,17 @@ pub struct Positioned<T> {
 
 pub type TableName = Positioned<String>;
 pub type ColumnName = Positioned<String>;
+pub type Value = Positioned<String>;
+
+// make type -> typeNode pairs for everything
+pub type FilterNode = Positioned<Filter>;
+pub type ConditionNode =Positioned<Condition>;
 
 #[derive(Debug)]
 pub enum Operation {
     From(TableName),
-    Select(Vec<ColumnName>)
+    Select(Vec<ColumnName>),
+    Filter(Vec<FilterNode>),
 }
 
 impl Operation {
@@ -26,9 +34,18 @@ impl Operation {
         match self {
             From(_) => "from",
             Select(_) => "select",
+            Filter(_) => "filter",
         }
     }
 }
 
+#[derive(Debug)]
+pub struct Filter {
+    pub column: ColumnName,
+    pub condition: ConditionNode,
+}
 
-pub type Pine = Positioned<Vec<Positioned<Operation>>>;
+#[derive(Debug)]
+pub enum Condition {
+    Equals(Value)
+}

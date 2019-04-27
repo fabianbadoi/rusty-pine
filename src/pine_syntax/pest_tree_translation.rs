@@ -1,6 +1,6 @@
 use super::Pine;
 use super::{Positioned, Position};
-use super::{Operation, TableName};
+use super::{Operation, TableName, Filter, FilterNode, Condition, ConditionNode, Value};
 use super::pest::Rule;
 use ::pest::iterators::Pair as PestPair;
 
@@ -25,6 +25,7 @@ fn translate_operation(pair: Pair) -> Positioned<Operation> {
     let operation = match operation_pair.as_rule() {
         Rule::from => translate_from(operation_pair),
         Rule::select => translate_select(operation_pair),
+        Rule::filters => translate_filters(operation_pair),
         _ => panic!("Expected a operation variant, got '{:?}'", operation_pair.as_rule())
     };
 
@@ -43,6 +44,52 @@ fn translate_select(pair: Pair) -> Operation {
     let columns : Vec<_> = pair.into_inner().map(translate_sql_name).collect();
 
     Operation::Select(columns)
+}
+
+fn translate_filters(pair: Pair) -> Operation {
+    let filters : Vec<_> = pair.into_inner().map(translate_filter).collect();
+
+    Operation::Filter(filters)
+}
+
+fn translate_filter(pair: Pair) -> FilterNode {
+    expect(Rule::filter, &pair);
+
+    let position = pair_to_position(&pair);
+    let mut parts : Vec<_> = pair.into_inner().collect();
+
+    if parts.len() != 2 {
+        panic!("Filters must have 2 parts: a column and a condition. Found:\n{:#?}", parts);
+    }
+
+    let condition = parts.pop().unwrap();
+    let condition = translate_condition(condition);
+
+    let column = parts.pop().expect("First part of a filter must be the column");
+    let column = translate_sql_name(column);
+
+    let item = Filter { column, condition };
+
+    FilterNode { item, position }
+}
+
+fn translate_condition(pair: Pair) -> ConditionNode {
+    expect(Rule::equals, &pair);
+
+    let position = pair_to_position(&pair);
+    let value = translate_value(pair.into_inner().next().expect("For now, conditions must have a value"));
+    let item = Condition::Equals(value);
+
+    ConditionNode { position, inner }
+}
+
+fn translate_value(pair: Pair) -> Value {
+    expect(Rule::numeric_value, &pair);
+
+    let position = pair_to_position(&pair);
+    let item = pair.as_str().trim().to_string();
+
+    Value { item, position }
 }
 
 fn translate_sql_name(pair: Pair) -> TableName {

@@ -42,10 +42,11 @@ mod tests {
 
     #[test]
     fn parsing_simple_form_statement() {
-        let pine = PineParser::parse("from: users | select: id, name").unwrap();
+        let pine = PineParser::parse("from: users | select: id, name | where: id = 3 x = 4").unwrap();
 
         assert_eq!("from", pine.item[0].item.get_name());
         assert_eq!("select", pine.item[1].item.get_name());
+        assert_eq!("filter", pine.item[2].item.get_name());
 
         if let Operation::From(ref table_name) = pine.item[0].item {
             assert_eq!("users", table_name.item);
