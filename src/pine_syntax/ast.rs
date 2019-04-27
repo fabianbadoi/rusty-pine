@@ -52,7 +52,13 @@ pub struct Position {
     pub end: usize
 }
 
-#[derive(Debug)]
+impl Default for Position {
+    fn default() -> Self {
+        Position { start: 0, end: 0 }
+    }
+}
+
+#[derive(Debug, Default)]
 pub struct Node<T> {
     pub position: Position,
     pub inner: T,
