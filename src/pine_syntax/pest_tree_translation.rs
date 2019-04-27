@@ -16,17 +16,12 @@ pub fn translate(root_node: Node) -> Pine {
 }
 
 fn translate_operation(node: Node) -> Positioned<Operation> {
-    expect(Rule::operation, &node);
-    
-    let operation_node = node.into_inner().next()
-        .expect("Pest should not have created an operation without an inner");
-
-    let position = node_to_position(&operation_node);
-    let operation = match operation_node.as_rule() {
-        Rule::from => translate_from(operation_node),
-        Rule::select => translate_select(operation_node),
-        Rule::filters => translate_filters(operation_node),
-        _ => panic!("Expected a operation variant, got '{:?}'", operation_node.as_rule())
+    let position = node_to_position(&node);
+    let operation = match node.as_rule() {
+        Rule::from => translate_from(node),
+        Rule::select => translate_select(node),
+        Rule::filters => translate_filters(node),
+        _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule())
     };
 
     Positioned { position, inner: operation }

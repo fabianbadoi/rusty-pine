@@ -1,5 +1,5 @@
 pine = { operation ~ ("|" ~ operation)* }
-operation = { (from | select | filters) }
+operation = _{ (from | select | filters) }
 
 from = { "from:" ~ table_name }
 table_name = { sql_name }
