@@ -4,6 +4,8 @@ use super::{Operation, TableName, Filter, FilterNode, Condition, ConditionNode, 
 use super::pest::Rule;
 use ::pest::iterators::Pair;
 
+// Look at the test to better understand the tree structures involved
+
 type Node<'a> = Pair<'a, Rule>;
 
 pub fn translate(root_node: Node) -> Pine {
@@ -111,4 +113,27 @@ fn node_to_position(node: &Node) -> Position {
     let span = node.as_span();
 
     Position {start: span.start(), end: span.end() }
+}
+
+#[cfg(test)]
+mod tests {
+    use ::pest::Parser;
+    use super::super::pest::PinePestParser;
+    use super::super::pest::Rule;
+
+    /// Run this test with `--nocapture` to see a demo of the tree structures involved
+    /// For example: `cargo test pine_syntax::pest_tree_translation::tests::show_tree_structures --nocapture`
+    #[test]
+    fn show_tree_structures() {
+        let pine_string = "from: users | select: id";
+        let ast = PinePestParser::parse(Rule::pine, pine_string).unwrap().next()
+            .expect("Pest should have failed to parse this input");
+
+        let pine = super::translate(ast.clone());
+
+        println!("Pine string: {}", pine_string);
+        println!("Pest AST:\n{:#?}", ast);
+        println!("-------------------------------------------------------");
+        println!("Pine internal pepresentation:\n{:#?}", pine);
+    }
 }
