@@ -30,10 +30,12 @@ pub struct Positioned<T> {
 }
 
 pub type TableName = Positioned<String>;
+pub type ColumnName = Positioned<String>;
 
 #[derive(Debug)]
 pub enum Operation {
-    From(TableName)
+    From(TableName),
+    Select(Vec<ColumnName>)
 }
 
 impl Operation {
@@ -41,7 +43,8 @@ impl Operation {
         use Operation::*;
 
         match self {
-            From(_) => "from"
+            From(_) => "from",
+            Select(_) => "select",
         }
     }
 }
@@ -92,6 +95,7 @@ mod pest_tree_translation {
         let position = pair_to_position(&operation_pair);
         let operation = match operation_pair.as_rule() {
             Rule::from => translate_from(operation_pair),
+            Rule::select => translate_select(operation_pair),
             _ => panic!("Expected a operation variant, got '{:?}'", operation_pair.as_rule())
         };
 
@@ -99,15 +103,21 @@ mod pest_tree_translation {
     }
 
     fn translate_from(pair: Pair) -> Operation {
-        let table_name = translate_table_name(
+        let table_name = translate_sql_name(
             pair.into_inner().next().expect("Found from without table name")
         );
 
         Operation::From(table_name)
     }
 
-    fn translate_table_name(pair: Pair) -> TableName {
-        expect(Rule::table_name, &pair);
+    fn translate_select(pair: Pair) -> Operation {
+        let columns : Vec<_> = pair.into_inner().map(translate_sql_name).collect();
+
+        Operation::Select(columns)
+    }
+
+    fn translate_sql_name(pair: Pair) -> TableName {
+        expect_one_of(vec![Rule::column_name, Rule::table_name], &pair);
 
         let position = pair_to_position(&pair);
 
@@ -117,6 +127,12 @@ mod pest_tree_translation {
     fn expect(expected_type: Rule, pair: &Pair) {
         if pair.as_rule() != expected_type {
             panic!("Token be a '{:?}' expression, found '{:?}'", expected_type, pair.as_rule());
+        }
+    }
+
+    fn expect_one_of(expected_types: Vec<Rule>, pair: &Pair) {
+        if !expected_types.contains(&pair.as_rule()) {
+            panic!("Token be a one of {:?}, found '{:?}'", expected_types, pair.as_rule());
         }
     }
 
@@ -153,11 +169,10 @@ mod tests {
 
     #[test]
     fn parsing_simple_form_statement() {
-        // doesn't panic
-        let pine = PineParser::parse("from: users").unwrap();
+        let pine = PineParser::parse("from: users | select: id, name").unwrap();
 
-        println!("{:#?}", pine);
         assert_eq!("from", pine.item[0].item.get_name());
+        assert_eq!("select", pine.item[1].item.get_name());
 
         if let Operation::From(ref table_name) = pine.item[0].item {
             assert_eq!("users", table_name.item);
