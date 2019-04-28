@@ -46,7 +46,7 @@ pub type TableName = Identifier;
 pub type ColumnName = Identifier;
 pub type Value = String;
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Position {
     pub start: usize,
     pub end: usize
