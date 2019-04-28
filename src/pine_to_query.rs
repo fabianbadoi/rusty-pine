@@ -1,36 +1,65 @@
-use crate::sql::{Query, QualifiedColumnIdentifier, Filter, Condition};
-use crate::pine_syntax::{PineNode, OperationNode, Operation, TableNameNode};
+use crate::sql::{Query, ColumnName, QualifiedColumnIdentifier};
+use crate::pine_syntax::{PineNode, OperationNode, Operation, TableNameNode, ColumnNameNode};
 
 trait QueryBuilder {
     fn build<'a>(&self, pine: &'a PineNode) -> Query<'a>;
 }
 
-struct PineTranslator {
+struct PineTranslator;
 
+#[derive(Default)]
+struct SingleUseQueryBuilder<'a> {
+    query: Query<'a>,
 }
 
 impl QueryBuilder for PineTranslator {
     fn build<'a>(&self, pine: &'a PineNode) -> Query<'a> {
-        let mut query: Query = Default::default();
+        let builder = SingleUseQueryBuilder::new();
 
-        for operation_node in &pine.inner.operations {
-            self.apply_operation(&mut query, operation_node);
-        }
-
-        query
+        builder.build(pine)
     }
 }
 
-impl PineTranslator {
-    fn apply_operation<'a>(&self, query: &mut Query<'a>, operation_node: &'a OperationNode) {
+impl<'a> SingleUseQueryBuilder<'a> {
+    fn new() -> SingleUseQueryBuilder<'a> {
+        Default::default()
+    }
+
+    fn build(mut self, pine: &'a PineNode) -> Query<'a> {
+        for operation_node in &pine.inner.operations {
+            self.apply_operation(operation_node);
+        }
+
+        self.query
+    }
+
+    fn apply_operation(&mut self, operation_node: &'a OperationNode) {
         match operation_node.inner {
-            Operation::From(ref table) => self.apply_from(query, table),
+            Operation::From(ref table) => self.apply_from(table),
+            Operation::Select(ref selections) => self.apply_selections(selections),
             _ => unimplemented!()
         };
     }
 
-    fn apply_from<'a>(&self, query: &mut Query<'a>, table: &'a TableNameNode) {
-        query.from = Some(&table.inner)
+    fn apply_from(&mut self, table: &'a TableNameNode) {
+        self.reset_selection(&table.inner);
+    }
+
+    fn apply_selections(&mut self, selections: &'a Vec<ColumnNameNode>) {
+        let table = self.query.from.unwrap(); // TODO result/require
+        let mut selections: Vec<_> = selections.iter()
+            .map(|name_node| name_node.inner.as_str())
+            .map(|column| QualifiedColumnIdentifier { table, column })
+            .collect();
+
+        self.query.selections.append(&mut selections);
+    }
+
+    fn reset_selection(&mut self, table: &'a str) {
+        self.query.from = Some(table);
+
+        // existing selections are cleared to, maybe add a select+: operation that keeps previous selections
+        self.query.selections.clear();
     }
 }
 
@@ -50,6 +79,7 @@ mod tests {
         assert_eq!("users", query.from.unwrap());
     }
 
+    #[test]
     fn build_select_query() {
         let pine = select(&["id", "name"], "users");
 
@@ -57,11 +87,14 @@ mod tests {
         let query = query_builder.build(&pine);
 
         assert_eq!(query.selections[0], ("users", "id"));
-        assert_eq!(query.selections[0], ("users", "name"));
+        assert_eq!(query.selections[1], ("users", "name"));
     }
 
     fn from(table: &'static str) -> PineNode {
-        make_pine_with(Operation::From(make_node(table.to_string())))
+        let mut pine = make_blank_pine();
+        append_operation(&mut pine, Operation::From(make_node(table.to_string())));
+
+        pine
     }
 
     fn select(columns: &[&'static str], table: &'static str) -> PineNode {
@@ -74,13 +107,6 @@ mod tests {
                     .collect()
             )
         );
-
-        pine
-    }
-
-    fn make_pine_with(op: Operation) -> PineNode {
-        let mut pine = make_blank_pine();
-        append_operation(&mut pine, op);
 
         pine
     }
