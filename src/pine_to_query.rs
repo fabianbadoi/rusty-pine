@@ -61,10 +61,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.reset_selection(&table.inner);
     }
 
-    fn apply_selections(
-        &mut self,
-        selections: &'a Vec<ColumnNameNode>,
-    ) -> StdResult<(), BuildError> {
+    fn apply_selections(&mut self, selections: &'a [ColumnNameNode]) -> StdResult<(), BuildError> {
         if selections.is_empty() {
             return Ok(());
         }
@@ -81,7 +78,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &'a Vec<FilterNode>) -> StdResult<(), BuildError> {
+    fn apply_filters(&mut self, filters: &'a [FilterNode]) -> StdResult<(), BuildError> {
         if filters.is_empty() {
             return Ok(());
         }

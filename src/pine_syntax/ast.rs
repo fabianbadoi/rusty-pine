@@ -19,6 +19,7 @@ pub enum Operation {
 }
 
 impl Operation {
+    #[cfg(test)]
     pub fn get_name(&self) -> &str {
         use Operation::*;
 
