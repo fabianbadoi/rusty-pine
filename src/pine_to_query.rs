@@ -107,7 +107,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         match self.query.from {
             Some(table) => Ok(table),
             None => Err(BuildError {
-                message: "Must specify a from: clause before using select:.".to_string(),
+                message: "Place a from: statement in front fo this".to_string(),
                 position: pine_position
             })
         }
