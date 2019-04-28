@@ -64,3 +64,12 @@ pub struct Node<T> {
     pub position: Position,
     pub inner: T,
 }
+
+impl<'a> IntoIterator for &'a PineNode {
+    type Item = &'a OperationNode;
+    type IntoIter = std::slice::Iter<'a, OperationNode>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.inner.operations.iter()
+    }
+}

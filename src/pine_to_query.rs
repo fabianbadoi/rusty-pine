@@ -40,7 +40,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn build(mut self, pine: &'a PineNode) -> Result<'a> {
-        for operation_node in &pine.inner.operations {
+        for operation_node in pine {
             self.apply_operation(operation_node)?;
         }
 
