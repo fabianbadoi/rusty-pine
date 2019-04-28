@@ -1,3 +1,9 @@
+mod renderer;
+#[cfg(test)]
+mod shorthand;
+
+pub use self::renderer::{Renderer, StringRenderer};
+
 #[derive(Debug, Default)]
 pub struct Query<'a> {
     pub selections: Vec<QualifiedColumnIdentifier<'a>>,
