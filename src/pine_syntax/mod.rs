@@ -2,12 +2,12 @@ mod ast;
 mod pest;
 mod pest_tree_translation;
 
-use ::pest::Parser;
 pub use self::ast::*;
+use ::pest::Parser;
 
-use std::convert::From;
-use ::pest::error::Error as PestError;
 use self::pest::Rule;
+use ::pest::error::Error as PestError;
+use std::convert::From;
 
 #[derive(Debug)]
 pub struct PineParseError(());
@@ -27,7 +27,8 @@ struct PineParser;
 
 impl PineParserTrait for PineParser {
     fn parse(input: &str) -> Result<PineNode, PineParseError> {
-        let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?.next()
+        let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
+            .next()
             .expect("Pest should have failed to parse this input");
 
         let pine = pest_tree_translation::translate(ast);
@@ -38,11 +39,12 @@ impl PineParserTrait for PineParser {
 
 #[cfg(test)]
 mod tests {
-    use super::{PineParser, PineParserTrait, Operation};
+    use super::{Operation, PineParser, PineParserTrait};
 
     #[test]
     fn parsing_simple_form_statement() {
-        let pine_node = PineParser::parse("from: users | select: id, name | where: id = 3 x = 4").unwrap();
+        let pine_node =
+            PineParser::parse("from: users | select: id, name | where: id = 3 x = 4").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("select", pine_node.inner.operations[1].inner.get_name());

@@ -4,9 +4,9 @@ pub struct PinePestParser;
 
 #[cfg(test)]
 mod tests {
-    use ::pest::Parser;
     use super::PinePestParser;
     use super::Rule;
+    use ::pest::Parser;
 
     #[test]
     fn pest_syntax_is_ok() {

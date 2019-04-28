@@ -1,14 +1,14 @@
 pub type PineNode = Node<Pine>;
 pub type OperationNode = Node<Operation>;
 pub type FilterNode = Node<Filter>;
-pub type ConditionNode =Node<Condition>;
+pub type ConditionNode = Node<Condition>;
 pub type TableNameNode = Node<TableName>;
 pub type ColumnNameNode = Node<ColumnName>;
 pub type ValueNode = Node<Value>;
 
 #[derive(Debug)]
 pub struct Pine {
-    pub operations: Vec<OperationNode>
+    pub operations: Vec<OperationNode>,
 }
 
 #[derive(Debug)]
@@ -38,7 +38,7 @@ pub struct Filter {
 
 #[derive(Debug)]
 pub enum Condition {
-    Equals(ValueNode)
+    Equals(ValueNode),
 }
 
 pub type Identifier = String;
@@ -49,7 +49,7 @@ pub type Value = String;
 #[derive(Copy, Clone, Debug)]
 pub struct Position {
     pub start: usize,
-    pub end: usize
+    pub end: usize,
 }
 
 impl Default for Position {

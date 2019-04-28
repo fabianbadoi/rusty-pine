@@ -14,15 +14,14 @@ pub struct QualifiedColumnIdentifier<'a> {
 #[derive(Debug)]
 pub struct Filter<'a> {
     pub column: QualifiedColumnIdentifier<'a>,
-    pub condition: Condition<'a>
+    pub condition: Condition<'a>,
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Condition<'a> {
-    Equals(Value<'a>)
+    Equals(Value<'a>),
 }
 
 pub type TableName<'a> = &'a str;
 pub type ColumnName<'a> = &'a str;
 pub type Value<'a> = &'a str;
-

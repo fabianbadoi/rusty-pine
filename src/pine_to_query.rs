@@ -1,7 +1,9 @@
-use crate::sql::{Query, QualifiedColumnIdentifier, Filter as SqlFilter, Condition as SqlCondition};
 use crate::pine_syntax::{
-    PineNode, OperationNode, Operation, TableNameNode, ColumnNameNode, FilterNode, Position,
-    Condition as AstCondition
+    ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
+    Position, TableNameNode,
+};
+use crate::sql::{
+    Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
 use std::result::Result as StdResult;
 
@@ -59,13 +61,17 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.reset_selection(&table.inner);
     }
 
-    fn apply_selections(&mut self, selections: &'a Vec<ColumnNameNode>) -> StdResult<(), BuildError> {
+    fn apply_selections(
+        &mut self,
+        selections: &'a Vec<ColumnNameNode>,
+    ) -> StdResult<(), BuildError> {
         if selections.is_empty() {
             return Ok(());
         }
 
         let table = self.require_table(selections[0].position)?;
-        let mut selections: Vec<_> = selections.iter()
+        let mut selections: Vec<_> = selections
+            .iter()
             .map(|name_node| name_node.inner.as_str())
             .map(|column| QualifiedColumnIdentifier { table, column })
             .collect();
@@ -81,7 +87,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
 
         let table = self.require_table(filters[0].position)?;
-        let mut filters: Vec<_> = filters.iter()
+        let mut filters: Vec<_> = filters
+            .iter()
             .map(|filter_node| {
                 let column = filter_node.inner.column.inner.as_str();
                 let column = QualifiedColumnIdentifier { table, column };
@@ -108,8 +115,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
             Some(table) => Ok(table),
             None => Err(BuildError {
                 message: "Place a from: statement in front fo this".to_string(),
-                position: pine_position
-            })
+                position: pine_position,
+            }),
         }
     }
 }
@@ -117,22 +124,22 @@ impl<'a> SingleUseQueryBuilder<'a> {
 impl<'a> From<&'a AstCondition> for SqlCondition<'a> {
     fn from(other: &'a AstCondition) -> Self {
         match other {
-            AstCondition::Equals(ref value) => SqlCondition::Equals(&value.inner)
+            AstCondition::Equals(ref value) => SqlCondition::Equals(&value.inner),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{PineTranslator, QueryBuilder};
     use crate::pine_syntax::*;
-    use super::{QueryBuilder, PineTranslator};
-    use crate::sql::{ QualifiedColumnIdentifier, Condition as SqlCondition };
-    
+    use crate::sql::{Condition as SqlCondition, QualifiedColumnIdentifier};
+
     #[test]
     fn build_from_query() {
         let pine = from("users");
 
-        let query_builder = PineTranslator{};
+        let query_builder = PineTranslator {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!("users", query.from.unwrap());
@@ -142,7 +149,7 @@ mod tests {
     fn build_select_query() {
         let pine = select(&["id", "name"], "users");
 
-        let query_builder = PineTranslator{};
+        let query_builder = PineTranslator {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!(query.selections[0], ("users", "id"));
@@ -153,7 +160,7 @@ mod tests {
     fn build_filter_query() {
         let pine = filter("id", Condition::Equals(make_node("3".to_string())), "users");
 
-        let query_builder = PineTranslator{};
+        let query_builder = PineTranslator {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!(query.filters.len(), 1);
@@ -185,11 +192,7 @@ mod tests {
         let mut pine = from(table);
         append_operation(
             &mut pine,
-            Operation::Select(
-                columns.iter()
-                    .map(|c| make_node(c.to_string()))
-                    .collect()
-            )
+            Operation::Select(columns.iter().map(|c| make_node(c.to_string())).collect()),
         );
 
         pine
@@ -206,7 +209,7 @@ mod tests {
     fn make_node<T>(inner: T) -> Node<T> {
         Node {
             inner,
-            position: Default::default()
+            position: Default::default(),
         }
     }
 
