@@ -2,7 +2,8 @@ use super::ast::*;
 use super::pest::Rule;
 use ::pest::iterators::Pair;
 
-// Look at the test to better understand the tree structures involved
+// Look at the test at the end of this file to better understand
+// the tree structures involved.
 
 type PestNode<'a> = Pair<'a, Rule>;
 
