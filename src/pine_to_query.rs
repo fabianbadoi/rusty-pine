@@ -1,5 +1,8 @@
-use crate::sql::{Query, ColumnName, QualifiedColumnIdentifier};
-use crate::pine_syntax::{PineNode, OperationNode, Operation, TableNameNode, ColumnNameNode, Position};
+use crate::sql::{Query, QualifiedColumnIdentifier, Filter as SqlFilter, Condition as SqlCondition};
+use crate::pine_syntax::{
+    PineNode, OperationNode, Operation, TableNameNode, ColumnNameNode, FilterNode, Position,
+    Condition as AstCondition
+};
 use std::result::Result as StdResult;
 
 #[derive(Debug)]
@@ -46,7 +49,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         match operation_node.inner {
             Operation::From(ref table) => self.apply_from(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
-            _ => unimplemented!()
+            Operation::Filter(ref filters) => self.apply_filters(filters)?,
         };
 
         Ok(())
@@ -57,18 +60,38 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn apply_selections(&mut self, selections: &'a Vec<ColumnNameNode>) -> StdResult<(), BuildError> {
-        if selections.len() == 0 {
+        if selections.is_empty() {
             return Ok(());
         }
 
-        let position = selections[0].position;
-        let table = self.require_table(position)?;
+        let table = self.require_table(selections[0].position)?;
         let mut selections: Vec<_> = selections.iter()
             .map(|name_node| name_node.inner.as_str())
             .map(|column| QualifiedColumnIdentifier { table, column })
             .collect();
 
         self.query.selections.append(&mut selections);
+
+        Ok(())
+    }
+
+    fn apply_filters(&mut self, filters: &'a Vec<FilterNode>) -> StdResult<(), BuildError> {
+        if filters.is_empty() {
+            return Ok(());
+        }
+
+        let table = self.require_table(filters[0].position)?;
+        let mut filters: Vec<_> = filters.iter()
+            .map(|filter_node| {
+                let column = filter_node.inner.column.inner.as_str();
+                let column = QualifiedColumnIdentifier { table, column };
+                let condition: SqlCondition = (&filter_node.inner.condition.inner).into();
+
+                SqlFilter { column, condition }
+            })
+            .collect();
+
+        self.query.filters.append(&mut filters);
 
         Ok(())
     }
@@ -91,11 +114,19 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 }
 
+impl<'a> From<&'a AstCondition> for SqlCondition<'a> {
+    fn from(other: &'a AstCondition) -> Self {
+        match other {
+            AstCondition::Equals(ref value) => SqlCondition::Equals(&value.inner)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::pine_syntax::*;
     use super::{QueryBuilder, PineTranslator};
-    use crate::sql::QualifiedColumnIdentifier;
+    use crate::sql::{ QualifiedColumnIdentifier, Condition as SqlCondition };
     
     #[test]
     fn build_from_query() {
@@ -116,6 +147,31 @@ mod tests {
 
         assert_eq!(query.selections[0], ("users", "id"));
         assert_eq!(query.selections[1], ("users", "name"));
+    }
+
+    #[test]
+    fn build_filter_query() {
+        let pine = filter("id", Condition::Equals(make_node("3".to_string())), "users");
+
+        let query_builder = PineTranslator{};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(query.filters.len(), 1);
+
+        assert_eq!(query.filters[0].column, ("users", "id"));
+        assert_eq!(query.filters[0].condition, SqlCondition::Equals("3"));
+    }
+
+    fn filter(column: &'static str, condition: Condition, table: &'static str) -> PineNode {
+        let mut pine = from(table);
+
+        let condition = make_node(condition);
+        let column = make_node(column.to_string());
+        let filter = make_node(Filter { column, condition });
+
+        append_operation(&mut pine, Operation::Filter(vec![filter]));
+
+        pine
     }
 
     fn from(table: &'static str) -> PineNode {

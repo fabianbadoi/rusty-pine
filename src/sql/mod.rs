@@ -17,7 +17,7 @@ pub struct Filter<'a> {
     pub condition: Condition<'a>
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Condition<'a> {
     Equals(Value<'a>)
 }
