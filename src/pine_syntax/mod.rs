@@ -23,7 +23,7 @@ pub trait PineParserTrait {
     fn parse(self, input: &str) -> Result<PineNode, PineParseError>;
 }
 
-struct PineParser;
+pub struct PineParser;
 
 impl PineParserTrait for &PineParser {
     fn parse(self, input: &str) -> Result<PineNode, PineParseError> {

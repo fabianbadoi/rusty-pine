@@ -8,18 +8,18 @@ use crate::sql::{
 use std::result::Result as StdResult;
 
 #[derive(Debug)]
-struct BuildError {
+pub struct BuildError {
     message: String,
     position: Position,
 }
 
-type Result<'a> = StdResult<Query<'a>, BuildError>;
+pub type Result<'a> = StdResult<Query<'a>, BuildError>;
 
-trait QueryBuilder {
+pub trait QueryBuilder {
     fn build<'a>(&self, pine: &'a PineNode) -> Result<'a>;
 }
 
-struct PineTranslator;
+pub struct PineTranslator;
 
 #[derive(Default)]
 struct SingleUseQueryBuilder<'a> {
