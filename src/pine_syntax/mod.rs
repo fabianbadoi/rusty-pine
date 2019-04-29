@@ -43,9 +43,10 @@ mod tests {
 
     #[test]
     fn parsing_simple_form_statement() {
-        let parser = PineParser{};
-        let pine_node =
-            parser.parse("from: users | select: id, name | where: id = 3 x = 4").unwrap();
+        let parser = PineParser {};
+        let pine_node = parser
+            .parse("from: users | select: id, name | where: id = 3 x = 4")
+            .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("select", pine_node.inner.operations[1].inner.get_name());
