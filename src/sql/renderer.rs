@@ -3,13 +3,13 @@ use super::QualifiedColumnIdentifier;
 use super::Query;
 
 pub trait Renderer<O, Q> {
-    fn render(self, query: Q) -> O;
+    fn render(self, query: &Q) -> O;
 }
 
 pub struct StringRenderer {}
 
-impl<'a> Renderer<String, Query<'a>> for &StringRenderer {
-    fn render(self, query: Query<'a>) -> String {
+impl Renderer<String, Query<'_>> for &StringRenderer {
+    fn render<'a>(self, query: &'a Query<'a>) -> String {
         let select = self.render_select(&query);
         let from = self.render_from(&query);
         let filters = self.render_filters(&query);
@@ -89,7 +89,7 @@ mod tests {
             &[Filter::Equals("id", "1"), Filter::Equals("mojo", "great")],
         );
 
-        let rendering = renderer.render(query.into());
+        let rendering = renderer.render(&query.into());
 
         assert_eq!(
             "SELECT id, name\nFROM users\nWHERE id = \"1\" AND mojo = \"great\"",
