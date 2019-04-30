@@ -1,11 +1,34 @@
 use super::ast::*;
+use super::pest;
 use super::pest::Rule;
+use super::PineParseError;
+use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
+use ::pest::Parser;
+use std::convert::From;
 
 // Look at the test at the end of this file to better understand
 // the tree structures involved.
 
 type PestNode<'a> = Pair<'a, Rule>;
+
+pub trait IntermediateFormParser {
+    fn parse(self, input: &str) -> Result<PineNode, PineParseError>;
+}
+
+pub struct PineParser;
+
+impl IntermediateFormParser for &PineParser {
+    fn parse(self, input: &str) -> Result<PineNode, PineParseError> {
+        let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
+            .next()
+            .expect("Pest should have failed to parse this input");
+
+        let pine = translate(ast);
+
+        Ok(pine)
+    }
+}
 
 pub fn translate(root_node: PestNode) -> PineNode {
     expect(Rule::pine, &root_node);
@@ -143,10 +166,19 @@ fn node_to_position(node: &PestNode) -> Position {
     }
 }
 
+impl From<PestError<Rule>> for PineParseError {
+    fn from(pest_error: PestError<Rule>) -> Self {
+        panic!("{}", pest_error);
+        // TODO this needs to be better
+        unimplemented!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::pest::PinePestParser;
     use super::super::pest::Rule;
+    use super::{IntermediateFormParser, Operation, PineParser};
     use ::pest::Parser;
 
     /// Run this test with `--nocapture` to see a demo of the tree structures involved
@@ -165,5 +197,21 @@ mod tests {
         println!("Pest AST:\n{:#?}", ast);
         println!("-------------------------------------------------------");
         println!("Pine internal pepresentation:\n{:#?}", pine);
+    }
+
+    #[test]
+    fn parsing_simple_form_statement() {
+        let parser = PineParser {};
+        let pine_node = parser
+            .parse("from: users | select: id, name | where: id = 3 x = 4")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("select", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[2].inner.get_name());
+
+        if let Operation::From(ref table_name) = pine_node.inner.operations[0].inner {
+            assert_eq!("users", table_name.inner);
+        }
     }
 }

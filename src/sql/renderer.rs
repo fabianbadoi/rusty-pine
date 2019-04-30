@@ -8,8 +8,8 @@ pub trait Renderer<O, Q> {
 
 pub struct StringRenderer {}
 
-impl Renderer<String, Query<'_>> for &StringRenderer {
-    fn render<'a>(self, query: &'a Query<'a>) -> String {
+impl Renderer<String, Query> for &StringRenderer {
+    fn render<'a>(self, query: &'a Query) -> String {
         let select = self.render_select(&query);
         let from = self.render_from(&query);
         let filters = self.render_filters(&query);
@@ -19,7 +19,7 @@ impl Renderer<String, Query<'_>> for &StringRenderer {
 }
 
 impl StringRenderer {
-    fn render_select<'a>(&self, query: &'a Query<'a>) -> String {
+    fn render_select<'a>(&self, query: &'a Query) -> String {
         let column_renderer = ColumnRenderer::new(query);
 
         let fields = query
@@ -32,11 +32,11 @@ impl StringRenderer {
         fields
     }
 
-    fn render_from<'a>(&self, query: &'a Query<'a>) -> &'a str {
-        query.from.unwrap()
+    fn render_from<'a>(&self, query: &'a Query) -> String {
+        query.from.clone().unwrap()
     }
 
-    fn render_filters<'a>(&self, query: &'a Query<'a>) -> String {
+    fn render_filters<'a>(&self, query: &'a Query) -> String {
         let column_renderer = ColumnRenderer::new(query);
 
         let filters = query
@@ -44,7 +44,7 @@ impl StringRenderer {
             .iter()
             .map(|filter| {
                 let column = column_renderer.render(&filter.column);
-                match filter.condition {
+                match &filter.condition {
                     Condition::Equals(value) => format!("{} = \"{}\"", column, value),
                 }
             })
@@ -65,9 +65,9 @@ impl<Q> ColumnRenderer<Q> {
     }
 }
 
-impl<'a> ColumnRenderer<&'a Query<'a>> {
+impl<'a> ColumnRenderer<&'a Query> {
     fn render(&self, id: &'a QualifiedColumnIdentifier) -> String {
-        if self.query.from.unwrap() == id.table {
+        if *self.query.from.as_ref().unwrap() == id.table {
             id.column.to_string()
         } else {
             format!("{}.{}", id.table, id.column)

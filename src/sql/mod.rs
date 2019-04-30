@@ -5,29 +5,29 @@ mod shorthand;
 pub use self::renderer::{Renderer, StringRenderer};
 
 #[derive(Debug, Default)]
-pub struct Query<'a> {
-    pub selections: Vec<QualifiedColumnIdentifier<'a>>,
-    pub from: Option<ColumnName<'a>>,
-    pub filters: Vec<Filter<'a>>,
+pub struct Query {
+    pub selections: Vec<QualifiedColumnIdentifier>,
+    pub from: Option<ColumnName>,
+    pub filters: Vec<Filter>,
 }
 
 #[derive(Debug)]
-pub struct QualifiedColumnIdentifier<'a> {
-    pub table: TableName<'a>,
-    pub column: ColumnName<'a>,
+pub struct QualifiedColumnIdentifier {
+    pub table: TableName,
+    pub column: ColumnName,
 }
 
 #[derive(Debug)]
-pub struct Filter<'a> {
-    pub column: QualifiedColumnIdentifier<'a>,
-    pub condition: Condition<'a>,
+pub struct Filter {
+    pub column: QualifiedColumnIdentifier,
+    pub condition: Condition,
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Condition<'a> {
-    Equals(Value<'a>),
+pub enum Condition {
+    Equals(Value),
 }
 
-pub type TableName<'a> = &'a str;
-pub type ColumnName<'a> = &'a str;
-pub type Value<'a> = &'a str;
+pub type TableName = String;
+pub type ColumnName = String;
+pub type Value = String;

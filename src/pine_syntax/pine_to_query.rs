@@ -2,44 +2,39 @@ use super::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
     Position, TableNameNode,
 };
+use super::{PineParseError, Result};
 use crate::sql::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
 use std::result::Result as StdResult;
 
-#[derive(Debug)]
-pub struct BuildError {
-    message: String,
-    position: Position,
-}
-
-pub type Result<'a> = StdResult<Query<'a>, BuildError>;
+type InternalError = StdResult<(), PineParseError>;
 
 pub trait QueryBuilder {
-    fn build<'a>(&self, pine: &'a PineNode) -> Result<'a>;
+    fn build<'a>(&self, pine: &'a PineNode) -> Result;
 }
 
 pub struct PineTranslator;
 
 #[derive(Default)]
-struct SingleUseQueryBuilder<'a> {
-    query: Query<'a>,
+struct SingleUseQueryBuilder {
+    query: Query,
 }
 
 impl QueryBuilder for PineTranslator {
-    fn build<'a>(&self, pine: &'a PineNode) -> Result<'a> {
+    fn build<'a>(&self, pine: &'a PineNode) -> Result {
         let builder = SingleUseQueryBuilder::new();
 
         builder.build(pine)
     }
 }
 
-impl<'a> SingleUseQueryBuilder<'a> {
-    fn new() -> SingleUseQueryBuilder<'a> {
+impl<'a> SingleUseQueryBuilder {
+    fn new() -> SingleUseQueryBuilder {
         Default::default()
     }
 
-    fn build(mut self, pine: &'a PineNode) -> Result<'a> {
+    fn build(mut self, pine: &'a PineNode) -> Result {
         for operation_node in pine {
             self.apply_operation(operation_node)?;
         }
@@ -47,7 +42,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(self.query)
     }
 
-    fn apply_operation(&mut self, operation_node: &'a OperationNode) -> StdResult<(), BuildError> {
+    fn apply_operation(&mut self, operation_node: &'a OperationNode) -> InternalError {
         match operation_node.inner {
             Operation::From(ref table) => self.apply_from(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
@@ -61,7 +56,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.reset_selection(&table.inner);
     }
 
-    fn apply_selections(&mut self, selections: &'a [ColumnNameNode]) -> StdResult<(), BuildError> {
+    fn apply_selections(&mut self, selections: &'a [ColumnNameNode]) -> InternalError {
         if selections.is_empty() {
             return Ok(());
         }
@@ -69,8 +64,11 @@ impl<'a> SingleUseQueryBuilder<'a> {
         let table = self.require_table(selections[0].position)?;
         let mut selections: Vec<_> = selections
             .iter()
-            .map(|name_node| name_node.inner)
-            .map(|column| QualifiedColumnIdentifier { table, column })
+            .map(|name_node| name_node.inner.to_string())
+            .map(|column| QualifiedColumnIdentifier {
+                table: table.clone(),
+                column,
+            })
             .collect();
 
         self.query.selections.append(&mut selections);
@@ -78,7 +76,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &'a [FilterNode]) -> StdResult<(), BuildError> {
+    fn apply_filters(&mut self, filters: &'a [FilterNode]) -> StdResult<(), PineParseError> {
         if filters.is_empty() {
             return Ok(());
         }
@@ -87,8 +85,11 @@ impl<'a> SingleUseQueryBuilder<'a> {
         let mut filters: Vec<_> = filters
             .iter()
             .map(|filter_node| {
-                let column = filter_node.inner.column.inner;
-                let column = QualifiedColumnIdentifier { table, column };
+                let column = filter_node.inner.column.inner.to_string();
+                let column = QualifiedColumnIdentifier {
+                    table: table.clone(),
+                    column,
+                };
                 let condition: SqlCondition = (&filter_node.inner.condition.inner).into();
 
                 SqlFilter { column, condition }
@@ -101,16 +102,16 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn reset_selection(&mut self, table: &'a str) {
-        self.query.from = Some(table);
+        self.query.from = Some(table.to_string());
 
         // existing selections are cleared to, maybe add a select+: operation that keeps previous selections
         self.query.selections.clear();
     }
 
-    fn require_table(&self, pine_position: Position) -> StdResult<&'a str, BuildError> {
-        match self.query.from {
-            Some(table) => Ok(table),
-            None => Err(BuildError {
+    fn require_table(&self, pine_position: Position) -> StdResult<String, PineParseError> {
+        match &self.query.from {
+            Some(ref table) => Ok(table.clone()),
+            None => Err(PineParseError {
                 message: "Place a from: statement in front fo this".to_string(),
                 position: pine_position,
             }),
@@ -118,10 +119,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 }
 
-impl<'a> From<&'a AstCondition<'a>> for SqlCondition<'a> {
+impl<'a> From<&'a AstCondition<'a>> for SqlCondition {
     fn from(other: &'a AstCondition) -> Self {
         match other {
-            AstCondition::Equals(ref value) => SqlCondition::Equals(&value.inner),
+            AstCondition::Equals(ref value) => SqlCondition::Equals(value.inner.to_string()),
         }
     }
 }
@@ -129,7 +130,7 @@ impl<'a> From<&'a AstCondition<'a>> for SqlCondition<'a> {
 #[cfg(test)]
 mod tests {
     use super::{PineTranslator, QueryBuilder};
-    use crate::pine_syntax::*;
+    use crate::pine_syntax::ast::*;
     use crate::sql::{Condition as SqlCondition, QualifiedColumnIdentifier};
 
     #[test]
@@ -163,7 +164,10 @@ mod tests {
         assert_eq!(query.filters.len(), 1);
 
         assert_eq!(query.filters[0].column, ("users", "id"));
-        assert_eq!(query.filters[0].condition, SqlCondition::Equals("3"));
+        assert_eq!(
+            query.filters[0].condition,
+            SqlCondition::Equals("3".to_string())
+        );
     }
 
     fn filter(
@@ -215,7 +219,7 @@ mod tests {
     }
 
     type QualifiedColumnShorthand = (&'static str, &'static str);
-    impl<'a> PartialEq<QualifiedColumnShorthand> for QualifiedColumnIdentifier<'a> {
+    impl<'a> PartialEq<QualifiedColumnShorthand> for QualifiedColumnIdentifier {
         fn eq(&self, other: &QualifiedColumnShorthand) -> bool {
             self.table == other.0 && self.column == other.1
         }
