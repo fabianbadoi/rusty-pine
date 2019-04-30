@@ -150,7 +150,7 @@ mod tests {
     use ::pest::Parser;
 
     /// Run this test with `--nocapture` to see a demo of the tree structures involved
-    /// For example: `cargo test pine_syntax::pest_tree_translation::tests::show_tree_structures --nocapture`
+    /// For example: `cargo test pine_syntax::pest_tree_translation::tests::show_tree_structures -- --nocapture`
     #[test]
     fn show_tree_structures() {
         let pine_string = "from: users | select: id";

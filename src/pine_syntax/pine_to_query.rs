@@ -1,4 +1,4 @@
-use crate::pine_syntax::{
+use super::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
     Position, TableNameNode,
 };

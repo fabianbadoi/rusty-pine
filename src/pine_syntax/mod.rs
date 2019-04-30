@@ -1,8 +1,9 @@
 mod ast;
 mod pest;
 mod pest_tree_translation;
+mod pine_to_query;
 
-pub use self::ast::*;
+use self::ast::*;
 use ::pest::Parser;
 
 use self::pest::Rule;
@@ -19,13 +20,13 @@ impl From<PestError<Rule>> for PineParseError {
     }
 }
 
-pub trait PineParserTrait {
+trait IntermediateFormParser {
     fn parse(self, input: &str) -> Result<PineNode, PineParseError>;
 }
 
-pub struct PineParser;
+struct PineParser;
 
-impl PineParserTrait for &PineParser {
+impl IntermediateFormParser for &PineParser {
     fn parse(self, input: &str) -> Result<PineNode, PineParseError> {
         let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
             .next()
@@ -39,7 +40,7 @@ impl PineParserTrait for &PineParser {
 
 #[cfg(test)]
 mod tests {
-    use super::{Operation, PineParser, PineParserTrait};
+    use super::{Operation, PineParser, IntermediateFormParser};
 
     #[test]
     fn parsing_simple_form_statement() {
