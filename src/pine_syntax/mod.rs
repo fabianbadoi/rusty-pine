@@ -40,7 +40,7 @@ impl IntermediateFormParser for &PineParser {
 
 #[cfg(test)]
 mod tests {
-    use super::{Operation, PineParser, IntermediateFormParser};
+    use super::{IntermediateFormParser, Operation, PineParser};
 
     #[test]
     fn parsing_simple_form_statement() {

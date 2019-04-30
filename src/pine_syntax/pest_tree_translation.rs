@@ -98,7 +98,7 @@ fn translate_value(node: PestNode) -> ValueNode {
     expect(Rule::numeric_value, &node);
 
     let position = node_to_position(&node);
-    let inner = node.as_str().trim().to_string();
+    let inner = node.as_str().trim();
 
     ValueNode { inner, position }
 }
@@ -109,7 +109,7 @@ fn translate_sql_name(node: PestNode) -> TableNameNode {
     let position = node_to_position(&node);
 
     TableNameNode {
-        inner: node.as_str().to_string(),
+        inner: node.as_str(),
         position,
     }
 }

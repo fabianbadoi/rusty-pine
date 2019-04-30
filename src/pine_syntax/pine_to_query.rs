@@ -69,7 +69,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         let table = self.require_table(selections[0].position)?;
         let mut selections: Vec<_> = selections
             .iter()
-            .map(|name_node| name_node.inner.as_str())
+            .map(|name_node| name_node.inner)
             .map(|column| QualifiedColumnIdentifier { table, column })
             .collect();
 
@@ -87,7 +87,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         let mut filters: Vec<_> = filters
             .iter()
             .map(|filter_node| {
-                let column = filter_node.inner.column.inner.as_str();
+                let column = filter_node.inner.column.inner;
                 let column = QualifiedColumnIdentifier { table, column };
                 let condition: SqlCondition = (&filter_node.inner.condition.inner).into();
 
@@ -118,7 +118,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 }
 
-impl<'a> From<&'a AstCondition> for SqlCondition<'a> {
+impl<'a> From<&'a AstCondition<'a>> for SqlCondition<'a> {
     fn from(other: &'a AstCondition) -> Self {
         match other {
             AstCondition::Equals(ref value) => SqlCondition::Equals(&value.inner),
@@ -155,7 +155,7 @@ mod tests {
 
     #[test]
     fn build_filter_query() {
-        let pine = filter("id", Condition::Equals(make_node("3".to_string())), "users");
+        let pine = filter("id", Condition::Equals(make_node("3")), "users");
 
         let query_builder = PineTranslator {};
         let query = query_builder.build(&pine).unwrap();
@@ -166,11 +166,15 @@ mod tests {
         assert_eq!(query.filters[0].condition, SqlCondition::Equals("3"));
     }
 
-    fn filter(column: &'static str, condition: Condition, table: &'static str) -> PineNode {
+    fn filter(
+        column: &'static str,
+        condition: Condition<'static>,
+        table: &'static str,
+    ) -> PineNode<'static> {
         let mut pine = from(table);
 
         let condition = make_node(condition);
-        let column = make_node(column.to_string());
+        let column = make_node(column);
         let filter = make_node(Filter { column, condition });
 
         append_operation(&mut pine, Operation::Filter(vec![filter]));
@@ -180,26 +184,26 @@ mod tests {
 
     fn from(table: &'static str) -> PineNode {
         let mut pine = make_blank_pine();
-        append_operation(&mut pine, Operation::From(make_node(table.to_string())));
+        append_operation(&mut pine, Operation::From(make_node(table)));
 
         pine
     }
 
-    fn select(columns: &[&'static str], table: &'static str) -> PineNode {
+    fn select(columns: &[&'static str], table: &'static str) -> PineNode<'static> {
         let mut pine = from(table);
         append_operation(
             &mut pine,
-            Operation::Select(columns.iter().map(|c| make_node(c.to_string())).collect()),
+            Operation::Select(columns.iter().map(|c| make_node(*c)).collect()),
         );
 
         pine
     }
 
-    fn make_blank_pine() -> PineNode {
+    fn make_blank_pine() -> PineNode<'static> {
         make_node(Pine { operations: vec![] })
     }
 
-    fn append_operation(pine: &mut PineNode, op: Operation) {
+    fn append_operation(pine: &mut PineNode<'static>, op: Operation<'static>) {
         pine.inner.operations.push(make_node(op));
     }
 

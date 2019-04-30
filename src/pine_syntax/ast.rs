@@ -1,24 +1,24 @@
-pub type PineNode = Node<Pine>;
-pub type OperationNode = Node<Operation>;
-pub type FilterNode = Node<Filter>;
-pub type ConditionNode = Node<Condition>;
-pub type TableNameNode = Node<TableName>;
-pub type ColumnNameNode = Node<ColumnName>;
-pub type ValueNode = Node<Value>;
+pub type PineNode<'a> = Node<Pine<'a>>;
+pub type OperationNode<'a> = Node<Operation<'a>>;
+pub type FilterNode<'a> = Node<Filter<'a>>;
+pub type ConditionNode<'a> = Node<Condition<'a>>;
+pub type TableNameNode<'a> = Node<TableName<'a>>;
+pub type ColumnNameNode<'a> = Node<ColumnName<'a>>;
+pub type ValueNode<'a> = Node<Value<'a>>;
 
 #[derive(Debug)]
-pub struct Pine {
-    pub operations: Vec<OperationNode>,
+pub struct Pine<'a> {
+    pub operations: Vec<OperationNode<'a>>,
 }
 
 #[derive(Debug)]
-pub enum Operation {
-    From(TableNameNode),
-    Select(Vec<ColumnNameNode>),
-    Filter(Vec<FilterNode>),
+pub enum Operation<'a> {
+    From(TableNameNode<'a>),
+    Select(Vec<ColumnNameNode<'a>>),
+    Filter(Vec<FilterNode<'a>>),
 }
 
-impl Operation {
+impl<'a> Operation<'a> {
     #[cfg(test)]
     pub fn get_name(&self) -> &str {
         use Operation::*;
@@ -32,20 +32,20 @@ impl Operation {
 }
 
 #[derive(Debug)]
-pub struct Filter {
-    pub column: ColumnNameNode,
-    pub condition: ConditionNode,
+pub struct Filter<'a> {
+    pub column: ColumnNameNode<'a>,
+    pub condition: ConditionNode<'a>,
 }
 
 #[derive(Debug)]
-pub enum Condition {
-    Equals(ValueNode),
+pub enum Condition<'a> {
+    Equals(ValueNode<'a>),
 }
 
-pub type Identifier = String;
-pub type TableName = Identifier;
-pub type ColumnName = Identifier;
-pub type Value = String;
+pub type Identifier<'a> = &'a str;
+pub type TableName<'a> = Identifier<'a>;
+pub type ColumnName<'a> = Identifier<'a>;
+pub type Value<'a> = &'a str;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Position {
@@ -65,9 +65,9 @@ pub struct Node<T> {
     pub inner: T,
 }
 
-impl<'a> IntoIterator for &'a PineNode {
-    type Item = &'a OperationNode;
-    type IntoIter = std::slice::Iter<'a, OperationNode>;
+impl<'a> IntoIterator for &'a PineNode<'a> {
+    type Item = &'a OperationNode<'a>;
+    type IntoIter = std::slice::Iter<'a, OperationNode<'a>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.operations.iter()
