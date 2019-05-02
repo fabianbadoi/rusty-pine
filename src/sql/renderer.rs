@@ -1,14 +1,14 @@
-use super::Condition;
-use super::QualifiedColumnIdentifier;
-use super::Query;
+use crate::query::Condition;
+use crate::query::QualifiedColumnIdentifier;
+use crate::query::Query;
 
-pub trait Renderer<O, Q> {
+pub trait Renderer<Q, O> {
     fn render(self, query: &Q) -> O;
 }
 
 pub struct StringRenderer {}
 
-impl Renderer<String, Query> for &StringRenderer {
+impl Renderer<Query, String> for &StringRenderer {
     fn render(self, query: &Query) -> String {
         let select = self.render_select(&query);
         let from = self.render_from(&query);

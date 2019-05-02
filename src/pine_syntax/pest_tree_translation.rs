@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::pest;
 use super::pest::Rule;
-use super::{PineError, Position};
+use super::{PineError, Position, PineParser};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
@@ -12,13 +12,9 @@ use std::convert::From;
 
 type PestNode<'a> = Pair<'a, Rule>;
 
-pub trait IntermediateFormParser {
-    fn parse(self, input: &str) -> Result<PineNode, PineError>;
-}
+pub struct PestPineParser;
 
-pub struct PineParser;
-
-impl IntermediateFormParser for &PineParser {
+impl PineParser for &PestPineParser {
     fn parse(self, input: &str) -> Result<PineNode, PineError> {
         let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
             .next()
@@ -34,7 +30,8 @@ pub fn translate(root_node: PestNode) -> PineNode {
     expect(Rule::pine, &root_node);
 
     let position = node_to_position(&root_node);
-    let operations: Vec<_> = root_node.into_inner()
+    let operations: Vec<_> = root_node
+        .into_inner()
         .map(translate_operation)
         .filter(|option| option.is_some())
         .map(|option| option.unwrap())
@@ -173,17 +170,24 @@ fn node_to_position(node: &PestNode) -> Position {
 
 impl From<PestError<Rule>> for PineError {
     fn from(pest_error: PestError<Rule>) -> Self {
-        panic!("{}", pest_error);
-        // TODO this needs to be better
-        unimplemented!()
+        use ::pest::error::InputLocation::*;
+
+        let message = format!("{}", pest_error);
+        let position = match pest_error.location {
+            Pos(position) => Position { start: position, end: position },
+            Span((start, end)) => Position { start, end },
+        };
+
+
+        PineError { message, position }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::pest::PinePestParser;
+    use super::super::pest::PinePestParser as AstParser;
     use super::super::pest::Rule;
-    use super::{IntermediateFormParser, Operation, PineParser};
+    use super::{PestPineParser, Operation, PineParser};
     use ::pest::Parser;
 
     /// Run this test with `--nocapture` to see a demo of the tree structures involved
@@ -191,7 +195,7 @@ mod tests {
     #[test]
     fn show_tree_structures() {
         let pine_string = "from: users | select: id";
-        let ast = PinePestParser::parse(Rule::pine, pine_string)
+        let ast = AstParser::parse(Rule::pine, pine_string)
             .unwrap()
             .next()
             .expect("Pest should have failed to parse this input");
@@ -206,7 +210,7 @@ mod tests {
 
     #[test]
     fn parsing_simple_form_statement() {
-        let parser = PineParser {};
+        let parser = PestPineParser {};
         let pine_node = parser
             .parse("from: users | select: id, name | where: id = 3 x = 4")
             .unwrap();

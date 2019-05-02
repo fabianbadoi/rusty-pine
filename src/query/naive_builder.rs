@@ -1,21 +1,16 @@
-use super::ast::{
+use super::{BuildResult, QueryBuilder};
+use crate::pine_syntax::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
     TableNameNode,
 };
-use super::{PineError, Result};
-use crate::sql::{
+use crate::pine_syntax::PineError;
+use crate::pine_syntax::Position;
+use crate::query::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
-use super::Position;
-use std::result::Result as StdResult;
 
-type InternalError = StdResult<(), PineError>;
-
-pub trait QueryBuilder {
-    fn build(self, pine: &PineNode) -> Result;
-}
-
-pub struct PineTranslator;
+/// Has no concept of context, more complex queries will fail to build
+pub struct NaiveBuilder;
 
 #[derive(Default)]
 struct SingleUseQueryBuilder {
@@ -23,8 +18,8 @@ struct SingleUseQueryBuilder {
     current_table: Option<String>,
 }
 
-impl QueryBuilder for &PineTranslator {
-    fn build(self, pine: &PineNode) -> Result {
+impl QueryBuilder for &NaiveBuilder {
+    fn build(self, pine: &PineNode) -> BuildResult {
         let builder = SingleUseQueryBuilder::new();
 
         builder.build(pine)
@@ -36,7 +31,7 @@ impl SingleUseQueryBuilder {
         Default::default()
     }
 
-    fn build(mut self, pine: &PineNode) -> Result {
+    fn build(mut self, pine: &PineNode) -> BuildResult {
         for operation_node in pine {
             self.apply_operation(operation_node)?;
         }
@@ -46,7 +41,7 @@ impl SingleUseQueryBuilder {
         Ok(self.query)
     }
 
-    fn apply_operation(&mut self, operation_node: &OperationNode) -> InternalError {
+    fn apply_operation(&mut self, operation_node: &OperationNode) -> InternalResult {
         match operation_node.inner {
             Operation::From(ref table) => self.apply_from(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
@@ -60,7 +55,7 @@ impl SingleUseQueryBuilder {
         self.reset_selection(&table.inner);
     }
 
-    fn apply_selections(&mut self, selections: &[ColumnNameNode]) -> InternalError {
+    fn apply_selections(&mut self, selections: &[ColumnNameNode]) -> InternalResult {
         if selections.is_empty() {
             return Ok(());
         }
@@ -80,7 +75,7 @@ impl SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &[FilterNode]) -> StdResult<(), PineError> {
+    fn apply_filters(&mut self, filters: &[FilterNode]) -> Result<(), PineError> {
         if filters.is_empty() {
             return Ok(());
         }
@@ -112,7 +107,7 @@ impl SingleUseQueryBuilder {
         self.query.selections.clear();
     }
 
-    fn finalize(&mut self, pine: &PineNode) -> StdResult<(), PineError> {
+    fn finalize(&mut self, pine: &PineNode) -> Result<(), PineError> {
         match self.current_table.clone() {
             Some(table) => {
                 self.query.from = table;
@@ -125,7 +120,7 @@ impl SingleUseQueryBuilder {
         }
     }
 
-    fn require_table(&self, pine_position: Position) -> StdResult<String, PineError> {
+    fn require_table(&self, pine_position: Position) -> Result<String, PineError> {
         match &self.current_table {
             Some(table) => Ok(table.clone()),
             None => Err(PineError {
@@ -144,17 +139,19 @@ impl<'a> From<&AstCondition<'a>> for SqlCondition {
     }
 }
 
+type InternalResult = Result<(), PineError>;
+
 #[cfg(test)]
 mod tests {
-    use super::{PineTranslator, QueryBuilder};
+    use super::{NaiveBuilder, QueryBuilder};
     use crate::pine_syntax::ast::*;
-    use crate::sql::{Condition as SqlCondition, QualifiedColumnIdentifier};
+    use super::super::{Condition as SqlCondition, QualifiedColumnIdentifier};
 
     #[test]
     fn build_from_query() {
         let pine = from("users");
 
-        let query_builder = PineTranslator {};
+        let query_builder = NaiveBuilder {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!("users", query.from);
@@ -164,7 +161,7 @@ mod tests {
     fn build_select_query() {
         let pine = select(&["id", "name"], "users");
 
-        let query_builder = PineTranslator {};
+        let query_builder = NaiveBuilder {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!(query.selections[0], ("users", "id"));
@@ -175,7 +172,7 @@ mod tests {
     fn build_filter_query() {
         let pine = filter("id", Condition::Equals(make_node("3")), "users");
 
-        let query_builder = PineTranslator {};
+        let query_builder = NaiveBuilder {};
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!(query.filters.len(), 1);

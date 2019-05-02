@@ -1,18 +1,20 @@
-mod ast;
+pub mod ast;
 mod pest;
 mod pest_tree_translation;
-mod pine_to_query;
-mod query_parser;
 
-use crate::sql::Query;
-pub use query_parser::{Parser, QueryParser};
-use std::result::Result as StdResult;
+pub use pest_tree_translation::PestPineParser;
+use ast::PineNode;
+
 use crate::ParseError;
+
+pub trait PineParser {
+    fn parse(self, input: &str) -> Result<PineNode, PineError>;
+}
 
 #[derive(Debug)]
 pub struct PineError {
-    message: String,
-    position: Position,
+    pub message: String,
+    pub position: Position,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -27,11 +29,10 @@ impl Default for Position {
     }
 }
 
-pub type Result = StdResult<Query, PineError>;
-
-
 impl From<PineError> for ParseError {
     fn from(other: PineError) -> ParseError {
-        ParseError { message: format!("{}", other.message) }
+        ParseError {
+            message: format!("{}", other.message),
+        }
     }
 }
