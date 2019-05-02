@@ -33,7 +33,7 @@ impl StringRenderer {
     }
 
     fn render_from<'a>(&self, query: &'a Query) -> String {
-        query.from.clone().unwrap()
+        query.from.clone()
     }
 
     fn render_filters<'a>(&self, query: &'a Query) -> String {
@@ -67,7 +67,7 @@ impl<Q> ColumnRenderer<Q> {
 
 impl<'a> ColumnRenderer<&'a Query> {
     fn render(&self, id: &'a QualifiedColumnIdentifier) -> String {
-        if *self.query.from.as_ref().unwrap() == id.table {
+        if *self.query.from == id.table {
             id.column.to_string()
         } else {
             format!("{}.{}", id.table, id.column)

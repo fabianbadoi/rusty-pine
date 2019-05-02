@@ -7,7 +7,7 @@ pub use self::renderer::{Renderer, StringRenderer};
 #[derive(Debug, Default)]
 pub struct Query {
     pub selections: Vec<QualifiedColumnIdentifier>,
-    pub from: Option<ColumnName>,
+    pub from: ColumnName,
     pub filters: Vec<Filter>,
 }
 

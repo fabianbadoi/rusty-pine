@@ -19,6 +19,7 @@ pub struct PineTranslator;
 #[derive(Default)]
 struct SingleUseQueryBuilder {
     query: Query,
+    current_table: Option<String>,
 }
 
 impl QueryBuilder for PineTranslator {
@@ -38,6 +39,8 @@ impl<'a> SingleUseQueryBuilder {
         for operation_node in pine {
             self.apply_operation(operation_node)?;
         }
+
+        self.finalize(pine)?;
 
         Ok(self.query)
     }
@@ -102,17 +105,30 @@ impl<'a> SingleUseQueryBuilder {
     }
 
     fn reset_selection(&mut self, table: &'a str) {
-        self.query.from = Some(table.to_string());
+        self.current_table = Some(table.to_string());
 
         // existing selections are cleared to, maybe add a select+: operation that keeps previous selections
         self.query.selections.clear();
     }
 
-    fn require_table(&self, pine_position: Position) -> StdResult<String, PineParseError> {
-        match &self.query.from {
-            Some(ref table) => Ok(table.clone()),
+    fn finalize(&mut self, pine: &'a PineNode) -> StdResult<(), PineParseError> {
+        match self.current_table.clone() {
+            Some(table) => {
+                self.query.from = table;
+                Ok(())
+            }
             None => Err(PineParseError {
-                message: "Place a from: statement in front fo this".to_string(),
+                message: "Missing a 'from:' statement".to_string(),
+                position: pine.position,
+            }),
+        }
+    }
+
+    fn require_table(&self, pine_position: Position) -> StdResult<String, PineParseError> {
+        match &self.current_table {
+            Some(table) => Ok(table.clone()),
+            None => Err(PineParseError {
+                message: "Place a 'from:' statement in front fo this".to_string(),
                 position: pine_position,
             }),
         }
@@ -140,7 +156,7 @@ mod tests {
         let query_builder = PineTranslator {};
         let query = query_builder.build(&pine).unwrap();
 
-        assert_eq!("users", query.from.unwrap());
+        assert_eq!("users", query.from);
     }
 
     #[test]

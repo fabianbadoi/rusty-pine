@@ -15,7 +15,7 @@ impl Into<Query> for QueryShorthand {
 
         let table = (self.1).0.to_string();
 
-        query.from = Some(table.to_string()); // TODO remove Option<>
+        query.from = table.clone();
         query.selections = self
             .0
              .0
