@@ -5,7 +5,9 @@ mod pine_to_query;
 mod query_parser;
 
 use crate::sql::Query;
+
 pub use ast::Position;
+pub use query_parser::{PestPineParser, QueryParser};
 use std::result::Result as StdResult;
 
 #[derive(Debug)]
