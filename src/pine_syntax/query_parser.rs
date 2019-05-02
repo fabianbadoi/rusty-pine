@@ -2,8 +2,8 @@ use super::pest_tree_translation::{IntermediateFormParser, PineParser};
 use super::pine_to_query::{PineTranslator, QueryBuilder};
 use super::Result;
 
-pub trait QueryParser {
-    fn parse(self, input: &str) -> Result;
+pub trait QueryParser<T> {
+    fn parse(self, input: T) -> Result;
 }
 
 pub type Parser = PestPineParser<PineParser, PineTranslator>;
@@ -13,9 +13,12 @@ pub struct PestPineParser<A, B> {
     query_builder: B,
 }
 
-impl QueryParser for &PestPineParser<PineParser, PineTranslator> {
-    fn parse(self, input: &str) -> Result {
-        let pine = self.pest_parser.parse(input)?;
+impl<'a, T> QueryParser<T> for &PestPineParser<PineParser, PineTranslator>
+where
+    T: Into<&'a str>,
+{
+    fn parse(self, input: T) -> Result {
+        let pine = self.pest_parser.parse(input.into())?;
 
         self.query_builder.build(&pine)
     }
