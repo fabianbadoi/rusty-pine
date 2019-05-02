@@ -1,4 +1,4 @@
-pine = { operation ~ ("|" ~ operation)* }
+pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
 operation = _{ (from | select | filters) }
 
 from = { "from:" ~ table_name }
