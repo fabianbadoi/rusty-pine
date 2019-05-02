@@ -1,14 +1,15 @@
 use super::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
-    Position, TableNameNode,
+    TableNameNode,
 };
-use super::{PineParseError, Result};
+use super::{PineError, Result};
 use crate::sql::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
+use crate::Position;
 use std::result::Result as StdResult;
 
-type InternalError = StdResult<(), PineParseError>;
+type InternalError = StdResult<(), PineError>;
 
 pub trait QueryBuilder {
     fn build(&self, pine: &PineNode) -> Result;
@@ -79,7 +80,7 @@ impl SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &[FilterNode]) -> StdResult<(), PineParseError> {
+    fn apply_filters(&mut self, filters: &[FilterNode]) -> StdResult<(), PineError> {
         if filters.is_empty() {
             return Ok(());
         }
@@ -111,23 +112,23 @@ impl SingleUseQueryBuilder {
         self.query.selections.clear();
     }
 
-    fn finalize(&mut self, pine: &PineNode) -> StdResult<(), PineParseError> {
+    fn finalize(&mut self, pine: &PineNode) -> StdResult<(), PineError> {
         match self.current_table.clone() {
             Some(table) => {
                 self.query.from = table;
                 Ok(())
             }
-            None => Err(PineParseError {
+            None => Err(PineError {
                 message: "Missing a 'from:' statement".to_string(),
                 position: pine.position,
             }),
         }
     }
 
-    fn require_table(&self, pine_position: Position) -> StdResult<String, PineParseError> {
+    fn require_table(&self, pine_position: Position) -> StdResult<String, PineError> {
         match &self.current_table {
             Some(table) => Ok(table.clone()),
-            None => Err(PineParseError {
+            None => Err(PineError {
                 message: "Place a 'from:' statement in front fo this".to_string(),
                 position: pine_position,
             }),

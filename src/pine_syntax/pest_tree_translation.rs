@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::pest;
 use super::pest::Rule;
-use super::PineParseError;
+use crate::{PineError, Position};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
@@ -13,13 +13,13 @@ use std::convert::From;
 type PestNode<'a> = Pair<'a, Rule>;
 
 pub trait IntermediateFormParser {
-    fn parse(self, input: &str) -> Result<PineNode, PineParseError>;
+    fn parse(self, input: &str) -> Result<PineNode, PineError>;
 }
 
 pub struct PineParser;
 
 impl IntermediateFormParser for &PineParser {
-    fn parse(self, input: &str) -> Result<PineNode, PineParseError> {
+    fn parse(self, input: &str) -> Result<PineNode, PineError> {
         let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
             .next()
             .expect("Pest should have failed to parse this input");
@@ -166,7 +166,7 @@ fn node_to_position(node: &PestNode) -> Position {
     }
 }
 
-impl From<PestError<Rule>> for PineParseError {
+impl From<PestError<Rule>> for PineError {
     fn from(pest_error: PestError<Rule>) -> Self {
         panic!("{}", pest_error);
         // TODO this needs to be better

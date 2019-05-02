@@ -1,3 +1,5 @@
+use crate::Position;
+
 pub type PineNode<'a> = Node<Pine<'a>>;
 pub type OperationNode<'a> = Node<Operation<'a>>;
 pub type FilterNode<'a> = Node<Filter<'a>>;
@@ -46,18 +48,6 @@ pub type Identifier<'a> = &'a str;
 pub type TableName<'a> = Identifier<'a>;
 pub type ColumnName<'a> = Identifier<'a>;
 pub type Value<'a> = &'a str;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Position {
-    pub start: usize,
-    pub end: usize,
-}
-
-impl Default for Position {
-    fn default() -> Self {
-        Position { start: 0, end: 0 }
-    }
-}
 
 #[derive(Debug, Default)]
 pub struct Node<T> {

@@ -6,6 +6,8 @@ pub trait QueryParser {
     fn parse(self, input: &str) -> Result;
 }
 
+pub type Parser = PestPineParser<PineParser, PineTranslator>;
+
 pub struct PestPineParser<A, B> {
     pest_parser: A,
     query_builder: B,

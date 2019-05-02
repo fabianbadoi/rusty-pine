@@ -5,15 +5,9 @@ mod pine_to_query;
 mod query_parser;
 
 use crate::sql::Query;
-
-pub use ast::Position;
-pub use query_parser::{PestPineParser, QueryParser};
+pub use query_parser::{Parser, QueryParser};
 use std::result::Result as StdResult;
 
-#[derive(Debug)]
-pub struct PineParseError {
-    message: String,
-    position: Position,
-}
+use crate::PineError;
 
-pub type Result = StdResult<Query, PineParseError>;
+pub type Result = StdResult<Query, PineError>;
