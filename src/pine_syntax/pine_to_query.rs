@@ -6,7 +6,7 @@ use super::{PineError, Result};
 use crate::sql::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
-use crate::Position;
+use super::Position;
 use std::result::Result as StdResult;
 
 type InternalError = StdResult<(), PineError>;

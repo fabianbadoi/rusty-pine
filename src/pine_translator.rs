@@ -1,9 +1,10 @@
 use crate::pine_syntax::{Parser, QueryParser};
 use crate::sql::{Renderer, StringRenderer};
-use crate::PineError;
+use crate::pine_syntax::PineError;
 use crate::sql::Query;
+use crate::ParseError;
 
-type TranslateResult<O> = Result<O, PineError>;
+type TranslateResult<O> = Result<O, ParseError>;
 
 pub trait Translator<I, O> {
     fn translate(self, input: I) -> TranslateResult<O>;

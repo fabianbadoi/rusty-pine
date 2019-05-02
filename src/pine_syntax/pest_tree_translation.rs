@@ -1,7 +1,7 @@
 use super::ast::*;
 use super::pest;
 use super::pest::Rule;
-use crate::{PineError, Position};
+use super::{PineError, Position};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
@@ -34,25 +34,30 @@ pub fn translate(root_node: PestNode) -> PineNode {
     expect(Rule::pine, &root_node);
 
     let position = node_to_position(&root_node);
-    let operations: Vec<_> = root_node.into_inner().map(translate_operation).collect();
+    let operations: Vec<_> = root_node.into_inner()
+        .map(translate_operation)
+        .filter(|option| option.is_some())
+        .map(|option| option.unwrap())
+        .collect();
     let inner = Pine { operations };
 
     PineNode { position, inner }
 }
 
-fn translate_operation(node: PestNode) -> OperationNode {
+fn translate_operation(node: PestNode) -> Option<OperationNode> {
     let position = node_to_position(&node);
     let operation = match node.as_rule() {
         Rule::from => translate_from(node),
         Rule::select => translate_select(node),
         Rule::filters => translate_filters(node),
+        Rule::EOI => return None,
         _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
     };
 
-    OperationNode {
+    Some(OperationNode {
         position,
         inner: operation,
-    }
+    })
 }
 
 fn translate_from(node: PestNode) -> Operation {

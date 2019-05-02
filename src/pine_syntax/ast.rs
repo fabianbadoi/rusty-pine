@@ -1,4 +1,4 @@
-use crate::Position;
+use super::Position;
 
 pub type PineNode<'a> = Node<Pine<'a>>;
 pub type OperationNode<'a> = Node<Operation<'a>>;
