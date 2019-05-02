@@ -6,14 +6,14 @@ pub trait QueryParser<I> {
     fn parse(self, input: I) -> Result;
 }
 
-pub type Parser = PestPineParser<PineParser, PineTranslator>;
+pub type Parser = ComposedParser<PineParser, PineTranslator>;
 
-pub struct PestPineParser<P, B> {
+pub struct ComposedParser<P, B> {
     pest_parser: P,
     query_builder: B,
 }
 
-impl<'a, 'b, I, P, T> QueryParser<I> for &'a PestPineParser<P, T>
+impl<'a, 'b, I, P, T> QueryParser<I> for &'a ComposedParser<P, T>
 where
     &'a P: IntermediateFormParser,
     I: Into<&'b str>,
@@ -24,5 +24,14 @@ where
         let query = self.query_builder.build(&pine);
 
         query
+    }
+}
+
+impl Parser {
+    pub fn new() -> Parser {
+        Parser {
+            pest_parser: PineParser {},
+            query_builder: PineTranslator {},
+        }
     }
 }

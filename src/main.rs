@@ -3,6 +3,7 @@ extern crate pest;
 extern crate pest_derive;
 
 mod pine_syntax;
+mod pine_translator;
 mod sql;
 
 #[derive(Debug)]
