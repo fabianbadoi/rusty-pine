@@ -11,7 +11,7 @@ use std::result::Result as StdResult;
 type InternalError = StdResult<(), PineParseError>;
 
 pub trait QueryBuilder {
-    fn build<'a>(&self, pine: &'a PineNode) -> Result;
+    fn build(&self, pine: &PineNode) -> Result;
 }
 
 pub struct PineTranslator;
@@ -23,19 +23,19 @@ struct SingleUseQueryBuilder {
 }
 
 impl QueryBuilder for PineTranslator {
-    fn build<'a>(&self, pine: &'a PineNode) -> Result {
+    fn build(&self, pine: &PineNode) -> Result {
         let builder = SingleUseQueryBuilder::new();
 
         builder.build(pine)
     }
 }
 
-impl<'a> SingleUseQueryBuilder {
+impl SingleUseQueryBuilder {
     fn new() -> SingleUseQueryBuilder {
         Default::default()
     }
 
-    fn build(mut self, pine: &'a PineNode) -> Result {
+    fn build(mut self, pine: &PineNode) -> Result {
         for operation_node in pine {
             self.apply_operation(operation_node)?;
         }
@@ -45,7 +45,7 @@ impl<'a> SingleUseQueryBuilder {
         Ok(self.query)
     }
 
-    fn apply_operation(&mut self, operation_node: &'a OperationNode) -> InternalError {
+    fn apply_operation(&mut self, operation_node: &OperationNode) -> InternalError {
         match operation_node.inner {
             Operation::From(ref table) => self.apply_from(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
@@ -55,11 +55,11 @@ impl<'a> SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn apply_from(&mut self, table: &'a TableNameNode) {
+    fn apply_from(&mut self, table: &TableNameNode) {
         self.reset_selection(&table.inner);
     }
 
-    fn apply_selections(&mut self, selections: &'a [ColumnNameNode]) -> InternalError {
+    fn apply_selections(&mut self, selections: &[ColumnNameNode]) -> InternalError {
         if selections.is_empty() {
             return Ok(());
         }
@@ -79,7 +79,7 @@ impl<'a> SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &'a [FilterNode]) -> StdResult<(), PineParseError> {
+    fn apply_filters(&mut self, filters: &[FilterNode]) -> StdResult<(), PineParseError> {
         if filters.is_empty() {
             return Ok(());
         }
@@ -104,14 +104,14 @@ impl<'a> SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn reset_selection(&mut self, table: &'a str) {
+    fn reset_selection(&mut self, table: &str) {
         self.current_table = Some(table.to_string());
 
         // existing selections are cleared to, maybe add a select+: operation that keeps previous selections
         self.query.selections.clear();
     }
 
-    fn finalize(&mut self, pine: &'a PineNode) -> StdResult<(), PineParseError> {
+    fn finalize(&mut self, pine: &PineNode) -> StdResult<(), PineParseError> {
         match self.current_table.clone() {
             Some(table) => {
                 self.query.from = table;
@@ -135,8 +135,8 @@ impl<'a> SingleUseQueryBuilder {
     }
 }
 
-impl<'a> From<&'a AstCondition<'a>> for SqlCondition {
-    fn from(other: &'a AstCondition) -> Self {
+impl<'a> From<&AstCondition<'a>> for SqlCondition {
+    fn from(other: &AstCondition<'a>) -> Self {
         match other {
             AstCondition::Equals(ref value) => SqlCondition::Equals(value.inner.to_string()),
         }
@@ -235,7 +235,7 @@ mod tests {
     }
 
     type QualifiedColumnShorthand = (&'static str, &'static str);
-    impl<'a> PartialEq<QualifiedColumnShorthand> for QualifiedColumnIdentifier {
+    impl PartialEq<QualifiedColumnShorthand> for QualifiedColumnIdentifier {
         fn eq(&self, other: &QualifiedColumnShorthand) -> bool {
             self.table == other.0 && self.column == other.1
         }

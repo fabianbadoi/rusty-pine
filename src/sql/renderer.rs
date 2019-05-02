@@ -9,7 +9,7 @@ pub trait Renderer<O, Q> {
 pub struct StringRenderer {}
 
 impl Renderer<String, Query> for &StringRenderer {
-    fn render<'a>(self, query: &'a Query) -> String {
+    fn render(self, query: &Query) -> String {
         let select = self.render_select(&query);
         let from = self.render_from(&query);
         let filters = self.render_filters(&query);
@@ -19,7 +19,7 @@ impl Renderer<String, Query> for &StringRenderer {
 }
 
 impl StringRenderer {
-    fn render_select<'a>(&self, query: &'a Query) -> String {
+    fn render_select(&self, query: &Query) -> String {
         let column_renderer = ColumnRenderer::new(query);
 
         let fields = query
@@ -32,11 +32,11 @@ impl StringRenderer {
         fields
     }
 
-    fn render_from<'a>(&self, query: &'a Query) -> String {
+    fn render_from(&self, query: &Query) -> String {
         query.from.clone()
     }
 
-    fn render_filters<'a>(&self, query: &'a Query) -> String {
+    fn render_filters(&self, query: &Query) -> String {
         let column_renderer = ColumnRenderer::new(query);
 
         let filters = query
@@ -65,8 +65,8 @@ impl<Q> ColumnRenderer<Q> {
     }
 }
 
-impl<'a> ColumnRenderer<&'a Query> {
-    fn render(&self, id: &'a QualifiedColumnIdentifier) -> String {
+impl ColumnRenderer<&Query> {
+    fn render(&self, id: &QualifiedColumnIdentifier) -> String {
         if *self.query.from == id.table {
             id.column.to_string()
         } else {
