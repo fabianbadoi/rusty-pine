@@ -12,7 +12,7 @@ use std::result::Result as StdResult;
 type InternalError = StdResult<(), PineError>;
 
 pub trait QueryBuilder {
-    fn build(&self, pine: &PineNode) -> Result;
+    fn build(self, pine: &PineNode) -> Result;
 }
 
 pub struct PineTranslator;
@@ -23,8 +23,8 @@ struct SingleUseQueryBuilder {
     current_table: Option<String>,
 }
 
-impl QueryBuilder for PineTranslator {
-    fn build(&self, pine: &PineNode) -> Result {
+impl QueryBuilder for &PineTranslator {
+    fn build(self, pine: &PineNode) -> Result {
         let builder = SingleUseQueryBuilder::new();
 
         builder.build(pine)
