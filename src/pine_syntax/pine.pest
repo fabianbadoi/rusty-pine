@@ -15,7 +15,7 @@ column_name = { sql_name }
 value = _{ numeric_value }
 numeric_value = { (ASCII_DIGIT | "_")+ }
 
-sql_name = _{ (ASCII_ALPHANUMERIC | "_")+ }
+sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // special rule, makes all ~ accept whitespace
 WHITESPACE = _{ " " }
