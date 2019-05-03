@@ -1,4 +1,4 @@
-use super::Position;
+use crate::error::Position;
 
 pub type PineNode<'a> = Node<Pine<'a>>;
 pub type OperationNode<'a> = Node<Operation<'a>>;
@@ -11,6 +11,7 @@ pub type ValueNode<'a> = Node<Value<'a>>;
 #[derive(Debug)]
 pub struct Pine<'a> {
     pub operations: Vec<OperationNode<'a>>,
+    pub pine_string: InputType<'a>,
 }
 
 #[derive(Debug)]
@@ -44,10 +45,11 @@ pub enum Condition<'a> {
     Equals(ValueNode<'a>),
 }
 
-pub type Identifier<'a> = &'a str;
+pub type Identifier<'a> = InputType<'a>;
 pub type TableName<'a> = Identifier<'a>;
 pub type ColumnName<'a> = Identifier<'a>;
-pub type Value<'a> = &'a str;
+pub type Value<'a> = InputType<'a>;
+pub type InputType<'a> = &'a str;
 
 #[derive(Debug, Default)]
 pub struct Node<T> {

@@ -3,8 +3,8 @@ use crate::pine_syntax::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
     TableNameNode,
 };
-use crate::pine_syntax::PineError;
-use crate::pine_syntax::Position;
+use crate::error::SyntaxError;
+use crate::error::Position;
 use crate::query::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
@@ -12,31 +12,33 @@ use crate::query::{
 /// Has no concept of context, more complex queries will fail to build
 pub struct NaiveBuilder;
 
-#[derive(Default)]
-struct SingleUseQueryBuilder {
+struct SingleUseQueryBuilder<'a> {
+    pine: &'a PineNode<'a>,
     query: Query,
     current_table: Option<String>,
 }
 
 impl QueryBuilder for &NaiveBuilder {
     fn build(self, pine: &PineNode) -> BuildResult {
-        let builder = SingleUseQueryBuilder::new();
+        let builder = SingleUseQueryBuilder::new(pine);
 
-        builder.build(pine)
+        builder.build()
     }
 }
 
-impl SingleUseQueryBuilder {
-    fn new() -> SingleUseQueryBuilder {
-        Default::default()
+impl<'a> SingleUseQueryBuilder<'a> {
+    fn new(pine: &'a PineNode) -> SingleUseQueryBuilder<'a> {
+        SingleUseQueryBuilder {
+            pine: pine, current_table: None, query: Default::default()
+        }
     }
 
-    fn build(mut self, pine: &PineNode) -> BuildResult {
-        for operation_node in pine {
+    fn build(mut self) -> BuildResult {
+        for operation_node in self.pine {
             self.apply_operation(operation_node)?;
         }
 
-        self.finalize(pine)?;
+        self.finalize()?;
 
         Ok(self.query)
     }
@@ -75,7 +77,7 @@ impl SingleUseQueryBuilder {
         Ok(())
     }
 
-    fn apply_filters(&mut self, filters: &[FilterNode]) -> Result<(), PineError> {
+    fn apply_filters(&mut self, filters: &[FilterNode]) -> Result<(), SyntaxError> {
         if filters.is_empty() {
             return Ok(());
         }
@@ -107,25 +109,27 @@ impl SingleUseQueryBuilder {
         self.query.selections.clear();
     }
 
-    fn finalize(&mut self, pine: &PineNode) -> Result<(), PineError> {
+    fn finalize(&mut self) -> Result<(), SyntaxError> {
         match self.current_table.clone() {
             Some(table) => {
                 self.query.from = table;
                 Ok(())
             }
-            None => Err(PineError {
+            None => Err(SyntaxError::Positioned {
                 message: "Missing a 'from:' statement".to_string(),
-                position: pine.position,
+                position: self.pine.position,
+                input: self.pine.inner.pine_string.to_string()
             }),
         }
     }
 
-    fn require_table(&self, pine_position: Position) -> Result<String, PineError> {
+    fn require_table(&self, pine_position: Position) -> Result<String, SyntaxError> {
         match &self.current_table {
             Some(table) => Ok(table.clone()),
-            None => Err(PineError {
+            None => Err(SyntaxError::Positioned {
                 message: "Place a 'from:' statement in front fo this".to_string(),
                 position: pine_position,
+                input: self.pine.inner.pine_string.to_string()
             }),
         }
     }
@@ -139,7 +143,7 @@ impl<'a> From<&AstCondition<'a>> for SqlCondition {
     }
 }
 
-type InternalResult = Result<(), PineError>;
+type InternalResult = Result<(), SyntaxError>;
 
 #[cfg(test)]
 mod tests {
@@ -218,7 +222,7 @@ mod tests {
     }
 
     fn make_blank_pine() -> PineNode<'static> {
-        make_node(Pine { operations: vec![] })
+        make_node(Pine { operations: vec![], pine_string: "" })
     }
 
     fn append_operation(pine: &mut PineNode<'static>, op: Operation<'static>) {

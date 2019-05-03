@@ -1,4 +1,4 @@
-use crate::ParseError;
+use crate::error::ParseError;
 use crate::pine_syntax::{PineParser, PestPineParser};
 use crate::query::{QueryBuilder, NaiveBuilder, Query};
 use crate::sql::{Renderer, StringRenderer};

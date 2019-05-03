@@ -6,11 +6,8 @@ mod pine_syntax;
 mod pine_parser;
 mod query;
 mod sql;
+mod error;
 
-#[derive(Debug)]
-pub struct ParseError {
-    message: String,
-}
 
 fn main() {
     use pine_parser::{Parser, GenericParser};

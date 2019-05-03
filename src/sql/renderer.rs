@@ -1,10 +1,7 @@
 use crate::query::Condition;
 use crate::query::QualifiedColumnIdentifier;
 use crate::query::Query;
-
-pub trait Renderer<Q, O> {
-    fn render(self, query: &Q) -> O;
-}
+use super::Renderer;
 
 pub struct StringRenderer {}
 

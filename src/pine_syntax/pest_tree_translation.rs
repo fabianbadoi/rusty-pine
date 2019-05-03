@@ -1,7 +1,8 @@
 use super::ast::*;
 use super::pest;
 use super::pest::Rule;
-use super::{PineError, Position, PineParser};
+use crate::error::{SyntaxError, Position};
+use super::PineParser;
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
@@ -15,18 +16,18 @@ type PestNode<'a> = Pair<'a, Rule>;
 pub struct PestPineParser;
 
 impl PineParser for &PestPineParser {
-    fn parse(self, input: &str) -> Result<PineNode, PineError> {
+    fn parse(self, input: &str) -> Result<PineNode, SyntaxError> {
         let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
             .next()
             .expect("Pest should have failed to parse this input");
 
-        let pine = translate(ast);
+        let pine = translate(ast, input);
 
         Ok(pine)
     }
 }
 
-pub fn translate(root_node: PestNode) -> PineNode {
+pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
     expect(Rule::pine, &root_node);
 
     let position = node_to_position(&root_node);
@@ -36,7 +37,7 @@ pub fn translate(root_node: PestNode) -> PineNode {
         .filter(|option| option.is_some())
         .map(|option| option.unwrap())
         .collect();
-    let inner = Pine { operations };
+    let inner = Pine { operations, pine_string: input };
 
     PineNode { position, inner }
 }
@@ -168,18 +169,11 @@ fn node_to_position(node: &PestNode) -> Position {
     }
 }
 
-impl From<PestError<Rule>> for PineError {
+impl From<PestError<Rule>> for SyntaxError {
     fn from(pest_error: PestError<Rule>) -> Self {
-        use ::pest::error::InputLocation::*;
-
         let message = format!("{}", pest_error);
-        let position = match pest_error.location {
-            Pos(position) => Position { start: position, end: position },
-            Span((start, end)) => Position { start, end },
-        };
 
-
-        PineError { message, position }
+        SyntaxError::Detailed(message)
     }
 }
 
@@ -200,7 +194,7 @@ mod tests {
             .next()
             .expect("Pest should have failed to parse this input");
 
-        let pine = super::translate(ast.clone());
+        let pine = super::translate(ast.clone(), pine_string);
 
         println!("Pine string: {}", pine_string);
         println!("Pest AST:\n{:#?}", ast);

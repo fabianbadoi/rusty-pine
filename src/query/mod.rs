@@ -2,7 +2,7 @@ mod naive_builder;
 mod query;
 
 use crate::pine_syntax::ast::PineNode;
-use crate::ParseError;
+use crate::error::ParseError;
 
 pub use query::*;
 pub use naive_builder::NaiveBuilder;
