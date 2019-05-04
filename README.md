@@ -29,7 +29,7 @@ Mission Statement
 
 TODO:
 -----
-- [ ] Shorthand (s: for s:select, f: for from)
+- [x] Shorthand (s: for s:select, f: for from)
 - [ ] select: *
 - [ ] other comparisons
 - [ ] Join statements

@@ -1,12 +1,12 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
 operation = _{ (from | select | filters) }
 
-from = { "from:" ~ table_name }
+from = { ("from:" | "f:") ~ table_name }
 table_name = { sql_name }
 
-select = { "select:" ~ column_name ~ ("," ~ column_name)* }
+select = { ("select:" | "s:") ~ column_name ~ ("," ~ column_name)* }
 
-filters = { "where:" ~ filter+ }
+filters = { ("where:" | "w:") ~ filter+ }
 filter = { column_name ~ condition }
 condition = _{ equals }
 
@@ -19,4 +19,3 @@ sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // special rule, makes all ~ accept whitespace
 WHITESPACE = _{ " " }
-

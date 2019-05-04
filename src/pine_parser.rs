@@ -9,6 +9,8 @@ pub trait Parser<I, O> {
     fn parse(self, input: I) -> ParseResult<O>;
 }
 
+pub type NaiveParser = GenericParser<PestPineParser, NaiveBuilder, StringRenderer>;
+
 pub struct GenericParser<Parser, Builder, Renderer> {
     parser: Parser,
     builder: Builder,
@@ -38,5 +40,18 @@ impl GenericParser<PestPineParser, NaiveBuilder, StringRenderer> {
             builder: NaiveBuilder {},
             renderer: StringRenderer {},
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_parse() {
+        let parser = NaiveParser::default();
+        let query = parser.parse("f: users | s: name | w: id = 3").unwrap();
+
+        assert_eq!("SELECT name\nFROM users\nWHERE id = \"3\"", query);
     }
 }

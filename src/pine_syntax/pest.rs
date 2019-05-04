@@ -14,4 +14,11 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn shorthand_syntax_is_ok() {
+        let result = PinePestParser::parse(Rule::pine, "f: users | s: tests | w: x = 0");
+
+        assert!(result.is_ok());
+    }
 }
