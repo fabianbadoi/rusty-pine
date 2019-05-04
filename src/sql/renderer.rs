@@ -19,12 +19,16 @@ impl StringRenderer {
     fn render_select(&self, query: &Query) -> String {
         let column_renderer = ColumnRenderer::new(query);
 
-        let fields = query
-            .selections
-            .iter()
-            .map(|field| column_renderer.render(field))
-            .collect::<Vec<_>>()
-            .join(", ");
+        let fields = if query.selections.is_empty() {
+            "*".to_string()
+        } else {
+            query
+                .selections
+                .iter()
+                .map(|field| column_renderer.render(field))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
 
         fields
     }

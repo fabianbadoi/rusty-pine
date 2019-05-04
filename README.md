@@ -30,7 +30,7 @@ Mission Statement
 TODO:
 -----
 - [x] Shorthand (s: for s:select, f: for from)
-- [ ] select: *
+- [x] select: *
 - [ ] Compact form:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
 - [ ] other comparisons
