@@ -1,8 +1,8 @@
 use super::ast::*;
 use super::pest;
 use super::pest::Rule;
-use crate::error::{SyntaxError, Position};
 use super::PineParser;
+use crate::error::{Position, SyntaxError};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
@@ -37,7 +37,10 @@ pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
         .filter(|option| option.is_some())
         .map(|option| option.unwrap())
         .collect();
-    let inner = Pine { operations, pine_string: input };
+    let inner = Pine {
+        operations,
+        pine_string: input,
+    };
 
     PineNode { position, inner }
 }
@@ -181,7 +184,7 @@ impl From<PestError<Rule>> for SyntaxError {
 mod tests {
     use super::super::pest::PinePestParser as AstParser;
     use super::super::pest::Rule;
-    use super::{PestPineParser, Operation, PineParser};
+    use super::{Operation, PestPineParser, PineParser};
     use ::pest::Parser;
 
     /// Run this test with `--nocapture` to see a demo of the tree structures involved

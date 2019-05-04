@@ -1,10 +1,10 @@
 use super::{BuildResult, QueryBuilder};
+use crate::error::Position;
+use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
     ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
     TableNameNode,
 };
-use crate::error::SyntaxError;
-use crate::error::Position;
 use crate::query::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
@@ -29,7 +29,9 @@ impl QueryBuilder for &NaiveBuilder {
 impl<'a> SingleUseQueryBuilder<'a> {
     fn new(pine: &'a PineNode) -> SingleUseQueryBuilder<'a> {
         SingleUseQueryBuilder {
-            pine: pine, current_table: None, query: Default::default()
+            pine: pine,
+            current_table: None,
+            query: Default::default(),
         }
     }
 
@@ -118,7 +120,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             None => Err(SyntaxError::Positioned {
                 message: "Missing a 'from:' statement".to_string(),
                 position: self.pine.position,
-                input: self.pine.inner.pine_string.to_string()
+                input: self.pine.inner.pine_string.to_string(),
             }),
         }
     }
@@ -129,7 +131,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             None => Err(SyntaxError::Positioned {
                 message: "Place a 'from:' statement in front fo this".to_string(),
                 position: pine_position,
-                input: self.pine.inner.pine_string.to_string()
+                input: self.pine.inner.pine_string.to_string(),
             }),
         }
     }
@@ -147,9 +149,9 @@ type InternalResult = Result<(), SyntaxError>;
 
 #[cfg(test)]
 mod tests {
+    use super::super::{Condition as SqlCondition, QualifiedColumnIdentifier};
     use super::{NaiveBuilder, QueryBuilder};
     use crate::pine_syntax::ast::*;
-    use super::super::{Condition as SqlCondition, QualifiedColumnIdentifier};
 
     #[test]
     fn build_from_query() {
@@ -222,7 +224,10 @@ mod tests {
     }
 
     fn make_blank_pine() -> PineNode<'static> {
-        make_node(Pine { operations: vec![], pine_string: "" })
+        make_node(Pine {
+            operations: vec![],
+            pine_string: "",
+        })
     }
 
     fn append_operation(pine: &mut PineNode<'static>, op: Operation<'static>) {

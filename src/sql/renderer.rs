@@ -1,7 +1,7 @@
+use super::Renderer;
 use crate::query::Condition;
 use crate::query::QualifiedColumnIdentifier;
 use crate::query::Query;
-use super::Renderer;
 
 pub struct StringRenderer {}
 

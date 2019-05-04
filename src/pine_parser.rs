@@ -1,6 +1,6 @@
 use crate::error::ParseError;
-use crate::pine_syntax::{PineParser, PestPineParser};
-use crate::query::{QueryBuilder, NaiveBuilder, Query};
+use crate::pine_syntax::{PestPineParser, PineParser};
+use crate::query::{NaiveBuilder, Query, QueryBuilder};
 use crate::sql::{Renderer, StringRenderer};
 
 type ParseResult<O> = Result<O, ParseError>;
@@ -22,12 +22,12 @@ where
     &'a P: PineParser,
     &'a B: QueryBuilder,
     &'a R: Renderer<Query, O>,
-    I: Into<&'b str>
+    I: Into<&'b str>,
 {
     fn parse(self, input: I) -> ParseResult<O> {
         let pine = self.parser.parse(input.into())?;
         let query = self.builder.build(&pine)?;
-        let output =self.renderer.render(&query);
+        let output = self.renderer.render(&query);
 
         Ok(output)
     }

@@ -2,8 +2,8 @@ pub mod ast;
 mod pest;
 mod pest_tree_translation;
 
-pub use pest_tree_translation::PestPineParser;
 use ast::PineNode;
+pub use pest_tree_translation::PestPineParser;
 
 use crate::error::SyntaxError;
 
