@@ -31,10 +31,10 @@ TODO:
 -----
 - [x] Shorthand (s: for s:select, f: for from)
 - [x] select: *
-- [ ] Compact form:
+- [x] Compact form:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
-- [ ] other comparisons
 - [ ] Join statements
+- [ ] other comparisons
 - [ ] Auto join
 - [ ] Support for limit
 - [ ] Complex values
