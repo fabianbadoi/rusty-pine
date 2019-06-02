@@ -33,7 +33,7 @@ TODO:
 - [x] select: *
 - [x] Compact form:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
-- [ ] Implement Error on error
+- [x] Implement Error on error
 - [ ] Split work into crates
 - [ ] Join statements
 - [ ] other comparisons

@@ -1,8 +1,10 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use std::error::Error;
 
 #[derive(Debug)]
 pub struct ParseError {
     message: String,
+    cause: Option<Box<dyn Error>>,
 }
 
 #[derive(Debug)]
@@ -27,6 +29,29 @@ impl Default for Position {
     }
 }
 
+impl SyntaxError {
+    fn message(&self) -> &str {
+        match self {
+            SyntaxError::Detailed(message) => message,
+            SyntaxError::Positioned {
+                message,
+                ..
+            } => message,
+        }
+    }
+
+    fn to_string(&self) -> String {
+        match self {
+            SyntaxError::Detailed(message) => message.to_string(),
+            SyntaxError::Positioned {
+                message,
+                position,
+                input,
+            } => format!("{}\n{}\n{}", input, position, message),
+        }
+    }
+}
+
 impl Display for Position {
     fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
         let underline = if self.end > self.start + 1 {
@@ -45,17 +70,39 @@ impl Display for ParseError {
     }
 }
 
+impl Error for ParseError {
+    fn description(&self) -> &str {
+        &self.message
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        self.cause.as_ref().map(|boxed| &**boxed)
+    }
+}
+
+impl Display for SyntaxError {
+    fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
+        write!(formatter, "{}", self.to_string())
+    }
+}
+
+impl Error for SyntaxError {
+    fn description(&self) -> &str {
+        self.message()
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
+}
+
 impl From<SyntaxError> for ParseError {
     fn from(error: SyntaxError) -> ParseError {
-        let message = match error {
-            SyntaxError::Detailed(message) => message,
-            SyntaxError::Positioned {
-                message,
-                position,
-                input,
-            } => format!("{}\n{}\n{}", input, position, message),
-        };
+        let message = error.to_string();
 
-        ParseError { message }
+        let cause: Box<dyn Error> =  Box::new(error);
+        let cause = Some(cause);
+
+        ParseError { message, cause }
     }
 }
