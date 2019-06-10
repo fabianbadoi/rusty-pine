@@ -29,6 +29,21 @@ impl Default for Position {
     }
 }
 
+impl ParseError {
+    #[inline]
+    pub fn from_message(message: String) -> ParseError {
+        ParseError {
+            message,
+            cause: None,
+        }
+    }
+
+    #[inline]
+    pub fn from_str(message: &str) -> ParseError {
+        ParseError::from_message(message.to_string())
+    }
+}
+
 impl SyntaxError {
     fn message(&self) -> &str {
         match self {
