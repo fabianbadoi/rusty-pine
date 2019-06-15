@@ -34,11 +34,13 @@ TODO:
 - [x] Compact form:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
 - [x] Implement Error on error
-- [ ] Join statements
+- [x] Join statements
+- [ ] Support for limit
+- [ ] Implement live SQL analisys
 - [ ] Compound expression join statements
+- [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
 - [ ] Auto join
-- [ ] Support for limit
 - [ ] Complex values
 - [ ] Functions on a column
 - [ ] Group on a column
