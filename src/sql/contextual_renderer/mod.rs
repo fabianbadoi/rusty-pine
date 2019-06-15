@@ -5,6 +5,7 @@ use super::Renderer;
 use super::renderer::{ render_select, render_from, render_filters };
 use crate::query::Query;
 use structure::*;
+use crate::error::PineError;
 
 struct SmartRenderer {
     tables: Vec<Table>,
@@ -12,19 +13,19 @@ struct SmartRenderer {
 
 impl Renderer<Query, String> for &SmartRenderer {
     // TODO return RESULT<_, _>
-    fn render(self, query: &Query) -> String {
+    fn render(self, query: &Query) -> Result<String, PineError> {
         let select = render_select(&query);
         let from = render_from(&query);
         let joins = self.render_joins(&query);
         let filters = render_filters(&query);
 
-        format!(
+        Ok(format!(
             "SELECT {}\nFROM {}\n{}\nWHERE {}",
             select,
             from,
             joins,
             filters
-        )
+        ))
     }
 }
 
@@ -82,7 +83,7 @@ mod tests {
         let renderer = make_renderer();
         let query = make_join_query();
 
-        let rendering = renderer.render(&query);
+        let rendering = renderer.render(&query).unwrap();
 
         assert_eq!(
             "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"",

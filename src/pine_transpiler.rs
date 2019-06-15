@@ -3,21 +3,21 @@ use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
 use crate::sql::{Renderer, DumbRenderer};
 
-type ParseResult<O> = Result<O, PineError>;
+type TranspileResult<O> = Result<O, PineError>;
 
-pub trait Parser<I, O> {
-    fn parse(self, input: I) -> ParseResult<O>;
+pub trait Transpiler<I, O> {
+    fn transpile(self, input: I) -> TranspileResult<O>;
 }
 
-pub type NaiveParser = GenericParser<PestPineParser, NaiveBuilder, DumbRenderer>;
+pub type MySqlTranspiler = GenericTranspiler<PestPineParser, NaiveBuilder, DumbRenderer>;
 
-pub struct GenericParser<Parser, Builder, Renderer> {
+pub struct GenericTranspiler<Parser, Builder, Renderer> {
     parser: Parser,
     builder: Builder,
     renderer: Renderer,
 }
 
-impl<'a, 'b, I, O, P, B, R> Parser<I, O> for &'a GenericParser<P, B, R>
+impl<'a, 'b, I, O, P, B, R> Transpiler<I, O> for &'a GenericTranspiler<P, B, R>
 where
     // TODO all of these should be 'regular' traits
     &'a P: PineParser,
@@ -25,18 +25,18 @@ where
     &'a R: Renderer<Query, O>,
     I: Into<&'b str>,
 {
-    fn parse(self, input: I) -> ParseResult<O> {
+    fn transpile(self, input: I) -> TranspileResult<O> {
         let pine = self.parser.parse(input.into())?;
         let query = self.builder.build(&pine)?;
         let output = self.renderer.render(&query);
 
-        Ok(output)
+        output
     }
 }
 
-impl GenericParser<PestPineParser, NaiveBuilder, DumbRenderer> {
-    pub fn default() -> GenericParser<PestPineParser, NaiveBuilder, DumbRenderer> {
-        GenericParser {
+impl GenericTranspiler<PestPineParser, NaiveBuilder, DumbRenderer> {
+    pub fn default() -> Self {
+        GenericTranspiler {
             parser: PestPineParser {},
             builder: NaiveBuilder {},
             renderer: DumbRenderer {},
@@ -50,8 +50,8 @@ mod tests {
 
     #[test]
     fn test_simple_parse() {
-        let parser = NaiveParser::default();
-        let query = parser.parse("f: users | s: name | w: id = 3").unwrap();
+        let parser = MySqlTranspiler::default();
+        let query = parser.transpile("f: users | s: name | w: id = 3").unwrap();
 
         assert_eq!("SELECT name\nFROM users\nWHERE id = \"3\"", query);
     }

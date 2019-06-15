@@ -2,16 +2,17 @@ use super::Renderer;
 use crate::query::Condition;
 use crate::query::QualifiedColumnIdentifier;
 use crate::query::Query;
+use crate::error::PineError;
 
 pub struct DumbRenderer {}
 
 impl Renderer<Query, String> for &DumbRenderer {
-    fn render(self, query: &Query) -> String {
+    fn render(self, query: &Query) -> Result<String, PineError> {
         let select = render_select(&query);
         let from = render_from(&query);
         let filters = render_filters(&query);
 
-        format!("SELECT {}\nFROM {}\nWHERE {}", select, from, filters)
+        Ok(format!("SELECT {}\nFROM {}\nWHERE {}", select, from, filters))
     }
 }
 
@@ -88,7 +89,7 @@ mod tests {
             &[Filter::Equals("id", "1"), Filter::Equals("mojo", "great")],
         );
 
-        let rendering = renderer.render(&query.into());
+        let rendering = renderer.render(&query.into()).unwrap();
 
         assert_eq!(
             "SELECT id, name\nFROM users\nWHERE id = \"1\" AND mojo = \"great\"",
