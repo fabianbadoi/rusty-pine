@@ -1,10 +1,9 @@
 use super::structure::{Column, Table, ForeignKey};
-use crate::error::ParseError;
 use regex::Regex;
 
 // TODO creating regex instances on every function call is not optimal.
 impl Column {
-    pub fn from_sql_string(input: &str) -> Result<Column, ParseError> {
+    pub fn from_sql_string(input: &str) -> Result<Column, String> {
         let regex = Regex::new("(?i)^`([a-z0-9_]+)` ").unwrap();
         let matches = regex.captures(input.trim_start());
 
@@ -13,15 +12,13 @@ impl Column {
                 name: captures[1].to_string(),
             })
         } else {
-            Err(ParseError::from_message(
-                format!("Invalid column spec: \"{}\"", input),
-            ))
+            Err(format!("Invalid column spec: \"{}\"", input))
         }
     }
 }
 
 impl ForeignKey {
-    pub fn from_sql_string(input: &str) -> Result<ForeignKey, ParseError> {
+    pub fn from_sql_string(input: &str) -> Result<ForeignKey, String> {
         let regex = Regex::new(
             r"(?i)FOREIGN KEY \(`([a-z0-9_]+)`\) REFERENCES `([a-z0-9_]+)` \(`([a-z0-9_]+)`\)"
         ).unwrap();
@@ -34,15 +31,13 @@ impl ForeignKey {
 
             Ok(ForeignKey { from_column, to_table, to_column })
         } else {
-            Err(ParseError::from_message(
-                format!("Invalid foreign key spec: \"{}\"", input),
-            ))
+            Err(format!("Invalid foreign key spec: \"{}\"", input))
         }
     }
 }
 
 impl Table {
-    pub fn from_sql_string(input: &str) -> Result<Table, ParseError> {
+    pub fn from_sql_string(input: &str) -> Result<Table, String> {
         let mut lines = input.trim_start().split('\n');
 
         let name = Self::parse_table_name_line(&mut lines)?;
@@ -52,7 +47,7 @@ impl Table {
         Ok(Table { name, columns, foreign_keys })
     }
 
-    fn parse_table_name_line(lines: &mut Iterator<Item = &str>) -> Result<String, ParseError> {
+    fn parse_table_name_line(lines: &mut Iterator<Item = &str>) -> Result<String, String> {
         if let Some(table_name_line) = lines.next() {
             let regex = Regex::new("(?i)^CREATE TABLE `([a-z0-9_]+)`").unwrap();
             let matches = regex.captures(table_name_line);
@@ -62,10 +57,10 @@ impl Table {
 
                 Ok(table_name.as_str().to_string())
             } else {
-                Err(ParseError::from_message(format!("Column name line not as expected:\n{}", table_name_line)))
+                Err(format!("Column name line not as expected:\n{}", table_name_line))
             }
         } else {
-            Err(ParseError::from_str("Column name line not found"))
+            Err("Column name line not found".to_string())
         }
     }
 

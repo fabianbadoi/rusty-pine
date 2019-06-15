@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::error::Error;
 
 #[derive(Debug)]
-pub struct ParseError {
+pub struct PineError {
     message: String,
     cause: Option<Box<dyn Error>>,
 }
@@ -26,21 +26,6 @@ pub struct Position {
 impl Default for Position {
     fn default() -> Self {
         Position { start: 0, end: 0 }
-    }
-}
-
-impl ParseError {
-    #[inline]
-    pub fn from_message(message: String) -> ParseError {
-        ParseError {
-            message,
-            cause: None,
-        }
-    }
-
-    #[inline]
-    pub fn from_str(message: &str) -> ParseError {
-        ParseError::from_message(message.to_string())
     }
 }
 
@@ -79,13 +64,13 @@ impl Display for Position {
     }
 }
 
-impl Display for ParseError {
+impl Display for PineError {
     fn fmt(&self, formatter: &mut Formatter) -> FmtResult {
         write!(formatter, "{}", self.message)
     }
 }
 
-impl Error for ParseError {
+impl Error for PineError {
     fn description(&self) -> &str {
         &self.message
     }
@@ -111,13 +96,13 @@ impl Error for SyntaxError {
     }
 }
 
-impl From<SyntaxError> for ParseError {
-    fn from(error: SyntaxError) -> ParseError {
+impl From<SyntaxError> for PineError {
+    fn from(error: SyntaxError) -> PineError {
         let message = error.to_string();
 
         let cause: Box<dyn Error> =  Box::new(error);
         let cause = Some(cause);
 
-        ParseError { message, cause }
+        PineError { message, cause }
     }
 }

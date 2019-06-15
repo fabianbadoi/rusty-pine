@@ -1,9 +1,9 @@
-use crate::error::ParseError;
+use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
 use crate::sql::{Renderer, DumbRenderer};
 
-type ParseResult<O> = Result<O, ParseError>;
+type ParseResult<O> = Result<O, PineError>;
 
 pub trait Parser<I, O> {
     fn parse(self, input: I) -> ParseResult<O>;
