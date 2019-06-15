@@ -1,4 +1,4 @@
-use super::structure::{Column, Table};
+use super::structure::{Column, Table, ForeignKey};
 use crate::error::ParseError;
 use regex::Regex;
 
@@ -20,14 +20,36 @@ impl Column {
     }
 }
 
+impl ForeignKey {
+    pub fn from_sql_string(input: &str) -> Result<ForeignKey, ParseError> {
+        let regex = Regex::new(
+            r"(?i)FOREIGN KEY \(`([a-z0-9_]+)`\) REFERENCES `([a-z0-9_]+)` \(`([a-z0-9_]+)`\)"
+        ).unwrap();
+        let matches = regex.captures(input.trim_start());
+
+        if let Some(captures) = matches {
+            let from_column = captures[1].into();
+            let to_table = captures[2].into();
+            let to_column = captures[3].into();
+
+            Ok(ForeignKey { from_column, to_table, to_column })
+        } else {
+            Err(ParseError::from_message(
+                format!("Invalid foreign key spec: \"{}\"", input),
+            ))
+        }
+    }
+}
+
 impl Table {
     pub fn from_sql_string(input: &str) -> Result<Table, ParseError> {
         let mut lines = input.trim_start().split('\n');
 
         let name = Self::parse_table_name_line(&mut lines)?;
         let columns = Self::parse_columns(&mut lines);       
+        let foreign_keys = Self::parse_foreign_keys(&mut lines);
 
-        Ok(Table { name, columns })
+        Ok(Table { name, columns, foreign_keys })
     }
 
     fn parse_table_name_line(lines: &mut Iterator<Item = &str>) -> Result<String, ParseError> {
@@ -63,6 +85,15 @@ impl Table {
 
         columns
     }
+
+    /// Consumes the rest of the iterator
+    fn parse_foreign_keys(lines: &mut Iterator<Item = &str>) -> Vec<ForeignKey> {
+        lines
+            .map(|line| ForeignKey::from_sql_string(line))
+            .filter(|result| result.is_ok())
+            .map(|result| result.unwrap())
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -75,6 +106,16 @@ mod tests {
         let column = Column::from_sql_string(input).unwrap();
 
         assert_eq!(column.name, "id");
+    }
+
+    #[test]
+    fn parse_foreign_key() {
+        let input = "CONSTRAINT `FK_96C2225810EE4CEE` FOREIGN KEY (`parentId`) REFERENCES `teams` (`id`) ON DELETE CASCADE,";
+        let foreign_key = ForeignKey::from_sql_string(input).unwrap();
+
+        assert_eq!(foreign_key.from_column, "parentId");
+        assert_eq!(foreign_key.to_table, "teams");
+        assert_eq!(foreign_key.to_column, "id");
     }
 
     #[test]
@@ -96,6 +137,7 @@ CREATE TABLE `teams` (
 
         assert_eq!(table.name, "teams");
         assert_eq!(table.columns.len(), 4);
+        assert_eq!(table.foreign_keys.len(), 2);
     }
 }
 
