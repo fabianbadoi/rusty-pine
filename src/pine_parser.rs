@@ -1,7 +1,7 @@
 use crate::error::ParseError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
-use crate::sql::{Renderer, StringRenderer};
+use crate::sql::{Renderer, DumbRenderer};
 
 type ParseResult<O> = Result<O, ParseError>;
 
@@ -9,7 +9,7 @@ pub trait Parser<I, O> {
     fn parse(self, input: I) -> ParseResult<O>;
 }
 
-pub type NaiveParser = GenericParser<PestPineParser, NaiveBuilder, StringRenderer>;
+pub type NaiveParser = GenericParser<PestPineParser, NaiveBuilder, DumbRenderer>;
 
 pub struct GenericParser<Parser, Builder, Renderer> {
     parser: Parser,
@@ -19,6 +19,7 @@ pub struct GenericParser<Parser, Builder, Renderer> {
 
 impl<'a, 'b, I, O, P, B, R> Parser<I, O> for &'a GenericParser<P, B, R>
 where
+    // TODO all of these should be 'regular' traits
     &'a P: PineParser,
     &'a B: QueryBuilder,
     &'a R: Renderer<Query, O>,
@@ -33,12 +34,12 @@ where
     }
 }
 
-impl GenericParser<PestPineParser, NaiveBuilder, StringRenderer> {
-    pub fn default() -> GenericParser<PestPineParser, NaiveBuilder, StringRenderer> {
+impl GenericParser<PestPineParser, NaiveBuilder, DumbRenderer> {
+    pub fn default() -> GenericParser<PestPineParser, NaiveBuilder, DumbRenderer> {
         GenericParser {
             parser: PestPineParser {},
             builder: NaiveBuilder {},
-            renderer: StringRenderer {},
+            renderer: DumbRenderer {},
         }
     }
 }

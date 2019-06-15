@@ -3,57 +3,55 @@ use crate::query::Condition;
 use crate::query::QualifiedColumnIdentifier;
 use crate::query::Query;
 
-pub struct StringRenderer {}
+pub struct DumbRenderer {}
 
-impl Renderer<Query, String> for &StringRenderer {
+impl Renderer<Query, String> for &DumbRenderer {
     fn render(self, query: &Query) -> String {
-        let select = self.render_select(&query);
-        let from = self.render_from(&query);
-        let filters = self.render_filters(&query);
+        let select = render_select(&query);
+        let from = render_from(&query);
+        let filters = render_filters(&query);
 
         format!("SELECT {}\nFROM {}\nWHERE {}", select, from, filters)
     }
 }
 
-impl StringRenderer {
-    fn render_select(&self, query: &Query) -> String {
-        let column_renderer = ColumnRenderer::new(query);
+pub fn render_select(query: &Query) -> String {
+    let column_renderer = ColumnRenderer::new(query);
 
-        let fields = if query.selections.is_empty() {
-            "*".to_string()
-        } else {
-            query
-                .selections
-                .iter()
-                .map(|field| column_renderer.render(field))
-                .collect::<Vec<_>>()
-                .join(", ")
-        };
-
-        fields
-    }
-
-    fn render_from(&self, query: &Query) -> String {
-        query.from.clone()
-    }
-
-    fn render_filters(&self, query: &Query) -> String {
-        let column_renderer = ColumnRenderer::new(query);
-
-        let filters = query
-            .filters
+    let fields = if query.selections.is_empty() {
+        "*".to_string()
+    } else {
+        query
+            .selections
             .iter()
-            .map(|filter| {
-                let column = column_renderer.render(&filter.column);
-                match &filter.condition {
-                    Condition::Equals(value) => format!("{} = \"{}\"", column, value),
-                }
-            })
+            .map(|field| column_renderer.render(field))
             .collect::<Vec<_>>()
-            .join(" AND ");
+            .join(", ")
+    };
 
-        filters
-    }
+    fields
+}
+
+pub fn render_from(query: &Query) -> String {
+    query.from.clone()
+}
+
+pub fn render_filters(query: &Query) -> String {
+    let column_renderer = ColumnRenderer::new(query);
+
+    let filters = query
+        .filters
+        .iter()
+        .map(|filter| {
+            let column = column_renderer.render(&filter.column);
+            match &filter.condition {
+                Condition::Equals(value) => format!("{} = \"{}\"", column, value),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join(" AND ");
+
+    filters
 }
 
 struct ColumnRenderer<Q> {
@@ -68,7 +66,7 @@ impl<Q> ColumnRenderer<Q> {
 
 impl ColumnRenderer<&Query> {
     fn render(&self, id: &QualifiedColumnIdentifier) -> String {
-        if *self.query.from == id.table {
+        if self.query.joins.is_empty() {
             id.column.to_string()
         } else {
             format!("{}.{}", id.table, id.column)
@@ -82,8 +80,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn simple_render() {
-        let renderer = StringRenderer {};
+    fn dumb_render() {
+        let renderer = DumbRenderer {};
         let query = QueryShorthand(
             Select(&["id", "name"]),
             From("users"),
