@@ -23,6 +23,14 @@ pub struct ColumnName(pub String);
 #[derive(Debug, PartialEq, Eq)]
 pub struct TableName(pub String);
 
+impl Table {
+    pub fn get_foreign_key(&self, to_table: &str) -> Option<&ForeignKey> {
+        self.foreign_keys
+            .iter()
+            .find(|foreign_key| foreign_key.to_table == to_table)
+    }
+}
+
 impl PartialEq<&str> for ColumnName {
     fn eq(&self, other: &&str) -> bool {
         self.0 == *other
@@ -50,6 +58,12 @@ impl From<&str> for TableName {
 impl From<&str> for Column {
     fn from(name: &str) -> Column {
         Column { name: name.into() }
+    }
+}
+
+impl<'a> From<&'a TableName> for &'a str {
+    fn from(name: &'a TableName) -> &'a str {
+        &name.0
     }
 }
 

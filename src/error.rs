@@ -106,3 +106,9 @@ impl From<SyntaxError> for PineError {
         PineError { message, cause }
     }
 }
+
+impl From<String> for PineError {
+    fn from(message: String) -> PineError {
+        PineError { message, cause: None }
+    }
+}
