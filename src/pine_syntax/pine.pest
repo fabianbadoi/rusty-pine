@@ -1,9 +1,10 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
-operation = _{ (compound_expression | from | select | filters) }
+operation = _{ (compound_expression | from | select | filters | join) }
 
 compound_expression = { table_name ~ (value | filter) }
 
 from = { ("from:" | "f:") ~ table_name }
+join = { ("join:" | "j:") ~ table_name }
 table_name = { sql_name }
 
 select = { ("select:" | "s:") ~ column_name ~ ("," ~ column_name)* }

@@ -1,7 +1,8 @@
 #[derive(Debug, Default)]
 pub struct Query {
     pub selections: Vec<QualifiedColumnIdentifier>,
-    pub from: ColumnName,
+    pub from: TableName,
+    pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
 }
 

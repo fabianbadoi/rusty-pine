@@ -51,6 +51,7 @@ fn translate_operation(node: PestNode) -> Vec<OperationNode> {
         Rule::select => translate_select(node),
         Rule::filters => translate_filters(node),
         Rule::compound_expression => translate_compound_expression(node),
+        Rule::join => translate_join(node),
         Rule::EOI => Vec::new(),
         _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
     };
@@ -68,6 +69,16 @@ fn translate_from(node: PestNode) -> Vec<Operation> {
     );
 
     vec![Operation::From(table_name)]
+}
+
+fn translate_join(node: PestNode) -> Vec<Operation> {
+    let table_name = translate_sql_name(
+        node.into_inner()
+            .next()
+            .expect("Found from without table name"),
+    );
+
+    vec![Operation::Join(table_name)]
 }
 
 fn translate_select(node: PestNode) -> Vec<Operation> {
@@ -275,6 +286,24 @@ mod tests {
 
         if let Operation::From(ref table_name) = pine_node.inner.operations[0].inner {
             assert_eq!("users", table_name.inner);
+        }
+    }
+
+    #[test]
+    fn parsing_join_expression() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = 3 | select: id, name | join: friends | where: x = 4")
+            .unwrap();
+
+        assert_eq!("from",   pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("select", pine_node.inner.operations[2].inner.get_name());
+        assert_eq!("join",   pine_node.inner.operations[3].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[4].inner.get_name());
+
+        if let Operation::Join(ref table_name) = pine_node.inner.operations[3].inner {
+            assert_eq!("friends", table_name.inner);
         }
     }
 }

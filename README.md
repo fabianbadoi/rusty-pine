@@ -34,8 +34,8 @@ TODO:
 - [x] Compact form:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
 - [x] Implement Error on error
-- [ ] Split work into crates
 - [ ] Join statements
+- [ ] Compound expression join statements
 - [ ] other comparisons
 - [ ] Auto join
 - [ ] Support for limit

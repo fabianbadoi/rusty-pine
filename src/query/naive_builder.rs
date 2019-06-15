@@ -16,6 +16,7 @@ struct SingleUseQueryBuilder<'a> {
     pine: &'a PineNode<'a>,
     query: Query,
     current_table: Option<String>,
+    from_table: Option<String>,
 }
 
 impl QueryBuilder for &NaiveBuilder {
@@ -31,6 +32,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         SingleUseQueryBuilder {
             pine: pine,
             current_table: None,
+            from_table: None,
             query: Default::default(),
         }
     }
@@ -48,6 +50,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn apply_operation(&mut self, operation_node: &OperationNode) -> InternalResult {
         match operation_node.inner {
             Operation::From(ref table) => self.apply_from(table),
+            Operation::Join(ref table) => self.apply_join(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
             Operation::Filter(ref filters) => self.apply_filters(filters)?,
         };
@@ -56,7 +59,16 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn apply_from(&mut self, table: &TableNameNode) {
-        self.reset_selection(&table.inner);
+        self.current_table = Some(table.inner.to_string());
+
+        if self.from_table.is_none() {
+            self.from_table = Some(table.inner.to_string());
+        }
+    }
+
+    fn apply_join(&mut self, table: &TableNameNode) {
+        self.current_table = Some(table.inner.to_string());
+        self.query.joins.push(table.inner.to_string());
     }
 
     fn apply_selections(&mut self, selections: &[ColumnNameNode]) -> InternalResult {
@@ -104,15 +116,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn reset_selection(&mut self, table: &str) {
-        self.current_table = Some(table.to_string());
-
-        // existing selections are cleared to, maybe add a select+: operation that keeps previous selections
-        self.query.selections.clear();
-    }
-
     fn finalize(&mut self) -> Result<(), SyntaxError> {
-        match self.current_table.clone() {
+        match self.from_table.clone() {
             Some(table) => {
                 self.query.from = table;
                 Ok(())
@@ -190,6 +195,17 @@ mod tests {
         );
     }
 
+    #[test]
+    fn build_join_query() {
+        let pine = join("users", "friends");
+
+        let query_builder = NaiveBuilder {};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(query.from, "users");
+        assert_eq!(query.joins[0], "friends");
+    }
+
     fn filter(
         column: &'static str,
         condition: Condition<'static>,
@@ -202,6 +218,15 @@ mod tests {
         let filter = make_node(Filter { column, condition });
 
         append_operation(&mut pine, Operation::Filter(vec![filter]));
+
+        pine
+    }
+
+    fn join(from_table: &'static str, join: &'static str) -> PineNode<'static> {
+        let mut pine = from(from_table);
+
+        let join = make_node(join);
+        append_operation(&mut pine, Operation::Join(join));
 
         pine
     }

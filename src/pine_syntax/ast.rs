@@ -17,6 +17,7 @@ pub struct Pine<'a> {
 #[derive(Debug)]
 pub enum Operation<'a> {
     From(TableNameNode<'a>),
+    Join(TableNameNode<'a>),
     Select(Vec<ColumnNameNode<'a>>),
     Filter(Vec<FilterNode<'a>>),
 }
@@ -28,6 +29,7 @@ impl<'a> Operation<'a> {
 
         match self {
             From(_) => "from",
+            Join(_) => "join",
             Select(_) => "select",
             Filter(_) => "filter",
         }
