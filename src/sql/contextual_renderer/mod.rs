@@ -2,7 +2,7 @@ mod sql_reflect;
 mod structure;
 
 use super::Renderer;
-use super::renderer::{ render_select, render_from, render_filters };
+use super::renderer::{ render_select, render_from, render_filters, render_limit };
 use crate::query::Query;
 use structure::*;
 use crate::error::PineError;
@@ -45,13 +45,15 @@ impl<'a> RenderOperation<'a> {
         let from = render_from(self.query);
         let joins = self.render_joins()?;
         let filters = render_filters(self.query);
+        let limit = render_limit(self.query);
 
         Ok(format!(
-            "SELECT {}\nFROM {}\n{}\nWHERE {}",
+            "SELECT {}\nFROM {}\n{}\nWHERE {}\n{}",
             select,
             from,
             joins,
-            filters
+            filters,
+            limit
         ))
     }
 
@@ -135,7 +137,7 @@ mod tests {
         let rendering = renderer.render(&query).unwrap();
 
         assert_eq!(
-            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"",
+            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"\nLIMIT 5",
             rendering
         );
     }
@@ -152,6 +154,18 @@ mod tests {
             "Couldn't find foreign key from `users` to `missing`. Try:\nfriends",
             format!("{}", error)
         );
+    }
+
+    #[test]
+    fn limits() {
+        let renderer = make_renderer();
+        let mut query = make_join_query();
+        query.limit = 2;
+
+        let rendering = renderer.render(&query).unwrap();
+
+        let limit_is_2 = rendering.find("LIMIT 2").is_some();
+        assert!(limit_is_2);
     }
 
     #[test]

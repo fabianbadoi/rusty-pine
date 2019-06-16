@@ -1,5 +1,5 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
-operation = _{ (compound_expression | from | select | filters | join) }
+operation = _{ (compound_expression | from | select | filters | join | limit) }
 
 compound_expression = { table_name ~ (value | filter) }
 
@@ -13,6 +13,7 @@ filters = { ("where:" | "w:") ~ filter+ }
 filter = { column_name ~ condition }
 condition = _{ equals }
 
+limit = { ("limit:" | "l:") ~ numeric_value }
 equals = { "=" ~ value }
 column_name = { sql_name }
 value = _{ numeric_value }

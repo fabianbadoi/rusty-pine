@@ -55,6 +55,10 @@ pub fn render_filters(query: &Query) -> String {
     filters
 }
 
+pub fn render_limit(query: &Query) -> String {
+    format!("LIMIT {}", query.limit)
+}
+
 struct ColumnRenderer<Q> {
     query: Q,
 }

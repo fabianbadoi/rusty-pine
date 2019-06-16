@@ -65,6 +65,7 @@ impl Translator {
             Rule::filters => self.translate_filters(node),
             Rule::compound_expression => self.translate_compound_expression(node),
             Rule::join => self.translate_join(node),
+            Rule::limit => self.translate_limit(node),
             Rule::EOI => Vec::new(),
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
         };
@@ -100,6 +101,12 @@ impl Translator {
         let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
 
         vec![Operation::Select(columns)]
+    }
+
+    fn translate_limit<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let limit = translate_value(node.into_inner().next().unwrap());
+
+        vec![Operation::Limit(limit)]
     }
 
     fn translate_filters<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
@@ -289,6 +296,22 @@ mod tests {
 
         if let Operation::From(ref table_name) = pine_node.inner.operations[0].inner {
             assert_eq!("users", table_name.inner);
+        }
+    }
+
+    #[test]
+    fn parse_limit_expression() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("from: users | select: id, name | limit: 5")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("select", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("limit", pine_node.inner.operations[2].inner.get_name());
+
+        if let Operation::From(ref limit) = pine_node.inner.operations[2].inner {
+            assert_eq!("5", limit.inner);
         }
     }
 

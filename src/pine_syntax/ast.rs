@@ -20,6 +20,7 @@ pub enum Operation<'a> {
     Join(TableNameNode<'a>),
     Select(Vec<ColumnNameNode<'a>>),
     Filter(Vec<FilterNode<'a>>),
+    Limit(ValueNode<'a>),
 }
 
 impl<'a> Operation<'a> {
@@ -32,6 +33,7 @@ impl<'a> Operation<'a> {
             Join(_) => "join",
             Select(_) => "select",
             Filter(_) => "filter",
+            Limit(_) => "limit",
         }
     }
 }

@@ -19,6 +19,11 @@ fn main() {
     println!("{}", transpiler.transpile("from: users | where: id = 3").unwrap());
     println!("------------------------------");
 
+    // faulty limit
+    println!("------------------------------");
+    println!("{}", transpiler.transpile("from: users | l: 500000000000000000000000000").unwrap_err());
+    println!("------------------------------");
+
     // syntax error 1
     println!("------------------------------");
     println!(

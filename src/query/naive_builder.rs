@@ -2,7 +2,7 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
+    ColumnNameNode, Condition as AstCondition, ValueNode, FilterNode, Operation, OperationNode, PineNode,
     TableNameNode,
 };
 use crate::query::{
@@ -53,6 +53,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             Operation::Join(ref table) => self.apply_join(table),
             Operation::Select(ref selections) => self.apply_selections(selections)?,
             Operation::Filter(ref filters) => self.apply_filters(filters)?,
+            Operation::Limit(ref limit) => self.apply_limit(limit)?,
         };
 
         Ok(())
@@ -116,6 +117,26 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
+    fn apply_limit(&mut self, value: &ValueNode) -> Result<(), SyntaxError> {
+        use std::str::FromStr;
+
+        match usize::from_str(value.inner) {
+            Ok(limit) => {
+                self.query.limit = limit;
+                Ok(())
+            },
+            // Pest will make sure the values are actually numeric, but they may be
+            // unrepresentable by usize.
+            Err(parse_error) => {
+                Err(SyntaxError::Positioned {
+                    message: format!("{}", parse_error),
+                    position: value.position,
+                    input: self.pine.inner.pine_string.to_string(),
+                })
+            },
+        }
+    }
+
     fn finalize(&mut self) -> Result<(), SyntaxError> {
         match self.from_table.clone() {
             Some(table) => {
@@ -166,6 +187,27 @@ mod tests {
         let query = query_builder.build(&pine).unwrap();
 
         assert_eq!("users", query.from);
+    }
+
+    #[test]
+    fn build_with_limit() {
+        let pine = with_limit("100");
+
+        let query_builder = NaiveBuilder {};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(100, query.limit);
+    }
+
+    #[test]
+    fn double_limits_overrides_previous_limit() {
+        let mut pine = with_limit("100");
+        append_operation(&mut pine, Operation::Limit(make_node("200")));
+
+        let query_builder = NaiveBuilder {};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(200, query.limit);
     }
 
     #[test]
@@ -234,6 +276,13 @@ mod tests {
     fn from(table: &'static str) -> PineNode {
         let mut pine = make_blank_pine();
         append_operation(&mut pine, Operation::From(make_node(table)));
+
+        pine
+    }
+
+    fn with_limit(limit: &'static str) -> PineNode {
+        let mut pine = from("dummy");
+        append_operation(&mut pine, Operation::Limit(make_node(limit)));
 
         pine
     }

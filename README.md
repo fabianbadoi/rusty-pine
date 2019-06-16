@@ -36,7 +36,7 @@ TODO:
 - [x] Implement Error on error
 - [x] Join statements
 - [x] Compound expression join statements
-- [ ] Support for limit
+- [x] Support for limit
 - [ ] Implement live SQL analisys
 - [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
