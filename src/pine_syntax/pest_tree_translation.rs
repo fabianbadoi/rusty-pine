@@ -28,69 +28,111 @@ impl PineParser for &PestPineParser {
 }
 
 pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
-    expect(Rule::pine, &root_node);
-
-    let position = node_to_position(&root_node);
-    let operations: Vec<_> = root_node
-        .into_inner()
-        .flat_map(translate_operation)
-        .collect();
-    let inner = Pine {
-        operations,
-        pine_string: input,
-    };
-
-    PineNode { position, inner }
+    let translator = Translator::new();
+    translator.translate(root_node, input)
 }
 
- // TODO refactor this
-fn translate_operation(node: PestNode) -> Vec<OperationNode> {
-    let position = node_to_position(&node);
-    let operations = match node.as_rule() {
-        Rule::from => translate_from(node),
-        Rule::select => translate_select(node),
-        Rule::filters => translate_filters(node),
-        Rule::compound_expression => translate_compound_expression(node),
-        Rule::join => translate_join(node),
-        Rule::EOI => Vec::new(),
-        _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
-    };
-
-    operations.into_iter()
-        .map(|inner| OperationNode { position, inner })
-        .collect()
+struct Translator {
+    has_from: bool,
 }
 
-fn translate_from(node: PestNode) -> Vec<Operation> {
-    let table_name = translate_sql_name(
-        node.into_inner()
-            .next()
-            .expect("Found from without table name"),
-    );
+impl Translator {
+    pub fn new() -> Translator {
+        Translator { has_from: false }
+    }
 
-    vec![Operation::From(table_name)]
-}
+    pub fn translate<'a>(mut self, root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
+        expect(Rule::pine, &root_node);
 
-fn translate_join(node: PestNode) -> Vec<Operation> {
-    let table_name = translate_sql_name(
-        node.into_inner()
-            .next()
-            .expect("Found from without table name"),
-    );
+        let position = node_to_position(&root_node);
+        let operations: Vec<_> = root_node
+            .into_inner()
+            .flat_map(|node| self.translate_operation(node))
+            .collect();
+        let inner = Pine {
+            operations,
+            pine_string: input,
+        };
 
-    vec![Operation::Join(table_name)]
-}
+        PineNode { position, inner }
+    }
 
-fn translate_select(node: PestNode) -> Vec<Operation> {
-    let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
+    fn translate_operation<'a>(&mut self, node: PestNode<'a>) -> Vec<OperationNode<'a>> {
+        let position = node_to_position(&node);
+        let operations = match node.as_rule() {
+            Rule::from => self.translate_from(node),
+            Rule::select => self.translate_select(node),
+            Rule::filters => self.translate_filters(node),
+            Rule::compound_expression => self.translate_compound_expression(node),
+            Rule::join => self.translate_join(node),
+            Rule::EOI => Vec::new(),
+            _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
+        };
 
-    vec![Operation::Select(columns)]
-}
+        operations.into_iter()
+            .map(|inner| OperationNode { position, inner })
+            .collect()
+    }
 
-fn translate_filters(node: PestNode) -> Vec<Operation> {
-    let filters: Vec<_> = node.into_inner().map(translate_filter).collect();
+    fn translate_from<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        self.has_from = true;
 
-    vec![Operation::Filter(filters)]
+        let table_name = translate_sql_name(
+            node.into_inner()
+                .next()
+                .expect("Found from without table name"),
+        );
+
+        vec![Operation::From(table_name)]
+    }
+
+    fn translate_join<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let table_name = translate_sql_name(
+            node.into_inner()
+                .next()
+                .expect("Found from without table name"),
+        );
+
+        vec![Operation::Join(table_name)]
+    }
+
+    fn translate_select<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
+
+        vec![Operation::Select(columns)]
+    }
+
+    fn translate_filters<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let filters: Vec<_> = node.into_inner().map(translate_filter).collect();
+
+        vec![Operation::Filter(filters)]
+    }
+
+    fn translate_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let inner = node.clone().into_inner();
+
+        expect(Rule::table_name, &inner.peek().unwrap());
+
+        let vec_with_from = if self.has_from {
+            self.translate_join(node)
+        } else {
+            self.translate_from(node)
+        };
+        let mut rest = inner.skip(1).peekable();
+
+        let filters : Vec<_> = if rest.peek().unwrap().as_rule() == Rule::filter {
+            rest
+                .map(|f| translate_filter(f))
+                .collect()
+        } else {
+            vec![translate_implicit_id_equals(rest.next().unwrap())]
+        };
+
+        let mut operations = vec_with_from;
+        operations.push(Operation::Filter(filters));
+
+        operations
+    }
 }
 
 fn translate_filter(node: PestNode) -> FilterNode {
@@ -131,28 +173,6 @@ fn translate_condition(node: PestNode) -> ConditionNode {
     let inner = Condition::Equals(value);
 
     ConditionNode { position, inner }
-}
-
-fn translate_compound_expression(node: PestNode) -> Vec<Operation> {
-    let inner = node.clone().into_inner();
-
-    expect(Rule::table_name, &inner.peek().unwrap());
-
-    let vec_with_from = translate_from(node);
-    let mut rest = inner.skip(1).peekable();
-
-    let filters : Vec<_> = if rest.peek().unwrap().as_rule() == Rule::filter {
-        rest
-            .map(|f| translate_filter(f))
-            .collect()
-    } else {
-        vec![translate_implicit_id_equals(rest.next().unwrap())]
-    };
-
-    let mut operations = vec_with_from;
-    operations.push(Operation::Filter(filters));
-
-    operations
 }
 
 fn translate_implicit_id_equals(node: PestNode) -> FilterNode {
@@ -301,6 +321,25 @@ mod tests {
         assert_eq!("select", pine_node.inner.operations[2].inner.get_name());
         assert_eq!("join",   pine_node.inner.operations[3].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[4].inner.get_name());
+
+        if let Operation::Join(ref table_name) = pine_node.inner.operations[3].inner {
+            assert_eq!("friends", table_name.inner);
+        }
+    }
+
+    #[test]
+    fn parsing_compound_join_expression() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = 3 | select: id, name | friends stylish = 1 | where: x = 4")
+            .unwrap();
+
+        assert_eq!("from",   pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("select", pine_node.inner.operations[2].inner.get_name());
+        assert_eq!("join",   pine_node.inner.operations[3].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[4].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[5].inner.get_name());
 
         if let Operation::Join(ref table_name) = pine_node.inner.operations[3].inner {
             assert_eq!("friends", table_name.inner);

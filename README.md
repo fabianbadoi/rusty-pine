@@ -35,9 +35,9 @@ TODO:
     `users 3 | settings` instead of `from: users | where: id = 3 | join: settings | select: id`
 - [x] Implement Error on error
 - [x] Join statements
+- [x] Compound expression join statements
 - [ ] Support for limit
 - [ ] Implement live SQL analisys
-- [ ] Compound expression join statements
 - [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
 - [ ] Auto join
