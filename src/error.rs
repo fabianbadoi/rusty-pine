@@ -1,5 +1,5 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::error::Error;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Debug)]
 pub struct PineError {
@@ -33,10 +33,7 @@ impl SyntaxError {
     fn message(&self) -> &str {
         match self {
             SyntaxError::Detailed(message) => message,
-            SyntaxError::Positioned {
-                message,
-                ..
-            } => message,
+            SyntaxError::Positioned { message, .. } => message,
         }
     }
 
@@ -100,7 +97,7 @@ impl From<SyntaxError> for PineError {
     fn from(error: SyntaxError) -> PineError {
         let message = error.to_string();
 
-        let cause: Box<dyn Error> =  Box::new(error);
+        let cause: Box<dyn Error> = Box::new(error);
         let cause = Some(cause);
 
         PineError { message, cause }
@@ -109,6 +106,9 @@ impl From<SyntaxError> for PineError {
 
 impl From<String> for PineError {
     fn from(message: String) -> PineError {
-        PineError { message, cause: None }
+        PineError {
+            message,
+            cause: None,
+        }
     }
 }

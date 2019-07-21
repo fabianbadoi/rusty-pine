@@ -1,8 +1,8 @@
 use super::Renderer;
+use crate::error::PineError;
 use crate::query::Condition;
 use crate::query::QualifiedColumnIdentifier;
 use crate::query::Query;
-use crate::error::PineError;
 
 pub struct DumbRenderer {}
 
@@ -12,7 +12,10 @@ impl Renderer<Query, String> for &DumbRenderer {
         let from = render_from(&query);
         let filters = render_filters(&query);
 
-        Ok(format!("SELECT {}\nFROM {}\nWHERE {}", select, from, filters))
+        Ok(format!(
+            "SELECT {}\nFROM {}\nWHERE {}",
+            select, from, filters
+        ))
     }
 }
 

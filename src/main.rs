@@ -3,11 +3,11 @@ extern crate pest;
 extern crate pest_derive;
 extern crate regex;
 
+mod error;
 mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
-mod error;
 
 fn main() {
     use pine_transpiler::{MySqlTranspiler, Transpiler};
@@ -16,12 +16,20 @@ fn main() {
 
     // normal flow
     println!("------------------------------");
-    println!("{}", transpiler.transpile("from: users | where: id = 3").unwrap());
+    println!(
+        "{}",
+        transpiler.transpile("from: users | where: id = 3").unwrap()
+    );
     println!("------------------------------");
 
     // faulty limit
     println!("------------------------------");
-    println!("{}", transpiler.transpile("from: users | l: 500000000000000000000000000").unwrap_err());
+    println!(
+        "{}",
+        transpiler
+            .transpile("from: users | l: 500000000000000000000000000")
+            .unwrap_err()
+    );
     println!("------------------------------");
 
     // syntax error 1
@@ -48,14 +56,13 @@ fn main() {
     println!("------------------------------");
     println!(
         "{}",
-        transpiler.transpile("where: id = 3 | select: id").unwrap_err()
+        transpiler
+            .transpile("where: id = 3 | select: id")
+            .unwrap_err()
     );
     println!("------------------------------");
 
     println!("------------------------------");
-    println!(
-        "{}",
-        transpiler.transpile("users 3").unwrap()
-    );
+    println!("{}", transpiler.transpile("users 3").unwrap());
     println!("------------------------------");
 }

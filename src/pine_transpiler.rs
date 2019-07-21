@@ -1,7 +1,7 @@
 use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
-use crate::sql::{Renderer, DumbRenderer};
+use crate::sql::{DumbRenderer, Renderer};
 
 type TranspileResult<O> = Result<O, PineError>;
 

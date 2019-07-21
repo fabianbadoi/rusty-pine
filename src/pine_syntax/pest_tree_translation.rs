@@ -70,7 +70,8 @@ impl Translator {
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
         };
 
-        operations.into_iter()
+        operations
+            .into_iter()
             .map(|inner| OperationNode { position, inner })
             .collect()
     }
@@ -127,10 +128,8 @@ impl Translator {
         };
         let mut rest = inner.skip(1).peekable();
 
-        let filters : Vec<_> = if rest.peek().unwrap().as_rule() == Rule::filter {
-            rest
-                .map(|f| translate_filter(f))
-                .collect()
+        let filters: Vec<_> = if rest.peek().unwrap().as_rule() == Rule::filter {
+            rest.map(|f| translate_filter(f)).collect()
         } else {
             vec![translate_implicit_id_equals(rest.next().unwrap())]
         };
@@ -187,17 +186,17 @@ fn translate_implicit_id_equals(node: PestNode) -> FilterNode {
     let filter = Filter {
         column: TableNameNode {
             position,
-            inner: "id"
+            inner: "id",
         },
         condition: ConditionNode {
             position,
-            inner: Condition::Equals(translate_value(node))
-        }
+            inner: Condition::Equals(translate_value(node)),
+        },
     };
 
     FilterNode {
         position,
-        inner: filter
+        inner: filter,
     }
 }
 
@@ -339,10 +338,10 @@ mod tests {
             .parse("users id = 3 | select: id, name | join: friends | where: x = 4")
             .unwrap();
 
-        assert_eq!("from",   pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
         assert_eq!("select", pine_node.inner.operations[2].inner.get_name());
-        assert_eq!("join",   pine_node.inner.operations[3].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[3].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[4].inner.get_name());
 
         if let Operation::Join(ref table_name) = pine_node.inner.operations[3].inner {
@@ -357,10 +356,10 @@ mod tests {
             .parse("users id = 3 | select: id, name | friends stylish = 1 | where: x = 4")
             .unwrap();
 
-        assert_eq!("from",   pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
         assert_eq!("select", pine_node.inner.operations[2].inner.get_name());
-        assert_eq!("join",   pine_node.inner.operations[3].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[3].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[4].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[5].inner.get_name());
 

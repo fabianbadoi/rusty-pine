@@ -20,8 +20,9 @@ impl Column {
 impl ForeignKey {
     pub fn from_sql_string(input: &str) -> Result<ForeignKey, String> {
         let regex = Regex::new(
-            r"(?i)FOREIGN KEY \(`([a-z0-9_]+)`\) REFERENCES `([a-z0-9_]+)` \(`([a-z0-9_]+)`\)"
-        ).unwrap();
+            r"(?i)FOREIGN KEY \(`([a-z0-9_]+)`\) REFERENCES `([a-z0-9_]+)` \(`([a-z0-9_]+)`\)",
+        )
+        .unwrap();
         let matches = regex.captures(input.trim_start());
 
         if let Some(captures) = matches {
@@ -29,7 +30,11 @@ impl ForeignKey {
             let to_table = captures[2].into();
             let to_column = captures[3].into();
 
-            Ok(ForeignKey { from_column, to_table, to_column })
+            Ok(ForeignKey {
+                from_column,
+                to_table,
+                to_column,
+            })
         } else {
             Err(format!("Invalid foreign key spec: \"{}\"", input))
         }
@@ -41,10 +46,14 @@ impl Table {
         let mut lines = input.trim_start().split('\n');
 
         let name = Self::parse_table_name_line(&mut lines)?;
-        let columns = Self::parse_columns(&mut lines);       
+        let columns = Self::parse_columns(&mut lines);
         let foreign_keys = Self::parse_foreign_keys(&mut lines);
 
-        Ok(Table { name, columns, foreign_keys })
+        Ok(Table {
+            name,
+            columns,
+            foreign_keys,
+        })
     }
 
     fn parse_table_name_line(lines: &mut Iterator<Item = &str>) -> Result<String, String> {
@@ -57,7 +66,10 @@ impl Table {
 
                 Ok(table_name.as_str().to_string())
             } else {
-                Err(format!("Column name line not as expected:\n{}", table_name_line))
+                Err(format!(
+                    "Column name line not as expected:\n{}",
+                    table_name_line
+                ))
             }
         } else {
             Err("Column name line not found".to_string())
@@ -66,7 +78,7 @@ impl Table {
 
     fn parse_columns(lines: &mut Iterator<Item = &str>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::new();
-        
+
         for line in lines {
             if let Ok(column) = Column::from_sql_string(line) {
                 columns.push(column);
@@ -135,4 +147,3 @@ CREATE TABLE `teams` (
         assert_eq!(table.foreign_keys.len(), 2);
     }
 }
-

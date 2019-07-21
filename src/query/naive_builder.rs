@@ -2,8 +2,8 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnNameNode, Condition as AstCondition, ValueNode, FilterNode, Operation, OperationNode, PineNode,
-    TableNameNode,
+    ColumnNameNode, Condition as AstCondition, FilterNode, Operation, OperationNode, PineNode,
+    TableNameNode, ValueNode,
 };
 use crate::query::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
@@ -124,16 +124,14 @@ impl<'a> SingleUseQueryBuilder<'a> {
             Ok(limit) => {
                 self.query.limit = limit;
                 Ok(())
-            },
+            }
             // Pest will make sure the values are actually numeric, but they may be
             // unrepresentable by usize.
-            Err(parse_error) => {
-                Err(SyntaxError::Positioned {
-                    message: format!("{}", parse_error),
-                    position: value.position,
-                    input: self.pine.inner.pine_string.to_string(),
-                })
-            },
+            Err(parse_error) => Err(SyntaxError::Positioned {
+                message: format!("{}", parse_error),
+                position: value.position,
+                input: self.pine.inner.pine_string.to_string(),
+            }),
         }
     }
 
