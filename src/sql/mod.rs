@@ -1,10 +1,14 @@
 mod contextual_renderer;
 mod mysql_reflect;
 mod renderer;
+mod structure;
 #[cfg(test)]
 mod shorthand;
 
 pub use self::renderer::DumbRenderer;
+pub use mysql_reflect::connection::{Connection, LiveConnection};
+pub use mysql_reflect::live_analysis::{MySqlReflector, Reflector};
+
 use crate::error::PineError;
 
 pub trait Renderer<Q, O> {

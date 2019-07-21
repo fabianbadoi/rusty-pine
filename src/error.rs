@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use mysql::{Error as MysqlError};
 
 #[derive(Debug)]
 pub struct PineError {
@@ -108,6 +109,21 @@ impl From<String> for PineError {
     fn from(message: String) -> PineError {
         PineError {
             message,
+            cause: None,
+        }
+    }
+}
+
+impl From<&str> for PineError {
+    fn from(message: &str) -> PineError {
+        message.to_string().into()
+    }
+}
+
+impl From<MysqlError> for PineError {
+    fn from(error: MysqlError) -> Self {
+        PineError {
+            message: format!("{}", error),
             cause: None,
         }
     }

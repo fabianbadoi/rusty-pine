@@ -1,4 +1,10 @@
 #[derive(Debug)]
+pub struct Database {
+    pub name: String, // TODO: DatabaseName?
+    pub tables: Vec<Table>,
+}
+
+#[derive(Debug)]
 pub struct Column {
     pub name: String,
 }

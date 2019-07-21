@@ -1,4 +1,4 @@
-use super::mysql_reflect::structure::{ForeignKey, Table};
+use super::structure::{Table, ForeignKey};
 use super::renderer::{render_filters, render_from, render_limit, render_select};
 use super::Renderer;
 use crate::error::PineError;

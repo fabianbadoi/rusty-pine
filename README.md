@@ -38,6 +38,7 @@ TODO:
 - [x] Compound expression join statements
 - [x] Support for limit
 - [ ] Implement live SQL analisys
+- [ ] Add logging
 - [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
 - [ ] Auto join
