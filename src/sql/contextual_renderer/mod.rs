@@ -1,11 +1,8 @@
-mod sql_reflect;
-mod structure;
-
+use super::mysql_reflect::structure::{ForeignKey, Table};
+use super::renderer::{render_filters, render_from, render_limit, render_select};
 use super::Renderer;
-use super::renderer::{ render_select, render_from, render_filters, render_limit };
-use crate::query::Query;
-use structure::*;
 use crate::error::PineError;
+use crate::query::Query;
 
 pub struct SmartRenderer {
     tables: Vec<Table>,
@@ -36,7 +33,7 @@ impl<'a> RenderOperation<'a> {
         RenderOperation {
             tables,
             query,
-            last_table: &query.from
+            last_table: &query.from,
         }
     }
 
@@ -49,11 +46,7 @@ impl<'a> RenderOperation<'a> {
 
         Ok(format!(
             "SELECT {}\nFROM {}\n{}\nWHERE {}\n{}",
-            select,
-            from,
-            joins,
-            filters,
-            limit
+            select, from, joins, filters, limit
         ))
     }
 
@@ -72,7 +65,10 @@ impl<'a> RenderOperation<'a> {
     fn render_join(&self, left_table: &str, join_table: &str) -> Result<String, String> {
         let (left_column, right_column) = self.find_foreign_key_columns(join_table)?;
 
-        Ok(format!("LEFT JOIN friends ON {}.{} = {}.{}", left_table, left_column, join_table, right_column))
+        Ok(format!(
+            "LEFT JOIN friends ON {}.{} = {}.{}",
+            left_table, left_column, join_table, right_column
+        ))
     }
 
     fn find_foreign_key_columns(&self, to_table: &str) -> Result<(&str, &str), String> {
@@ -86,13 +82,11 @@ impl<'a> RenderOperation<'a> {
     }
 
     fn get_last_table(&self) -> Result<&'a Table, String> {
-        let find_table = self.tables
-            .iter()
-            .find(|table| {
-                // maybe having a HashMap instead of a vector would be better, but tables don't
-                // usually have that much data
-                table.name == self.last_table
-            });
+        let find_table = self.tables.iter().find(|table| {
+            // maybe having a HashMap instead of a vector would be better, but tables don't
+            // usually have that much data
+            table.name == self.last_table
+        });
 
         match find_table {
             Some(ref table) => Ok(table),
@@ -101,11 +95,15 @@ impl<'a> RenderOperation<'a> {
     }
 
     fn make_cannot_find_table_error(&self) -> String {
-            format!(
-                "Unkown table `{}`. Try:\n{}",
-                self.last_table,
-                self.tables.iter().map(|table| table.name.as_ref()).collect::<Vec<_>>().join("\n")
-            )
+        format!(
+            "Unkown table `{}`. Try:\n{}",
+            self.last_table,
+            self.tables
+                .iter()
+                .map(|table| table.name.as_ref())
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
     }
 
     fn make_cannot_find_fk_error(&self, to_table: &str) -> String {
@@ -126,8 +124,8 @@ impl<'a> RenderOperation<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::sql::shorthand::*;
     use super::*;
+    use crate::sql::shorthand::*;
 
     #[test]
     fn smart_render() {
@@ -200,9 +198,7 @@ mod tests {
             Table {
                 name: "users".into(),
                 columns: Vec::new(),
-                foreign_keys: vec![
-                    ForeignKey::from(&("friendId", ("friends", "id"))),
-                ],
+                foreign_keys: vec![ForeignKey::from(&("friendId", ("friends", "id")))],
             },
             Table {
                 name: "friends".into(),

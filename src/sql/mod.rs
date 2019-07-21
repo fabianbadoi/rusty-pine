@@ -1,7 +1,8 @@
+mod contextual_renderer;
+mod mysql_reflect;
 mod renderer;
 #[cfg(test)]
 mod shorthand;
-mod contextual_renderer;
 
 pub use self::renderer::DumbRenderer;
 use crate::error::PineError;

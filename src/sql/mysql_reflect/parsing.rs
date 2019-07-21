@@ -1,4 +1,4 @@
-use super::structure::{Column, Table, ForeignKey};
+use super::structure::{Column, ForeignKey, Table};
 use regex::Regex;
 
 // TODO creating regex instances on every function call is not optimal.
