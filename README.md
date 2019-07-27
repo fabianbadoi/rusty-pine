@@ -37,12 +37,14 @@ TODO:
 - [x] Join statements
 - [x] Compound expression join statements
 - [x] Support for limit
-- [ ] Implement live SQL analisys
+- [x] Implement live SQL analisys
 - [ ] Add logging
-- [ ] All outputted errors must be SQL commnets
-- [ ] other comparisons
 - [ ] Auto join
+- [ ] All outputted errors must be SQL commnets
+- [ ] Usable binaries
+- [ ] other comparisons
 - [ ] Complex values
+- [ ] Auto deep join
 - [ ] Functions on a column
 - [ ] Group on a column
 - [ ] Order by a column
