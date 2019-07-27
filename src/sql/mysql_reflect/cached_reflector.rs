@@ -4,11 +4,10 @@ use crate::sql::structure::Database;
 use crate::sql::Reflector;
 use std::cell::RefCell;
 
-struct CachedReflector<T, U> {
+pub struct CachedReflector<T, U> {
     inner: T,
     cache: RefCell<U>,
     tag: String,
-    // ...
 }
 
 impl<T, U> Reflector for CachedReflector<T, U>
@@ -33,7 +32,7 @@ where
 }
 
 impl<T, U> CachedReflector<T, U> {
-    fn new<V>(inner: T, cache: U, tag: V) -> Self
+    pub fn wrap<V>(inner: T, cache: U, tag: V) -> Self
     where
         V: Into<String>,
     {
@@ -66,7 +65,7 @@ mod tests {
 
     #[test]
     fn read_from_inner_if_not_cached() {
-        let reflector = CachedReflector::new(
+        let reflector = CachedReflector::wrap(
             MockReflector::default(),
             MemoryCache::<Vec<Database>>::default(),
             "debug",
@@ -82,7 +81,7 @@ mod tests {
         let mut cache = MemoryCache::<Vec<Database>>::default();
         cache.set("debug", &Vec::new());
 
-        let reflector = CachedReflector::new(MockReflector::default(), cache, "debug");
+        let reflector = CachedReflector::wrap(MockReflector::default(), cache, "debug");
 
         let _ = reflector.analyze();
 
@@ -91,7 +90,7 @@ mod tests {
 
     #[test]
     fn values_get_cached() {
-        let reflector = CachedReflector::new(
+        let reflector = CachedReflector::wrap(
             MockReflector::default(),
             MemoryCache::<Vec<Database>>::default(),
             "debug",

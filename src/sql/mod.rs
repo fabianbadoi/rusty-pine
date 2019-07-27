@@ -11,6 +11,10 @@ pub use mysql_reflect::live_analysis::{MySqlReflector, Reflector};
 
 use crate::error::PineError;
 
+pub mod analyzer {
+    pub use super::mysql_reflect::connect;
+}
+
 pub trait Renderer<Q, O> {
     fn render(self, query: &Q) -> Result<O, PineError>;
 }

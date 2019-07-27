@@ -6,7 +6,7 @@ use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-struct ByteFileCache {
+pub struct ByteFileCache {
     base_dir: OsString,
 }
 
@@ -40,7 +40,7 @@ impl Cache<Vec<u8>> for ByteFileCache {
 }
 
 impl ByteFileCache {
-    fn new(dir_path: OsString) -> ByteFileCache {
+    pub fn new(dir_path: OsString) -> ByteFileCache {
         std::fs::create_dir_all(dir_path.clone())
             .expect(&format!("Could not write to dir: {:?}", dir_path));
 

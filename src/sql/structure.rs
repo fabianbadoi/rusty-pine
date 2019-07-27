@@ -1,22 +1,23 @@
-#[derive(Debug, Clone)]
+pub use serde::{Deserialize, Serialize};
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
     pub name: String, // TODO: DatabaseName?
     pub tables: Vec<Table>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Column {
     pub name: String,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: String, // TODO: TableName?
     pub columns: Vec<Column>,
     pub foreign_keys: Vec<ForeignKey>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ForeignKey {
     pub from_column: ColumnName,
     pub to_table: TableName,
@@ -24,9 +25,9 @@ pub struct ForeignKey {
 }
 
 // TODO use these everywhere
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnName(pub String);
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TableName(pub String);
 
 impl Table {

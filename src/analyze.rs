@@ -3,6 +3,8 @@ extern crate pest;
 extern crate pest_derive;
 extern crate mysql;
 extern crate regex;
+extern crate serde;
+extern crate serde_json;
 
 mod cache;
 mod error;
@@ -11,11 +13,11 @@ mod pine_transpiler;
 mod query;
 mod sql;
 
-use sql::{LiveConnection, MySqlReflector, Reflector};
+use sql::analyzer::connect;
+use sql::Reflector;
 
 fn main() {
-    let connection = LiveConnection::new("root", "development", "localhost", 3306).unwrap();
-    let reflector = MySqlReflector::for_connection(connection);
+    let reflector = connect("root", "development", "localhost", 3306).unwrap();
 
     println!("{:#?}", reflector.analyze());
     println!("Hello, world!");
