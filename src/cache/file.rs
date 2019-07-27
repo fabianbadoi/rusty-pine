@@ -1,0 +1,87 @@
+use super::Cache;
+use std::convert::TryInto;
+use std::ffi::OsString;
+use std::fs::File;
+use std::io::Read;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+
+struct FileCache {
+    base_dir: OsString,
+}
+
+impl Cache<Vec<u8>> for FileCache {
+    fn get(&self, tag: &str) -> Option<Vec<u8>> {
+        let mut file = File::open(self.get_path(tag));
+
+        if file.is_err() {
+            return None;
+        }
+        let mut file = file.unwrap();
+
+        let mut buffer = Vec::with_capacity(file.metadata().unwrap().len().try_into().unwrap());
+        let read_result = file.read_to_end(&mut buffer);
+
+        match read_result {
+            Ok(_) => Some(buffer),
+            Err(_) => None,
+        }
+    }
+
+    fn set(&mut self, tag: &str, data: &Vec<u8>) {
+        let path = self.get_path(tag);
+        let mut file =
+            File::create(path.clone()).expect(&format!("could not open file: {:?}", path.clone()));
+
+        let write_result = file
+            .write_all(data)
+            .expect(&format!("could not write to file: {:?}", path));
+    }
+}
+
+impl FileCache {
+    fn new(dir_path: OsString) -> FileCache {
+        std::fs::create_dir_all(dir_path.clone())
+            .expect(&format!("Could not write to dir: {:?}", dir_path));
+
+        FileCache { base_dir: dir_path }
+    }
+
+    fn get_path(&self, tag: &str) -> PathBuf {
+        if tag.contains('/') {
+            panic!("Tags should not contains '/'");
+        }
+
+        Path::new(&self.base_dir).to_path_buf().join(tag)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    pub use super::*;
+
+    #[test]
+    fn can_write_to_files() {
+        let base_dir = std::env::temp_dir()
+            .join("rusty-pine-tests")
+            .into_os_string();
+        let mut cache = FileCache::new(base_dir);
+
+        cache.set("test", &b"some data".to_vec());
+        let read_data = cache.get("test");
+
+        assert!(read_data.is_some());
+        assert_eq!(b"some data", read_data.unwrap().as_slice());
+    }
+
+    #[test]
+    #[should_panic]
+    fn panics_on_bad_tags() {
+        let base_dir = std::env::temp_dir()
+            .join("rusty-pine-tests")
+            .into_os_string();
+        let mut cache = FileCache::new(base_dir);
+
+        cache.set("../test", &b"some data".to_vec());
+    }
+}

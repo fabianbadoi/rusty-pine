@@ -1,3 +1,5 @@
+mod file;
+
 pub trait Cache<T> {
     fn get(&self, tag: &str) -> Option<T>;
     fn set(&mut self, tag: &str, data: &T);
