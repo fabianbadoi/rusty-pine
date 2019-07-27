@@ -6,11 +6,11 @@ use std::io::Read;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-struct FileCache {
+struct ByteFileCache {
     base_dir: OsString,
 }
 
-impl Cache<Vec<u8>> for FileCache {
+impl Cache<Vec<u8>> for ByteFileCache {
     fn get(&self, tag: &str) -> Option<Vec<u8>> {
         let mut file = File::open(self.get_path(tag));
 
@@ -39,12 +39,12 @@ impl Cache<Vec<u8>> for FileCache {
     }
 }
 
-impl FileCache {
-    fn new(dir_path: OsString) -> FileCache {
+impl ByteFileCache {
+    fn new(dir_path: OsString) -> ByteFileCache {
         std::fs::create_dir_all(dir_path.clone())
             .expect(&format!("Could not write to dir: {:?}", dir_path));
 
-        FileCache { base_dir: dir_path }
+        ByteFileCache { base_dir: dir_path }
     }
 
     fn get_path(&self, tag: &str) -> PathBuf {
@@ -65,7 +65,7 @@ mod tests {
         let base_dir = std::env::temp_dir()
             .join("rusty-pine-tests")
             .into_os_string();
-        let mut cache = FileCache::new(base_dir);
+        let mut cache = ByteFileCache::new(base_dir);
 
         cache.set("test", &b"some data".to_vec());
         let read_data = cache.get("test");
@@ -80,7 +80,7 @@ mod tests {
         let base_dir = std::env::temp_dir()
             .join("rusty-pine-tests")
             .into_os_string();
-        let mut cache = FileCache::new(base_dir);
+        let mut cache = ByteFileCache::new(base_dir);
 
         cache.set("../test", &b"some data".to_vec());
     }
