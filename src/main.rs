@@ -3,12 +3,12 @@ extern crate pest;
 extern crate pest_derive;
 extern crate regex;
 
+mod cache;
 mod error;
 mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
-mod cache;
 
 fn main() {
     use pine_transpiler::{MySqlTranspiler, Transpiler};

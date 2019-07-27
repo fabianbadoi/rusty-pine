@@ -1,8 +1,8 @@
-use crate::sql::Reflector;
-use crate::sql::structure::Database;
-use crate::error::PineError;
-use std::cell::RefCell;
 use crate::cache::Cache;
+use crate::error::PineError;
+use crate::sql::structure::Database;
+use crate::sql::Reflector;
+use std::cell::RefCell;
 
 struct CachedReflector<T, U> {
     inner: T,
@@ -12,7 +12,10 @@ struct CachedReflector<T, U> {
 }
 
 impl<T, U> Reflector for CachedReflector<T, U>
-where T: Reflector, U: Cache<Vec<Database>> {
+where
+    T: Reflector,
+    U: Cache<Vec<Database>>,
+{
     fn analyze(&self) -> Result<Vec<Database>, PineError> {
         let from_cache = self.cache.borrow().get(&self.tag);
 
@@ -30,7 +33,10 @@ where T: Reflector, U: Cache<Vec<Database>> {
 }
 
 impl<T, U> CachedReflector<T, U> {
-    fn new<V>(inner: T, cache: U, tag: V) -> Self where V: Into<String> {
+    fn new<V>(inner: T, cache: U, tag: V) -> Self
+    where
+        V: Into<String>,
+    {
         let tag = tag.into();
         let cache = RefCell::new(cache);
 
@@ -38,11 +44,11 @@ impl<T, U> CachedReflector<T, U> {
     }
 }
 
-#[cfg(test)] 
+#[cfg(test)]
 mod tests {
-    use crate::cache::MemoryCache;
     use super::*;
-    use std::cell::{ Cell};
+    use crate::cache::MemoryCache;
+    use std::cell::Cell;
     use std::default::Default;
 
     #[derive(Default)]
@@ -52,7 +58,9 @@ mod tests {
 
     impl MockReflector {
         fn new() -> MockReflector {
-            MockReflector { was_called: Cell::new(false) }
+            MockReflector {
+                was_called: Cell::new(false),
+            }
         }
     }
 
@@ -66,7 +74,11 @@ mod tests {
 
     #[test]
     fn read_from_inner_if_not_cached() {
-        let reflector = CachedReflector::new(MockReflector::default(), MemoryCache::<Vec<Database>>::default(), "debug");
+        let reflector = CachedReflector::new(
+            MockReflector::default(),
+            MemoryCache::<Vec<Database>>::default(),
+            "debug",
+        );
 
         let _ = reflector.analyze();
 
@@ -87,7 +99,11 @@ mod tests {
 
     #[test]
     fn values_get_cached() {
-        let reflector = CachedReflector::new(MockReflector::default(), MemoryCache::<Vec<Database>>::default(), "debug");
+        let reflector = CachedReflector::new(
+            MockReflector::default(),
+            MemoryCache::<Vec<Database>>::default(),
+            "debug",
+        );
 
         let _ = reflector.analyze();
 

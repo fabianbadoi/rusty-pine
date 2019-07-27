@@ -1,5 +1,5 @@
-use super::connection::Connection;
 use super::super::structure::{Database, Table};
+use super::connection::Connection;
 use crate::error::PineError;
 
 pub trait Reflector {

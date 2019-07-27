@@ -1,5 +1,5 @@
-use super::structure::{Table, ForeignKey};
 use super::renderer::{render_filters, render_from, render_limit, render_select};
+use super::structure::{ForeignKey, Table};
 use super::Renderer;
 use crate::error::PineError;
 use crate::query::Query;

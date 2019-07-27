@@ -1,9 +1,9 @@
 mod contextual_renderer;
 mod mysql_reflect;
 mod renderer;
-mod structure;
 #[cfg(test)]
 mod shorthand;
+mod structure;
 
 pub use self::renderer::DumbRenderer;
 pub use mysql_reflect::connection::{Connection, LiveConnection};
