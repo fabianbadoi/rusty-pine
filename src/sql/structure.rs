@@ -1,22 +1,22 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Database {
     pub name: String, // TODO: DatabaseName?
     pub tables: Vec<Table>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Column {
     pub name: String,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub name: String, // TODO: TableName?
     pub columns: Vec<Column>,
     pub foreign_keys: Vec<ForeignKey>,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ForeignKey {
     pub from_column: ColumnName,
     pub to_table: TableName,
@@ -24,9 +24,9 @@ pub struct ForeignKey {
 }
 
 // TODO use these everywhere
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ColumnName(pub String);
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TableName(pub String);
 
 impl Table {

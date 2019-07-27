@@ -56,14 +56,6 @@ mod tests {
         was_called: Cell<bool>,
     }
 
-    impl MockReflector {
-        fn new() -> MockReflector {
-            MockReflector {
-                was_called: Cell::new(false),
-            }
-        }
-    }
-
     impl Reflector for MockReflector {
         fn analyze(&self) -> Result<Vec<Database>, PineError> {
             self.was_called.replace(true);

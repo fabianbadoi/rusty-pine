@@ -12,7 +12,7 @@ struct ByteFileCache {
 
 impl Cache<Vec<u8>> for ByteFileCache {
     fn get(&self, tag: &str) -> Option<Vec<u8>> {
-        let mut file = File::open(self.get_path(tag));
+        let file = File::open(self.get_path(tag));
 
         if file.is_err() {
             return None;
@@ -33,7 +33,7 @@ impl Cache<Vec<u8>> for ByteFileCache {
         let mut file =
             File::create(path.clone()).expect(&format!("could not open file: {:?}", path.clone()));
 
-        let write_result = file
+        let _ = file
             .write_all(data)
             .expect(&format!("could not write to file: {:?}", path));
     }
