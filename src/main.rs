@@ -8,6 +8,7 @@ mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
+mod cache;
 
 fn main() {
     use pine_transpiler::{MySqlTranspiler, Transpiler};

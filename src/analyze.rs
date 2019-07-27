@@ -9,6 +9,7 @@ mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
+mod cache;
 
 use sql::{LiveConnection, MySqlReflector, Reflector};
 
