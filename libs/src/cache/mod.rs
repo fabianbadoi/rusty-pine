@@ -3,6 +3,7 @@ mod serde;
 
 pub use self::serde::SerializedCache;
 pub use file::ByteFileCache;
+pub use std::path::Path;
 
 pub type DefaultCache = SerializedCache<ByteFileCache>;
 
@@ -17,6 +18,14 @@ pub fn make_cahe(path: &str) -> DefaultCache {
 
     let path = Path::new(&std::env::var("HOME").unwrap())
         .join(".cache/rusty-pine")
+        .join(path);
+
+    SerializedCache::wrap(ByteFileCache::new(path.into()))
+}
+
+pub fn make_config(path: &Path) -> DefaultCache {
+    let path = Path::new(&std::env::var("HOME").unwrap())
+        .join(".config/rusty-pine")
         .join(path);
 
     SerializedCache::wrap(ByteFileCache::new(path.into()))

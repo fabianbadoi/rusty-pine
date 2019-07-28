@@ -74,6 +74,7 @@ mod tests {
     fn can_write_to_files() {
         let base_dir = std::env::temp_dir()
             .join("rusty-pine-tests")
+            .join("file-cache")
             .into_os_string();
         let mut cache = ByteFileCache::new(base_dir);
 
@@ -89,6 +90,7 @@ mod tests {
     fn panics_on_bad_tags() {
         let base_dir = std::env::temp_dir()
             .join("rusty-pine-tests")
+            .join("file-cache")
             .into_os_string();
         let mut cache = ByteFileCache::new(base_dir);
 

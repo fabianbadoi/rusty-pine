@@ -5,6 +5,7 @@ extern crate regex;
 extern crate serde;
 extern crate serde_json;
 
+mod config;
 mod cache;
 mod error;
 mod pine_syntax;
