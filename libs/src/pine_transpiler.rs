@@ -1,7 +1,7 @@
 use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
-use crate::sql::{DumbRenderer, Renderer};
+use crate::sql::{SmartRenderer, Renderer};
 
 type TranspileResult<O> = Result<O, PineError>;
 
@@ -9,7 +9,7 @@ pub trait Transpiler<I, O> {
     fn transpile(self, input: I) -> TranspileResult<O>;
 }
 
-pub type MySqlTranspiler = GenericTranspiler<PestPineParser, NaiveBuilder, DumbRenderer>;
+pub type MySqlTranspiler = GenericTranspiler<PestPineParser, NaiveBuilder, SmartRenderer>;
 
 pub struct GenericTranspiler<Parser, Builder, Renderer> {
     parser: Parser,
@@ -34,25 +34,25 @@ where
     }
 }
 
-impl GenericTranspiler<PestPineParser, NaiveBuilder, DumbRenderer> {
-    pub fn default() -> Self {
-        GenericTranspiler {
-            parser: PestPineParser {},
-            builder: NaiveBuilder {},
-            renderer: DumbRenderer {},
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    impl GenericTranspiler<PestPineParser, NaiveBuilder, SmartRenderer> {
+        pub fn default() -> Self {
+            GenericTranspiler {
+                parser: PestPineParser {},
+                builder: NaiveBuilder {},
+                renderer: SmartRenderer::for_tables(Vec::new()),
+            }
+        }
+    }
 
     #[test]
     fn test_simple_parse() {
         let parser = MySqlTranspiler::default();
         let query = parser.transpile("f: users | s: name | w: id = 3").unwrap();
 
-        assert_eq!("SELECT name\nFROM users\nWHERE id = \"3\"", query);
+        assert_eq!("SELECT name\nFROM users\nWHERE id = \"3\"\nLIMIT 10", query);
     }
 }

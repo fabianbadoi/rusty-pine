@@ -15,8 +15,6 @@ pub trait Cache<T> {
 }
 
 pub fn make_cache(path: &str) -> DefaultCache {
-    use std::path::Path;
-
     let path = Path::new(&std::env::var("HOME").unwrap())
         .join(".cache/rusty-pine")
         .join(path);

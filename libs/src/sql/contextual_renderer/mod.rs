@@ -12,13 +12,17 @@ impl Renderer<Query, String> for &SmartRenderer {
     fn render(self, query: &Query) -> Result<String, PineError> {
         let render_operation = RenderOperation::new(&self.tables, query);
 
-        render_operation.render()
+        render_operation.render().map(SmartRenderer::clean_query)
     }
 }
 
 impl SmartRenderer {
     pub fn for_tables(tables: Vec<Table>) -> SmartRenderer {
         SmartRenderer { tables }
+    }
+
+    fn clean_query(query: String) -> String {
+        query.replace("\n\n", "\n")
     }
 }
 
@@ -136,7 +140,7 @@ mod tests {
         let rendering = renderer.render(&query).unwrap();
 
         assert_eq!(
-            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"\nLIMIT 5",
+            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"\nLIMIT 10",
             rendering
         );
     }

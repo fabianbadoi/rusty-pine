@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::cache::{make_config, Cache, DefaultCache};
-use crate::error::PineError;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::Path;

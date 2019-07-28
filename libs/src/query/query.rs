@@ -14,7 +14,7 @@ impl Default for Query {
             from: Default::default(),
             joins: Default::default(),
             filters: Default::default(),
-            limit: 5,
+            limit: 10,
         }
     }
 }

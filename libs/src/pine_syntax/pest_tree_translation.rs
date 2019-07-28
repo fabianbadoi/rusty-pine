@@ -126,16 +126,16 @@ impl Translator {
         } else {
             self.translate_from(node)
         };
-        let mut rest = inner.skip(1).peekable();
-
-        let filters: Vec<_> = if rest.peek().unwrap().as_rule() == Rule::filter {
-            rest.map(|f| translate_filter(f)).collect()
-        } else {
-            vec![translate_implicit_id_equals(rest.next().unwrap())]
-        };
 
         let mut operations = vec_with_from;
-        operations.push(Operation::Filter(filters));
+
+        let filters: Vec<_> = inner
+            .skip(1)
+            .map(|f| translate_filter_or_implicit_id(f))
+            .collect();
+        if filters.len() > 0 {
+            operations.push(Operation::Filter(filters));
+        }
 
         operations
     }
@@ -257,6 +257,14 @@ impl From<PestError<Rule>> for SyntaxError {
     }
 }
 
+fn translate_filter_or_implicit_id(node: PestNode) -> FilterNode {
+    match node.as_rule() {
+        Rule::numeric_value => translate_implicit_id_equals(node),
+        Rule::filter => translate_filter(node),
+        _ => panic!("can't treat this node as a filter: {:#?}", node),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::pest::PinePestParser as AstParser;
@@ -295,6 +303,40 @@ mod tests {
 
         if let Operation::From(ref table_name) = pine_node.inner.operations[0].inner {
             assert_eq!("users", table_name.inner);
+        }
+    }
+
+    #[test]
+    fn parse_simple_compound_statement() {
+        let parser = PestPineParser {};
+        let pine_node = parser.parse("users | friends").unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[1].inner.get_name());
+    }
+
+    #[test]
+    fn parse_compound_statement() {
+        let parser = PestPineParser {};
+        let pine_node = parser.parse("users | friends id = 1").unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[2].inner.get_name());
+    }
+
+    #[test]
+    fn parse_complex_compound_statement() {
+        let parser = PestPineParser {};
+        let pine_node = parser.parse("users 1 parent=33 | friends id = 1").unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[2].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[3].inner.get_name());
+
+        if let Operation::Filter(ref filters) = pine_node.inner.operations[1].inner {
+            assert_eq!(2, filters.len());
         }
     }
 
