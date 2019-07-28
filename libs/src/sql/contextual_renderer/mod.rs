@@ -81,27 +81,39 @@ impl<'a> RenderOperation<'a> {
 
         match find_fk {
             Some(ref fk) => Ok((&fk.from_column.0, &fk.to_column.0)),
-            None => Err(self.make_cannot_find_fk_error(to_table)),
+            None => {
+                let other_table = self
+                    .find_table_by_name(to_table)
+                    .ok_or(self.make_cannot_find_table_error(to_table))?;
+                let find_reverse_fk = other_table.get_foreign_key(self.last_table);
+
+                match find_reverse_fk {
+                    Some(ref fk) => Ok((&fk.to_column.0, &fk.from_column.0)),
+                    None => Err(self.make_cannot_find_fk_error(to_table)),
+                }
+            }
         }
     }
 
     fn get_last_table(&self) -> Result<&'a Table, String> {
-        let find_table = self.tables.iter().find(|table| {
-            // maybe having a HashMap instead of a vector would be better, but tables don't
-            // usually have that much data
-            table.name == self.last_table
-        });
-
-        match find_table {
+        match self.find_table_by_name(self.last_table) {
             Some(ref table) => Ok(table),
-            None => Err(self.make_cannot_find_table_error()),
+            None => Err(self.make_cannot_find_table_error(self.last_table)),
         }
     }
 
-    fn make_cannot_find_table_error(&self) -> String {
+    fn find_table_by_name(&self, name: &str) -> Option<&'a Table> {
+        self.tables.iter().find(|table| {
+            // maybe having a HashMap instead of a vector would be better, but tables don't
+            // usually have that much data
+            table.name == name
+        })
+    }
+
+    fn make_cannot_find_table_error(&self, table: &str) -> String {
         format!(
             "Unkown table `{}`. Try:\n{}",
-            self.last_table,
+            table,
             self.tables
                 .iter()
                 .map(|table| table.name.as_ref())
@@ -154,7 +166,7 @@ mod tests {
         let error = renderer.render(&query).unwrap_err();
 
         assert_eq!(
-            "Couldn't find foreign key from `users` to `missing`. Try:\nfriends",
+            "Unkown table `missing`. Try:\nusers\nfriends",
             format!("{}", error)
         );
     }
