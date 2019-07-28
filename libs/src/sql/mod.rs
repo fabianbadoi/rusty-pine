@@ -8,6 +8,7 @@ mod structure;
 pub use self::renderer::DumbRenderer;
 pub use mysql_reflect::connection::{Connection, LiveConnection};
 pub use mysql_reflect::live_analysis::{MySqlReflector, Reflector};
+pub use mysql_reflect::DefaultReflector;
 
 use crate::error::PineError;
 

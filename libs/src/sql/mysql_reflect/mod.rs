@@ -9,7 +9,7 @@ use cached_reflector::CachedReflector;
 use connection::LiveConnection;
 use live_analysis::{MySqlReflector, MySqlTableParser};
 
-type DefaultReflector =
+pub type DefaultReflector =
     CachedReflector<MySqlReflector<LiveConnection, MySqlTableParser>, DefaultCache>;
 
 pub fn connect(
