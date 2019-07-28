@@ -19,4 +19,8 @@ where
     fn set(&mut self, tag: &str, data: &T) {
         let _ = self.cache.borrow_mut().insert(tag.to_owned(), data.clone());
     }
+
+    fn clear(&mut self) {
+        self.cache.borrow_mut().clear();
+    }
 }

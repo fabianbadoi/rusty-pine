@@ -31,6 +31,10 @@ where
         let serialized = serde_json::to_vec(data).expect("failed to write data");
         self.inner.set(tag, &serialized)
     }
+
+    fn clear(&mut self) {
+        self.inner.clear()
+    }
 }
 
 #[cfg(test)]

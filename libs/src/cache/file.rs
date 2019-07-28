@@ -29,6 +29,8 @@ impl Cache<Vec<u8>> for ByteFileCache {
     }
 
     fn set(&mut self, tag: &str, data: &Vec<u8>) {
+        Self::ensure_dir_exists(&self.base_dir);
+
         let path = self.get_path(tag);
         let mut file =
             File::create(path.clone()).expect(&format!("could not open file: {:?}", path.clone()));
@@ -37,12 +39,15 @@ impl Cache<Vec<u8>> for ByteFileCache {
             .write_all(data)
             .expect(&format!("could not write to file: {:?}", path));
     }
+
+    fn clear(&mut self) {
+        let _result = std::fs::remove_dir_all(self.base_dir.clone());
+    }
 }
 
 impl ByteFileCache {
     pub fn new(dir_path: OsString) -> ByteFileCache {
-        std::fs::create_dir_all(dir_path.clone())
-            .expect(&format!("Could not write to dir: {:?}", dir_path));
+        Self::ensure_dir_exists(&dir_path);
 
         ByteFileCache { base_dir: dir_path }
     }
@@ -53,6 +58,11 @@ impl ByteFileCache {
         }
 
         Path::new(&self.base_dir).to_path_buf().join(tag)
+    }
+
+    fn ensure_dir_exists(path: &OsString) {
+        std::fs::create_dir_all(path.clone())
+            .expect(&format!("Could not write to dir: {:?}", path));
     }
 }
 

@@ -14,6 +14,7 @@ use crate::error::PineError;
 
 pub mod analyzer {
     pub use super::mysql_reflect::connect;
+    pub use super::mysql_reflect::connect_fresh;
 }
 
 pub trait Renderer<Q, O> {
