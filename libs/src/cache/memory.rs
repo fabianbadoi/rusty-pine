@@ -1,11 +1,10 @@
 use super::Cache;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct MemoryCache<T> {
-    cache: RefCell<HashMap<String, T>>,
+    cache: HashMap<String, T>,
 }
 
 impl<T> Cache<T> for MemoryCache<T>
@@ -13,18 +12,18 @@ where
     T: Clone,
 {
     fn get(&self, tag: &str) -> Option<T> {
-        self.cache.borrow().get(tag).cloned()
+        self.cache.get(tag).cloned()
     }
 
     fn set(&mut self, tag: &str, data: &T) {
-        let _ = self.cache.borrow_mut().insert(tag.to_owned(), data.clone());
+        let _ = self.cache.insert(tag.to_owned(), data.clone());
     }
 
     fn clear(&mut self) {
-        self.cache.borrow_mut().clear();
+        self.cache.clear();
     }
 
     fn has(&self, tag: &str) -> bool {
-        self.cache.borrow().contains_key(tag)
+        self.cache.contains_key(tag)
     }
 }
