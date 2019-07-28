@@ -5,8 +5,8 @@ extern crate regex;
 extern crate serde;
 extern crate serde_json;
 
-mod config;
 mod cache;
+mod config;
 mod error;
 mod pine_syntax;
 mod pine_transpiler;
@@ -16,3 +16,4 @@ mod sql;
 mod analyzer;
 
 pub use analyzer::Analyzer;
+pub use config::{Config, read as read_config};

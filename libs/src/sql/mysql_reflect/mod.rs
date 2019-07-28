@@ -3,7 +3,7 @@ pub mod connection;
 pub mod live_analysis;
 pub mod parsing;
 
-use crate::cache::{make_cahe, DefaultCache, Cache};
+use crate::cache::{make_cahe, Cache, DefaultCache};
 use crate::error::PineError;
 use cached_reflector::CachedReflector;
 use connection::LiveConnection;
@@ -11,7 +11,6 @@ use live_analysis::{MySqlReflector, MySqlTableParser};
 
 pub type DefaultReflector =
     CachedReflector<MySqlReflector<LiveConnection, MySqlTableParser>, DefaultCache>;
-
 
 /// Connects and uses cache where possible
 pub fn connect(

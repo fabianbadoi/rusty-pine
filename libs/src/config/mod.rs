@@ -1,17 +1,32 @@
 use serde::{Deserialize, Serialize};
 
+use crate::cache::{make_config, Cache, DefaultCache};
 use crate::error::PineError;
-use std::path::Path;
-use std::ffi::OsString;
-use crate::cache::{DefaultCache, make_config, Cache};
 use std::cell::RefCell;
+use std::ffi::OsString;
+use std::path::Path;
 
-#[derive(Default, Clone, Serialize, Deserialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
     pub user: String,
     pub password: String,
     pub host: String,
     pub port: u16,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            user: "root".to_owned(),
+            password: "<password>".to_owned(),
+            host: "localhost".to_owned(),
+            port: 3306,
+        }
+    }
+}
+
+pub fn read() -> Config {
+    FileProvider::new(&Path::new("config.json")).get()
 }
 
 pub trait ConfigProvider {
@@ -25,21 +40,27 @@ pub struct FileProvider {
 }
 
 impl FileProvider {
-      pub fn new(path: &Path) -> FileProvider {
-          let base_dir = path.parent().expect(&format!("Invalid path specified: {:?}", path));
-          let tag = path.file_name().expect(&format!("Invalid path specified: {:?}", path)).to_str().unwrap().to_owned();
+    pub fn new(path: &Path) -> FileProvider {
+        let base_dir = path
+            .parent()
+            .expect(&format!("Invalid path specified: {:?}", path));
+        let tag = path
+            .file_name()
+            .expect(&format!("Invalid path specified: {:?}", path))
+            .to_str()
+            .unwrap()
+            .to_owned();
 
-          let store = RefCell::new(make_config(&base_dir));
+        let store = RefCell::new(make_config(&base_dir));
 
-          FileProvider {
-              store,
-              tag,
-              file_path: OsString::from(path),
-          }
-      }
+        FileProvider {
+            store,
+            tag,
+            file_path: OsString::from(dbg!(path)),
+        }
+    }
 
-    fn create_default_config(&self) -> Config
-    {
+    fn create_default_config(&self) -> Config {
         if (&*self.store.borrow() as &dyn Cache<Config>).has(&self.tag) {
             panic!("Invalid config file is already present at {:?}, please fix or remove it");
         }
@@ -74,7 +95,7 @@ mod tests {
         let path = std::env::temp_dir()
             .join("rusty-pine-tests")
             .join("config")
-            .join("connection.json");
+            .join("config.json");
         let _makeing_sure_file_doesnt_exist = std::fs::remove_file(&path);
 
         let provider = FileProvider::new(&path);
@@ -91,11 +112,11 @@ mod tests {
         let path = std::env::temp_dir()
             .join("rusty-pine-tests")
             .join("config")
-            .join("connection2.json");
+            .join("config2.json");
 
         let _makeing_sure_file_doesnt_exist = std::fs::remove_file(&path);
         {
-            std::fs::File::create(&path); // empty file now exists
+            std::fs::File::create(&path).unwrap(); // empty file now exists
         }
 
         let provider = FileProvider::new(&path);

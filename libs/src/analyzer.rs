@@ -1,33 +1,23 @@
-use crate::sql::analyzer::{connect,connect_fresh};
+use crate::sql::analyzer::{connect, connect_fresh};
 use crate::sql::DefaultReflector;
 use crate::sql::Reflector;
-
 use crate::error::PineError;
+use crate::config::Config;
 
 pub struct Analyzer {
     inner: DefaultReflector,
 }
 
 impl Analyzer {
-    pub fn connect(
-        user: &str,
-        password: &str,
-        host: &str,
-        port: u16,
-    ) -> Result<Analyzer, PineError> {
+    pub fn connect(config: &Config) -> Result<Analyzer, PineError> {
         Ok(Analyzer {
-            inner: connect(user, password, host, port)?,
+            inner: connect(&config.user, &config.password, &config.host, config.port)?,
         })
     }
 
-    pub fn connect_fresh(
-        user: &str,
-        password: &str,
-        host: &str,
-        port: u16,
-    ) -> Result<Analyzer, PineError> {
+    pub fn connect_fresh(config: &Config) -> Result<Analyzer, PineError> {
         Ok(Analyzer {
-            inner: connect_fresh(user, password, host, port)?,
+            inner: connect_fresh(&config.user, &config.password, &config.host, config.port)?,
         })
     }
 
