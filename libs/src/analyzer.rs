@@ -1,8 +1,8 @@
+use crate::config::Config;
+use crate::error::PineError;
 use crate::sql::analyzer::{connect, connect_fresh};
 use crate::sql::DefaultReflector;
 use crate::sql::Reflector;
-use crate::error::PineError;
-use crate::config::Config;
 
 pub struct Analyzer {
     inner: DefaultReflector,

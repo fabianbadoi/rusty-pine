@@ -14,7 +14,7 @@ pub trait Cache<T> {
     fn has(&self, tag: &str) -> bool;
 }
 
-pub fn make_cahe(path: &str) -> DefaultCache {
+pub fn make_cache(path: &str) -> DefaultCache {
     use std::path::Path;
 
     let path = Path::new(&std::env::var("HOME").unwrap())

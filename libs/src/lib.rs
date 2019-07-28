@@ -16,4 +16,4 @@ mod sql;
 mod analyzer;
 
 pub use analyzer::Analyzer;
-pub use config::{Config, read as read_config};
+pub use config::{read as read_config, Config};

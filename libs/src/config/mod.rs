@@ -6,6 +6,14 @@ use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::Path;
 
+pub fn get_config_file_name(file: &str) -> OsString {
+    let path = Path::new(&std::env::var("HOME").unwrap())
+        .join(".config/rusty-pine")
+        .join(file);
+
+    path.into()
+}
+
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Config {
     pub user: String,
@@ -26,7 +34,7 @@ impl Default for Config {
 }
 
 pub fn read() -> Config {
-    FileProvider::new(&Path::new("config.json")).get()
+    FileProvider::new(&Path::new(&get_config_file_name("config.json"))).get()
 }
 
 pub trait ConfigProvider {
@@ -56,7 +64,7 @@ impl FileProvider {
         FileProvider {
             store,
             tag,
-            file_path: OsString::from(dbg!(path)),
+            file_path: OsString::from(path),
         }
     }
 

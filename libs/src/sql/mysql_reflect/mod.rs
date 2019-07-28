@@ -3,7 +3,7 @@ pub mod connection;
 pub mod live_analysis;
 pub mod parsing;
 
-use crate::cache::{make_cahe, Cache, DefaultCache};
+use crate::cache::{make_cache, Cache, DefaultCache};
 use crate::error::PineError;
 use cached_reflector::CachedReflector;
 use connection::LiveConnection;
@@ -49,5 +49,5 @@ pub fn connect_fresh(
 }
 
 fn make_reflector_cache() -> DefaultCache {
-    make_cahe("cache/v1")
+    make_cache("cache/v1")
 }
