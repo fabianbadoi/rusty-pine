@@ -3,7 +3,7 @@ mod mysql_reflect;
 mod renderer;
 #[cfg(test)]
 mod shorthand;
-mod structure;
+pub mod structure;
 
 pub use contextual_renderer::SmartRenderer;
 pub use mysql_reflect::connection::{Connection, LiveConnection};

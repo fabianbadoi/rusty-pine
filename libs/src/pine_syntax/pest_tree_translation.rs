@@ -13,6 +13,7 @@ use std::convert::From;
 
 type PestNode<'a> = Pair<'a, Rule>;
 
+#[derive(Debug)]
 pub struct PestPineParser;
 
 impl PineParser for &PestPineParser {

@@ -38,10 +38,11 @@ TODO:
 - [x] Compound expression join statements
 - [x] Support for limit
 - [x] Implement live SQL analisys
+- [ ] Move complexity from SmartRenderer to Builder
+- [ ] Usable binaries
 - [ ] Add logging
 - [ ] Auto join
 - [ ] All outputted errors must be SQL commnets
-- [ ] Usable binaries
 - [ ] other comparisons
 - [ ] Complex values
 - [ ] Auto deep join

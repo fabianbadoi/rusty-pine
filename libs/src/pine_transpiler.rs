@@ -1,7 +1,9 @@
 use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, Query, QueryBuilder};
-use crate::sql::{SmartRenderer, Renderer};
+use crate::sql::{Renderer, SmartRenderer};
+use crate::Analyzer;
+use crate::Config;
 
 type TranspileResult<O> = Result<O, PineError>;
 
@@ -11,6 +13,7 @@ pub trait Transpiler<I, O> {
 
 pub type MySqlTranspiler = GenericTranspiler<PestPineParser, NaiveBuilder, SmartRenderer>;
 
+#[derive(Debug)]
 pub struct GenericTranspiler<Parser, Builder, Renderer> {
     parser: Parser,
     builder: Builder,
@@ -32,6 +35,17 @@ where
 
         output
     }
+}
+
+pub fn connect(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
+    let analyezer = Analyzer::connect(config).unwrap();
+    let mut database = analyezer.analyze(db_name)?;
+
+    Ok(GenericTranspiler {
+        parser: PestPineParser {},
+        builder: NaiveBuilder {},
+        renderer: SmartRenderer::for_tables(database.tables),
+    })
 }
 
 #[cfg(test)]

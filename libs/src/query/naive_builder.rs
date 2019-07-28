@@ -10,6 +10,7 @@ use crate::query::{
 };
 
 /// Has no concept of context, more complex queries will fail to build
+#[derive(Debug)]
 pub struct NaiveBuilder;
 
 struct SingleUseQueryBuilder<'a> {

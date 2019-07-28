@@ -4,6 +4,7 @@ use super::Renderer;
 use crate::error::PineError;
 use crate::query::Query;
 
+#[derive(Debug)]
 pub struct SmartRenderer {
     tables: Vec<Table>,
 }

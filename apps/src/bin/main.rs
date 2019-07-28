@@ -1,57 +1,13 @@
+extern crate rusty_pine_lib;
+
+use rusty_pine_lib::read_config;
+use rusty_pine_lib::{connect_transpiler, Transpiler};
+
 fn main() {
-    //    use pine_transpiler::{MySqlTranspiler, Transpiler};
-    //
-    //    let transpiler = MySqlTranspiler::default();
-    //
-    //    // normal flow
-    //    println!("------------------------------");
-    //    println!(
-    //        "{}",
-    //        transpiler.transpile("from: users | where: id = 3").unwrap()
-    //    );
-    //    println!("------------------------------");
-    //
-    //    // faulty limit
-    //    println!("------------------------------");
-    //    println!(
-    //        "{}",
-    //        transpiler
-    //            .transpile("from: users | l: 500000000000000000000000000")
-    //            .unwrap_err()
-    //    );
-    //    println!("------------------------------");
-    //
-    //    // syntax error 1
-    //    println!("------------------------------");
-    //    println!(
-    //        "{}",
-    //        transpiler
-    //            .transpile("from: users | filter: id = 3 | select: id")
-    //            .unwrap_err()
-    //    );
-    //    println!("------------------------------");
-    //
-    //    // syntax erro 2
-    //    println!("------------------------------");
-    //    println!(
-    //        "{}",
-    //        transpiler
-    //            .transpile("from: users | where: id  3 3 id | select: id")
-    //            .unwrap_err()
-    //    );
-    //    println!("------------------------------");
-    //
-    //    // query builder flow
-    //    println!("------------------------------");
-    //    println!(
-    //        "{}",
-    //        transpiler
-    //            .transpile("where: id = 3 | select: id")
-    //            .unwrap_err()
-    //    );
-    //    println!("------------------------------");
-    //
-    //    println!("------------------------------");
-    //    println!("{}", transpiler.transpile("users 3").unwrap());
-    //    println!("------------------------------");
+    let transpiler = connect_transpiler(&read_config(), "penneo").unwrap();
+
+    match transpiler.transpile("users 1- | folders ") {
+        Ok(query) => println!("{}", query),
+        Err(error) => println!("/*\n{}\n*/", error),
+    }
 }
