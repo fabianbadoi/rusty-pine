@@ -40,8 +40,11 @@ impl FileProvider {
 
     fn create_default_config(&self) -> Config
     {
+        if (&*self.store.borrow() as &dyn Cache<Config>).has(&self.tag) {
+            panic!("Invalid config file is already present at {:?}, please fix or remove it");
+        }
+
         let default_config = Default::default();
-        // TODO: don't override on read errors
         self.store.borrow_mut().set(&self.tag, &default_config);
 
         println!("Created config file at {:?}", self.file_path);
@@ -67,7 +70,7 @@ mod tests {
     use crate::cache::{ByteFileCache, SerializedCache};
 
     #[test]
-    fn test_provides_default_if_not_present() {
+    fn provides_default_if_not_present() {
         let path = std::env::temp_dir()
             .join("rusty-pine-tests")
             .join("config")
@@ -80,5 +83,23 @@ mod tests {
 
         let default_file_was_created = path.exists();
         assert!(default_file_was_created);
+    }
+
+    #[test]
+    #[should_panic]
+    fn does_not_override_invalid_config_files() {
+        let path = std::env::temp_dir()
+            .join("rusty-pine-tests")
+            .join("config")
+            .join("connection2.json");
+
+        let _makeing_sure_file_doesnt_exist = std::fs::remove_file(&path);
+        {
+            std::fs::File::create(&path); // empty file now exists
+        }
+
+        let provider = FileProvider::new(&path);
+
+        provider.get();
     }
 }
