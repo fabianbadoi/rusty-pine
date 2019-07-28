@@ -11,6 +11,7 @@ pub trait Cache<T> {
     fn get(&self, tag: &str) -> Option<T>;
     fn set(&mut self, tag: &str, data: &T);
     fn clear(&mut self);
+    fn has(&self, tag: &str) -> bool;
 }
 
 pub fn make_cahe(path: &str) -> DefaultCache {

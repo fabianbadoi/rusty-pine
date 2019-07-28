@@ -23,4 +23,8 @@ where
     fn clear(&mut self) {
         self.cache.borrow_mut().clear();
     }
+
+    fn has(&self, tag: &str) -> bool {
+        self.cache.borrow().contains_key(tag)
+    }
 }

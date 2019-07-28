@@ -43,6 +43,10 @@ impl Cache<Vec<u8>> for ByteFileCache {
     fn clear(&mut self) {
         let _result = std::fs::remove_dir_all(self.base_dir.clone());
     }
+
+    fn has(&self, tag: &str) -> bool {
+        self.get_path(tag).exists()
+    }
 }
 
 impl ByteFileCache {

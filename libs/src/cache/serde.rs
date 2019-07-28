@@ -35,6 +35,11 @@ where
     fn clear(&mut self) {
         self.inner.clear()
     }
+
+    fn has(&self, tag: &str) -> bool {
+        // will return true, even if the value will fail to deserialie
+        self.inner.has(tag)
+    }
 }
 
 #[cfg(test)]
