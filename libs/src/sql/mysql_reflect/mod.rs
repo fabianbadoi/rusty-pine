@@ -24,7 +24,7 @@ pub fn connect(
 
     Ok(DefaultReflector::wrap(
         MySqlReflector::for_connection(connection),
-        make_cahe(".cache/rusty-pine/cache/v1"),
+        make_reflector_cache(),
         format!("{}@{}_{}", user, host, port),
     ))
 }
@@ -37,7 +37,7 @@ pub fn connect_fresh(
     port: u16,
 ) -> Result<DefaultReflector, PineError> {
     let connection = LiveConnection::new(user, password, host, port)?;
-    let mut cache = make_cahe(".cache/rusty-pine/cache/v1");
+    let mut cache = make_reflector_cache();
 
     // it doesn't matter what cache type this is, it will clear everything anyway
     (&mut cache as &mut Cache<u8>).clear();
@@ -47,4 +47,8 @@ pub fn connect_fresh(
         cache,
         format!("{}@{}_{}", user, host, port),
     ))
+}
+
+fn make_reflector_cache() -> DefaultCache {
+    make_cahe("cache/v1")
 }

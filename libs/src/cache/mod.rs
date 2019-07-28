@@ -15,7 +15,9 @@ pub trait Cache<T> {
 pub fn make_cahe(path: &str) -> DefaultCache {
     use std::path::Path;
 
-    let path = Path::new(&std::env::var("HOME").unwrap()).join(path);
+    let path = Path::new(&std::env::var("HOME").unwrap())
+        .join(".cache/rusty-pine")
+        .join(path);
 
     SerializedCache::wrap(ByteFileCache::new(path.into()))
 }
