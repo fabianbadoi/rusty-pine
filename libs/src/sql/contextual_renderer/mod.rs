@@ -1,8 +1,10 @@
-use super::renderer::{render_filters, render_from, render_limit, render_select};
+use explicit_representation::{ ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder};
 use super::structure::Table;
 use super::Renderer;
 use crate::error::PineError;
-use crate::query::Query;
+use crate::query::{Query, Condition};
+
+mod explicit_representation;
 
 #[derive(Debug)]
 pub struct SmartRenderer {
@@ -11,9 +13,9 @@ pub struct SmartRenderer {
 
 impl Renderer<Query, String> for &SmartRenderer {
     fn render(self, query: &Query) -> Result<String, PineError> {
-        let render_operation = RenderOperation::new(&self.tables, query);
+        let explicit_query = self.build_explicit_query(query)?;
 
-        render_operation.render().map(SmartRenderer::clean_query)
+        Ok(self.render_explicit_query(explicit_query))
     }
 }
 
@@ -22,128 +24,103 @@ impl SmartRenderer {
         SmartRenderer { tables }
     }
 
-    fn clean_query(query: String) -> String {
-        query.replace("\n\n", "\n")
+    fn build_explicit_query<'a>(&'a self, query: &'a Query) -> Result<ExplicitQuery<'a>, String> {
+        let mut builder = ExplicitQueryBuilder::new(&self.tables[..]);
+        let result = builder.make_explicit_query(query);
+
+        result
+    }
+
+    fn render_explicit_query(&self, query: ExplicitQuery) -> String {
+        let select = render_select(&query.selections[..]);
+        let from = render_from(query.from);
+        let join = render_joins(&query.joins[..]);
+        let filter = render_filters(&query.filters[..]);
+        let limit = render_limit(query.limit);
+
+        vec![
+            select,
+            from,
+            join,
+            filter,
+            limit
+        ].join("\n")
     }
 }
 
-struct RenderOperation<'a> {
-    tables: &'a [Table],
-    last_table: &'a str,
-    query: &'a Query,
+fn render_select(columns: &[ExplicitColumn]) -> String {
+    let columns = if columns.len() > 1 {
+        columns
+            .iter()
+            .map(render_column)
+            .collect::<Vec<_>>()
+            .join(", ")
+    } else {
+        "*".to_string()
+    };
+
+    format!("SELECT {}", columns)
 }
 
-impl<'a> RenderOperation<'a> {
-    pub fn new(tables: &'a [Table], query: &'a Query) -> RenderOperation<'a> {
-        RenderOperation {
-            tables,
-            query,
-            last_table: &query.from,
-        }
+fn render_column(column: &ExplicitColumn) -> String {
+    use ExplicitColumn::*;
+
+    match column {
+        Simple(column_name) => column_name.to_string(),
+        FullyQualified(table_name, column_name) => format!("{}.{}", table_name, column_name),
     }
+}
 
-    pub fn render(mut self) -> Result<String, PineError> {
-        let select = render_select(self.query);
-        let from = render_from(self.query);
-        let joins = self.render_joins()?;
-        let filters = render_filters(self.query);
-        let limit = render_limit(self.query);
+fn render_from(table: &str) -> String {
+    format!("FROM {}", table)
+}
 
-        Ok(format!(
-            "SELECT {}\nFROM {}\n{}\nWHERE {}\n{}",
-            select, from, joins, filters, limit
-        ))
+fn render_joins(joins: &[ExplicitJoin]) -> String {
+    joins
+        .iter()
+        .map(render_join)
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn render_join(join: &ExplicitJoin) -> String {
+    format!("LEFT JOIN {} ON {}.{} = {}.{}", join.to_table, join.to_table, join.to_column, join.from_table, join.from_column)
+}
+
+fn render_filters(filters: &[ExplicitFilter]) -> String {
+    let filters = filters
+        .iter()
+        .map(render_filter)
+        .collect::<Vec<_>>()
+        .join(" AND ");
+
+    format!("WHERE {}", filters)
+}
+
+fn render_filter(filter: &ExplicitFilter) -> String {
+    let column = render_column(&filter.column);
+    let condition = render_condition(filter.condition);
+
+    format!("{} {}", column, condition)
+}
+
+fn render_condition(condition: &Condition) -> String {
+    use Condition::*;
+
+    match condition {
+        Equals(value) => format!("= '{}'", value),
     }
+}
 
-    fn render_joins(&mut self) -> Result<String, String> {
-        let mut joins: Vec<String> = Vec::new();
-
-        for join_table in &self.query.joins {
-            joins.push(self.render_join(self.last_table, join_table)?);
-
-            self.last_table = join_table;
-        }
-
-        Ok(joins.join("\n"))
-    }
-
-    fn render_join(&self, left_table: &str, join_table: &str) -> Result<String, String> {
-        let (left_column, right_column) = self.find_foreign_key_columns(join_table)?;
-
-        Ok(format!(
-            "LEFT JOIN friends ON {}.{} = {}.{}",
-            left_table, left_column, join_table, right_column
-        ))
-    }
-
-    fn find_foreign_key_columns(&self, to_table: &str) -> Result<(&str, &str), String> {
-        let table = self.get_last_table()?;
-        let find_fk = table.get_foreign_key(to_table);
-
-        match find_fk {
-            Some(ref fk) => Ok((&fk.from_column.0, &fk.to_column.0)),
-            None => {
-                let other_table = self
-                    .find_table_by_name(to_table)
-                    .ok_or(self.make_cannot_find_table_error(to_table))?;
-                let find_reverse_fk = other_table.get_foreign_key(self.last_table);
-
-                match find_reverse_fk {
-                    Some(ref fk) => Ok((&fk.to_column.0, &fk.from_column.0)),
-                    None => Err(self.make_cannot_find_fk_error(to_table)),
-                }
-            }
-        }
-    }
-
-    fn get_last_table(&self) -> Result<&'a Table, String> {
-        match self.find_table_by_name(self.last_table) {
-            Some(ref table) => Ok(table),
-            None => Err(self.make_cannot_find_table_error(self.last_table)),
-        }
-    }
-
-    fn find_table_by_name(&self, name: &str) -> Option<&'a Table> {
-        self.tables.iter().find(|table| {
-            // maybe having a HashMap instead of a vector would be better, but tables don't
-            // usually have that much data
-            table.name == name
-        })
-    }
-
-    fn make_cannot_find_table_error(&self, table: &str) -> String {
-        format!(
-            "Unkown table `{}`. Try:\n{}",
-            table,
-            self.tables
-                .iter()
-                .map(|table| table.name.as_ref())
-                .collect::<Vec<_>>()
-                .join("\n")
-        )
-    }
-
-    fn make_cannot_find_fk_error(&self, to_table: &str) -> String {
-        format!(
-            "Couldn't find foreign key from `{}` to `{}`. Try:\n{}",
-            self.last_table,
-            to_table,
-            self.get_last_table()
-                .unwrap()
-                .foreign_keys
-                .iter()
-                .map(|fk| (&fk.to_table).into())
-                .collect::<Vec<&str>>()
-                .join("\n")
-        )
-    }
+fn render_limit(limit: usize) -> String {
+    format!("LIMIT {}", limit)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::structure::ForeignKey;
     use super::*;
     use crate::sql::shorthand::*;
+    use crate::sql::structure::ForeignKey;
 
     #[test]
     fn smart_render() {
@@ -153,7 +130,7 @@ mod tests {
         let rendering = renderer.render(&query).unwrap();
 
         assert_eq!(
-            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON users.friendId = friends.id\nWHERE users.id = \"1\" AND users.mojo = \"great\"\nLIMIT 10",
+            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nWHERE users.id = '1' AND users.mojo = 'great'\nLIMIT 10",
             rendering
         );
     }
@@ -167,7 +144,7 @@ mod tests {
         let error = renderer.render(&query).unwrap_err();
 
         assert_eq!(
-            "Unkown table `missing`. Try:\nusers\nfriends",
+            "Table missing not found, try: users, friends",
             format!("{}", error)
         );
     }
@@ -194,7 +171,7 @@ mod tests {
 
         println!("{}", error);
         assert_eq!(
-            "Unkown table `missing`. Try:\nusers\nfriends",
+            "Table missing not found, try: users, friends",
             format!("{}", error)
         );
     }

@@ -1,6 +1,5 @@
 mod contextual_renderer;
 mod mysql_reflect;
-mod renderer;
 #[cfg(test)]
 mod shorthand;
 pub mod structure;

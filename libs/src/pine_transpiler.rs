@@ -47,26 +47,3 @@ pub fn connect(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineEr
         renderer: SmartRenderer::for_tables(database.tables),
     })
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    impl GenericTranspiler<PestPineParser, NaiveBuilder, SmartRenderer> {
-        pub fn default() -> Self {
-            GenericTranspiler {
-                parser: PestPineParser {},
-                builder: NaiveBuilder {},
-                renderer: SmartRenderer::for_tables(Vec::new()),
-            }
-        }
-    }
-
-    #[test]
-    fn test_simple_parse() {
-        let parser = MySqlTranspiler::default();
-        let query = parser.transpile("f: users | s: name | w: id = 3").unwrap();
-
-        assert_eq!("SELECT name\nFROM users\nWHERE id = \"3\"\nLIMIT 10", query);
-    }
-}
