@@ -39,7 +39,7 @@ TODO:
 - [x] Support for limit
 - [x] Implement live SQL analisys
 - [x] Move complexity from SmartRenderer to Builder
-- [ ] Usable binaries
+- [x] Usable binaries
 - [ ] Add logging
 - [ ] Run without connection
 - [ ] Run clippy on code
