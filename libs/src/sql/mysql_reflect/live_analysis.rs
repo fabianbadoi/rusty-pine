@@ -32,13 +32,6 @@ where
     T: Connection,
     U: TableParser,
 {
-    fn new(connection: T, table_parser: U) -> Self {
-        MySqlReflector {
-            connection,
-            table_parser,
-        }
-    }
-
     fn analyze_database(&self, db_name: &str) -> Result<Database, PineError> {
         let tables = self.connection.tables(db_name)?;
         let tables = tables
@@ -157,6 +150,15 @@ mod tests {
                 }],
                 foreign_keys: Vec::new(),
             })
+        }
+    }
+
+    impl<T, U> MySqlReflector<T, U> {
+        fn new(connection: T, table_parser: U) -> Self {
+            MySqlReflector {
+                connection,
+                table_parser,
+            }
         }
     }
 }

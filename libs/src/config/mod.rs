@@ -95,7 +95,6 @@ impl ConfigProvider for FileProvider {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::cache::{ByteFileCache, SerializedCache};
 
     #[test]
     fn provides_default_if_not_present() {

@@ -64,22 +64,6 @@ impl ExplicitJoin<'_> {
     }
 }
 
-impl ExplicitJoin<'_> {
-    pub fn new<'a>(
-        from_table: &'a str,
-        from_column: &'a str,
-        to_table: &'a str,
-        to_column: &'a str,
-    ) -> ExplicitJoin<'a> {
-        ExplicitJoin {
-            from_table,
-            from_column,
-            to_table,
-            to_column,
-        }
-    }
-}
-
 pub struct ExplicitQueryBuilder<'t> {
     tables: &'t [Table],
     working_with_single_table: bool,
@@ -96,19 +80,21 @@ impl<'t> ExplicitQueryBuilder<'t> {
     pub fn make_explicit_query(&mut self, query: &'t Query) -> Result<ExplicitQuery<'t>, String> {
         self.working_with_single_table = query.joins.len() == 0;
 
-        let joins = self.translate_joins(query.from.as_ref(), query.joins.as_ref())?;
+        let joins = self.translate_joins(&query.from[..], &query.joins[..])?;
 
         Ok(ExplicitQuery {
-            selections: self
-                .translate_selection(query.selections.as_ref()),
+            selections: self.translate_selection(&query.selections[..]),
             from: query.from.as_ref(),
             joins: joins,
-            filters: self.translate_filters(query.filters.as_ref()),
+            filters: self.translate_filters(&query.filters[..]),
             limit: query.limit,
         })
     }
 
-    fn translate_selection(&self, selections: &'t [QualifiedColumnIdentifier]) -> Vec<ExplicitColumn<'t>> {
+    fn translate_selection(
+        &self,
+        selections: &'t [QualifiedColumnIdentifier],
+    ) -> Vec<ExplicitColumn<'t>> {
         selections
             .iter()
             .map(|select| self.make_explicit_column(select))
@@ -129,16 +115,20 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect()
     }
 
-    fn translate_joins(&self, from: &'t str, joins: &'t [String]) -> Result<Vec<ExplicitJoin<'t>>, String> {
+    fn translate_joins(
+        &self,
+        from: &'t str,
+        joins: &'t [String],
+    ) -> Result<Vec<ExplicitJoin<'t>>, String> {
         self.ensure_all_join_tables_exist(from, joins)?;
 
-        let finder = JoinFinder::new(self.tables.as_ref());
+        let finder = JoinFinder::new(&self.tables[..]);
         let to: Vec<_> = joins.iter().map(|table_name| table_name.as_ref()).collect();
 
         Ok(finder.find(from, to.as_ref())?)
     }
 
-    fn make_explicit_column(&self,column: &'t QualifiedColumnIdentifier) -> ExplicitColumn<'t> {
+    fn make_explicit_column(&self, column: &'t QualifiedColumnIdentifier) -> ExplicitColumn<'t> {
         if self.working_with_single_table {
             ExplicitColumn::Simple(column.column.as_ref())
         } else {
@@ -146,20 +136,20 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    /// Knowing if we can't find a table because it's misspelled or because it doesn't exist can 
+    /// Knowing if we can't find a table because it's misspelled or because it doesn't exist can
     /// make working with queries much simpler.
     fn ensure_all_join_tables_exist(&self, from: &str, joins: &[String]) -> Result<(), String> {
         self.ensure_table_exists(from)?;
-        joins.iter().map(|join| self.ensure_table_exists(join)).collect::<Result<Vec<_>, _>>()?;
+        joins
+            .iter()
+            .map(|join| self.ensure_table_exists(join))
+            .collect::<Result<Vec<_>, _>>()?;
 
         Ok(())
     }
 
     fn ensure_table_exists(&self, table_name: &str) -> Result<(), String> {
-        let exists = self
-            .tables
-            .iter()
-            .any(|table| table.name == table_name);
+        let exists = self.tables.iter().any(|table| table.name == table_name);
 
         if exists {
             Ok(())
@@ -171,7 +161,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 .collect::<Vec<_>>()
                 .join(", ");
 
-            Err(format!("Table {} not found, try: {}", table_name, all_tables))
+            Err(format!(
+                "Table {} not found, try: {}",
+                table_name, all_tables
+            ))
         }
     }
 }
@@ -197,7 +190,7 @@ mod tests {
             working_with_single_table: true,
         };
 
-        let better_selections = builder.translate_selection(selections.as_ref());
+        let better_selections = builder.translate_selection(&selections[..]);
 
         assert_eq!(2, better_selections.len());
         assert_eq!(ExplicitColumn::Simple("column1"), better_selections[0]);
@@ -221,11 +214,17 @@ mod tests {
             working_with_single_table: false,
         };
 
-        let better_selections = builder.translate_selection(selections.as_ref());
+        let better_selections = builder.translate_selection(&selections[..]);
 
         assert_eq!(2, better_selections.len());
-        assert_eq!(ExplicitColumn::FullyQualified("users", "column1"), better_selections[0]);
-        assert_eq!(ExplicitColumn::FullyQualified("friends", "column2"), better_selections[1]);
+        assert_eq!(
+            ExplicitColumn::FullyQualified("users", "column1"),
+            better_selections[0]
+        );
+        assert_eq!(
+            ExplicitColumn::FullyQualified("friends", "column2"),
+            better_selections[1]
+        );
     }
 
     #[test]
@@ -251,7 +250,7 @@ mod tests {
             working_with_single_table: true,
         };
 
-        let better_filters = builder.translate_filters(filters.as_ref());
+        let better_filters = builder.translate_filters(&filters[..]);
 
         assert_eq!(2, better_filters.len());
         assert!(better_filters[0].column.is_simple());
@@ -281,7 +280,7 @@ mod tests {
             working_with_single_table: false,
         };
 
-        let better_filters = builder.translate_filters(filters.as_ref());
+        let better_filters = builder.translate_filters(&filters[..]);
 
         assert_eq!(2, better_filters.len());
         assert!(better_filters[0].column.is_explicit());
@@ -304,11 +303,11 @@ mod tests {
         ];
         let joins = vec!["friends".to_owned()];
         let builder = ExplicitQueryBuilder {
-            tables: tables.as_ref(),
+            tables: &tables[..],
             working_with_single_table: false,
         };
 
-        let better_joins = builder.translate_joins("users", joins.as_ref());
+        let better_joins = builder.translate_joins("users", &joins[..]);
 
         assert_eq!(
             ExplicitJoin::new("users", "id", "friends", "userId"),
@@ -328,4 +327,20 @@ mod tests {
     }
 
     impl Eq for ExplicitJoin<'_> {}
+
+    impl ExplicitJoin<'_> {
+        pub fn new<'a>(
+            from_table: &'a str,
+            from_column: &'a str,
+            to_table: &'a str,
+            to_column: &'a str,
+        ) -> ExplicitJoin<'a> {
+            ExplicitJoin {
+                from_table,
+                from_column,
+                to_table,
+                to_column,
+            }
+        }
+    }
 }

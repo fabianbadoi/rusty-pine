@@ -39,7 +39,7 @@ where
 
 pub fn connect(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
     let analyezer = Analyzer::connect(config).unwrap();
-    let mut database = analyezer.analyze(db_name)?;
+    let database = analyezer.analyze(db_name)?;
 
     Ok(GenericTranspiler {
         parser: PestPineParser {},

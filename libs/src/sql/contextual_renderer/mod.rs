@@ -1,8 +1,10 @@
-use explicit_representation::{ ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder};
 use super::structure::Table;
 use super::Renderer;
 use crate::error::PineError;
-use crate::query::{Query, Condition};
+use crate::query::{Condition, Query};
+use explicit_representation::{
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder,
+};
 
 mod explicit_representation;
 
@@ -38,13 +40,7 @@ impl SmartRenderer {
         let filter = render_filters(&query.filters[..]);
         let limit = render_limit(query.limit);
 
-        vec![
-            select,
-            from,
-            join,
-            filter,
-            limit
-        ].join("\n")
+        vec![select, from, join, filter, limit].join("\n")
     }
 }
 
@@ -76,15 +72,14 @@ fn render_from(table: &str) -> String {
 }
 
 fn render_joins(joins: &[ExplicitJoin]) -> String {
-    joins
-        .iter()
-        .map(render_join)
-        .collect::<Vec<_>>()
-        .join("\n")
+    joins.iter().map(render_join).collect::<Vec<_>>().join("\n")
 }
 
 fn render_join(join: &ExplicitJoin) -> String {
-    format!("LEFT JOIN {} ON {}.{} = {}.{}", join.to_table, join.to_table, join.to_column, join.from_table, join.from_column)
+    format!(
+        "LEFT JOIN {} ON {}.{} = {}.{}",
+        join.to_table, join.to_table, join.to_column, join.from_table, join.from_column
+    )
 }
 
 fn render_filters(filters: &[ExplicitFilter]) -> String {

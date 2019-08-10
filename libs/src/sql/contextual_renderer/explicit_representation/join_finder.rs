@@ -1,7 +1,7 @@
-use std::fmt::Display;
-use std::error::Error;
-use crate::sql::structure::Table;
 use super::ExplicitJoin;
+use crate::sql::structure::Table;
+use std::error::Error;
+use std::fmt::Display;
 
 pub struct JoinFinder<'tables> {
     tables: &'tables [Table],
@@ -12,7 +12,11 @@ impl<'t> JoinFinder<'t> {
         JoinFinder { tables }
     }
 
-    pub fn find(&self, from: &'t str, to: &[&'t str]) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
+    pub fn find(
+        &self,
+        from: &'t str,
+        to: &[&'t str],
+    ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
         /*
          * join priority:
          *  - previous table
@@ -32,13 +36,15 @@ impl<'t> JoinFinder<'t> {
          */
         let from_as_array = [from]; // we need this to help the borrow checker;
 
-        let join_targets     = to.iter();
-        let join_sources     = from_as_array.iter().chain(to.iter());
+        let join_targets = to.iter();
+        let join_sources = from_as_array.iter().chain(to.iter());
         let join_table_pairs = join_sources.zip(join_targets);
 
-        let joins = join_table_pairs
-            .map(move |(table1, table2)| self.find_join_for_tables(table1, table2)
-            .ok_or((*table1, *table2))); // use (t1, t2) as an error type so we can construct a nice error message
+        let joins = join_table_pairs.map(move |(table1, table2)| {
+            self.find_join_for_tables(table1, table2)
+                // use (t1, t2) as an error type so we can construct a nice error message
+                .ok_or((*table1, *table2))
+        });
 
         Self::potential_joins_to_result(joins)
     }
@@ -51,15 +57,16 @@ impl<'t> JoinFinder<'t> {
     }
 
     fn find_direct_join_for(&self, source: &'t str, dest: &str) -> Option<ExplicitJoin<'t>> {
-        self
-            .tables
+        self.tables
             .iter()
             .find(|table| table.name == source)
             .and_then(|table| table.get_foreign_key(dest))
             .map(|foreign_key| ExplicitJoin::for_fk(source, foreign_key))
     }
 
-    fn potential_joins_to_result(potential_joins: impl Iterator<Item=IntermediateResult<'t>>) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
+    fn potential_joins_to_result(
+        potential_joins: impl Iterator<Item = IntermediateResult<'t>>,
+    ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
         let (joins, failed_joins): (Vec<_>, Vec<_>) = potential_joins.partition(Result::is_ok);
 
         if failed_joins.len() > 0 {
@@ -78,7 +85,8 @@ pub struct JoinsNotFound {
 
 impl JoinsNotFound {
     fn new(joins: Vec<Result<ExplicitJoin, (&str, &str)>>) -> JoinsNotFound {
-        let joins = joins.into_iter()
+        let joins = joins
+            .into_iter()
             .map(Result::unwrap_err)
             .map(|(table1, table2)| (table1.to_owned(), table2.to_owned()))
             .collect();
@@ -89,18 +97,22 @@ impl JoinsNotFound {
 
 impl Display for JoinsNotFound {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       let failed_join_list = self.joins 
+        let failed_join_list = self
+            .joins
             .iter()
             .map(|(table1, table2)| format!("- {} and {}", table1, table2))
             .collect::<Vec<String>>()
             .join("\n");
 
-        write!(f, "Can't figure out how to join these tables:\n{}", failed_join_list)
+        write!(
+            f,
+            "Can't figure out how to join these tables:\n{}",
+            failed_join_list
+        )
     }
 }
 
-impl Error for JoinsNotFound {
-}
+impl Error for JoinsNotFound {}
 
 impl From<JoinsNotFound> for String {
     fn from(other: JoinsNotFound) -> String {
@@ -120,7 +132,7 @@ mod tests {
         let from = "users";
         let to = [];
         let tables = make_debug_tables();
-        let join_finder = JoinFinder::new(tables.as_ref());
+        let join_finder = JoinFinder::new(&tables[..]);
 
         let joins = join_finder.find(from, &to);
 
@@ -133,7 +145,7 @@ mod tests {
         let from = "users";
         let to = ["friends"];
         let tables = make_debug_tables();
-        let join_finder = JoinFinder::new(tables.as_ref());
+        let join_finder = JoinFinder::new(&tables[..]);
 
         let joins = join_finder.find(from, &to);
 
@@ -152,7 +164,7 @@ mod tests {
         let from = "users";
         let to = ["not_found1", "not_found2", "friends"];
         let tables = make_debug_tables();
-        let join_finder = JoinFinder::new(tables.as_ref());
+        let join_finder = JoinFinder::new(&tables[..]);
 
         let joins = join_finder.find(from, &to);
 
@@ -161,10 +173,21 @@ mod tests {
         let joins_not_found = joins.unwrap_err();
 
         // this will make sure we have nice error messages
-        assert!(joins_not_found.joins.contains(&("users".to_owned(), "not_found1".to_owned())));
-        assert!(joins_not_found.joins.contains(&("not_found1".to_owned(), "not_found2".to_owned())));
+        assert!(joins_not_found
+            .joins
+            .contains(&("users".to_owned(), "not_found1".to_owned())));
+        assert!(
+            joins_not_found
+                .joins
+                .contains(&("not_found1".to_owned(),
+                "not_found2".to_owned()))
+        );
 
-        assert!(!joins_not_found.joins.contains(&("users".to_owned(), "friends".to_owned())));
+        assert!(
+            !joins_not_found
+                .joins
+                .contains(&("users".to_owned(), "friends".to_owned()))
+        );
     }
 
     #[test]
@@ -172,7 +195,7 @@ mod tests {
         let from = "friends";
         let to = ["users", "customers", "customer_settings"];
         let tables = make_debug_tables();
-        let join_finder = JoinFinder::new(tables.as_ref());
+        let join_finder = JoinFinder::new(&tables[..]);
 
         let joins = join_finder.find(from, &to);
 
@@ -181,13 +204,30 @@ mod tests {
         let joins = joins.unwrap();
         assert_eq!(joins.len(), 3);
         assert!(joins.contains(&ExplicitJoin::new("users", "id", "friends", "user_id")));
-        assert!(joins.contains(&ExplicitJoin::new("users", "customer_id", "customers", "id")));
-        assert!(joins.contains(&ExplicitJoin::new("customers", "id", "customer_settings", "customer_id")));
+        assert!(joins.contains(&ExplicitJoin::new(
+            "users",
+            "customer_id",
+            "customers",
+            "id"
+        )));
+        assert!(joins.contains(&ExplicitJoin::new(
+            "customers",
+            "id",
+            "customer_settings",
+            "customer_id"
+        )));
     }
 
     fn make_debug_tables() -> Vec<Table> {
         let tables = [
-            ("users", [("id", ("friends", "user_id")), ("customer_id", ("customers", "id"))].as_ref()),
+            (
+                "users",
+                [
+                    ("id", ("friends", "user_id")),
+                    ("customer_id", ("customers", "id")),
+                ]
+                .as_ref(),
+            ),
             ("friends", &[]),
             ("customers", &[]),
             ("customer_settings", &[("customer_id", ("customers", "id"))]),
