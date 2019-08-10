@@ -40,7 +40,11 @@ impl SmartRenderer {
         let filter = render_filters(&query.filters[..]);
         let limit = render_limit(query.limit);
 
-        vec![select, from, join, filter, limit].join("\n")
+        vec![select, from, join, filter, limit]
+            .into_iter()
+            .filter(|s| s.len() > 0)
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 
