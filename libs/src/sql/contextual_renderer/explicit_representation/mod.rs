@@ -158,13 +158,19 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 .tables
                 .iter()
                 .map(|table| table.name.as_ref())
-                .collect::<Vec<_>>()
-                .join(", ");
+                .filter(|existing_table_name| strsim::normalized_damerau_levenshtein(table_name, existing_table_name) > 0.75)
+                .collect::<Vec<_>>();
 
-            Err(format!(
-                "Table {} not found, try: {}",
-                table_name, all_tables
-            ))
+            let message = if all_tables.len() > 0 {
+                format!(
+                    "Table {} not found, try: {}",
+                    table_name, all_tables.join(", ")
+                )
+            } else {
+                format!("Table {} not found.", table_name)
+            };
+
+            Err(message)
         }
     }
 }
