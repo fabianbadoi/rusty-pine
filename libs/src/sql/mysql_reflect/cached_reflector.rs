@@ -3,6 +3,7 @@ use crate::error::PineError;
 use crate::sql::structure::Database;
 use crate::sql::Reflector;
 use std::cell::RefCell;
+use log::info;
 
 pub struct CachedReflector<T, U> {
     inner: T,
@@ -16,11 +17,18 @@ where
     U: Cache<Vec<Database>>,
 {
     fn analyze(&self) -> Result<Vec<Database>, PineError> {
+        info!("Starting analysis");
+
         let from_cache = self.cache.borrow().get(&self.tag);
 
         match from_cache {
-            Some(value) => Ok(value),
+            Some(value) => {
+                info!("Using cahe");
+                Ok(value)
+            },
             None => {
+                info!("Using live data");
+
                 let analysis = self.inner.analyze()?;
 
                 self.cache.borrow_mut().set(&self.tag, &analysis);

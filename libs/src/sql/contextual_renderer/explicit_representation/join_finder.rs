@@ -2,6 +2,7 @@ use super::ExplicitJoin;
 use crate::sql::structure::Table;
 use std::error::Error;
 use std::fmt::Display;
+use log::info;
 
 pub struct JoinFinder<'tables> {
     tables: &'tables [Table],
@@ -17,6 +18,8 @@ impl<'t> JoinFinder<'t> {
         from: &'t str,
         to: &[&'t str],
     ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
+        info!("Finding joins between {}, {:?}", from, to);
+
         /*
          * join priority:
          *  - previous table
@@ -50,8 +53,14 @@ impl<'t> JoinFinder<'t> {
     }
 
     fn find_join_for_tables(&self, table1: &'t str, table2: &'t str) -> Option<ExplicitJoin<'t>> {
+        info!("Finding join {} to {}", table1, table2);
+
         let direct = self.find_direct_join_for(table1, table2);
-        let direct_or_inverse = direct.or_else(move || self.find_direct_join_for(table2, table1));
+        let direct_or_inverse = direct.or_else(move || {
+            info!("Trying inverse: {} to {}", table2, table1);
+
+            self.find_direct_join_for(table2, table1)
+        });
 
         direct_or_inverse
     }

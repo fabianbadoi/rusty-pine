@@ -1,6 +1,7 @@
 use super::super::structure::{Database, Table};
 use super::connection::Connection;
 use crate::error::PineError;
+use log::info;
 
 pub trait Reflector {
     fn analyze(&self) -> Result<Vec<Database>, PineError>;
@@ -33,11 +34,15 @@ where
     U: TableParser,
 {
     fn analyze_database(&self, db_name: &str) -> Result<Database, PineError> {
+        info!("Analyzing db {}", db_name);
+
         let tables = self.connection.tables(db_name)?;
         let tables = tables
             .iter()
             .map(|t| self.analyze_table(db_name, t))
             .collect::<Result<Vec<_>, _>>()?;
+
+        info!("Analysis for db {} complete", db_name);
 
         Ok(Database {
             name: db_name.to_string(),
@@ -46,6 +51,8 @@ where
     }
 
     fn analyze_table(&self, db_name: &str, table_name: &str) -> Result<Table, PineError> {
+        info!("Analyzing {}.{}", db_name, table_name);
+
         let create_statement = self.connection.show_create(db_name, table_name)?;
 
         self.table_parser.parse(&create_statement)

@@ -8,6 +8,7 @@ use crate::error::PineError;
 use cached_reflector::CachedReflector;
 use connection::LiveConnection;
 use live_analysis::{MySqlReflector, MySqlTableParser};
+use log::info;
 
 pub type DefaultReflector =
     CachedReflector<MySqlReflector<LiveConnection, MySqlTableParser>, DefaultCache>;
@@ -35,6 +36,8 @@ pub fn connect_fresh(
     host: &str,
     port: u16,
 ) -> Result<DefaultReflector, PineError> {
+    info!("Setting up uncached connection to {}@{}", user, host);
+
     let connection = LiveConnection::new(user, password, host, port)?;
     let mut cache = make_reflector_cache();
 

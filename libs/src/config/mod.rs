@@ -4,6 +4,7 @@ use crate::cache::{make_config, Cache, DefaultCache};
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::Path;
+use log::info;
 
 pub fn get_config_file_name(file: &str) -> OsString {
     let path = Path::new(&std::env::var("HOME").unwrap())
@@ -68,6 +69,8 @@ impl FileProvider {
     }
 
     fn create_default_config(&self) -> Config {
+        info!("Setting up default config");
+
         if (&*self.store.borrow() as &dyn Cache<Config>).has(&self.tag) {
             panic!("Invalid config file is already present at {:?}, please fix or remove it");
         }
@@ -83,6 +86,8 @@ impl FileProvider {
 
 impl ConfigProvider for FileProvider {
     fn get(&self) -> Config {
+        info!("Reading config from file: {:?}", self.file_path);
+
         let from_file = self.store.borrow().get(&self.tag);
 
         match from_file {

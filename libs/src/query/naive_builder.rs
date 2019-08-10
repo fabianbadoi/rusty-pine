@@ -8,6 +8,7 @@ use crate::pine_syntax::ast::{
 use crate::query::{
     Condition as SqlCondition, Filter as SqlFilter, QualifiedColumnIdentifier, Query,
 };
+use log::{info, debug};
 
 /// Has no concept of context, more complex queries will fail to build
 #[derive(Debug)]
@@ -39,11 +40,16 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn build(mut self) -> BuildResult {
+        info!("Building query object from initial representation");
+
         for operation_node in self.pine {
+            debug!("Applying {:?}", operation_node);
             self.apply_operation(operation_node)?;
         }
 
         self.finalize()?;
+
+        info!("Done");
 
         Ok(self.query)
     }
@@ -61,6 +67,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn apply_from(&mut self, table: &TableNameNode) {
+        debug!("Found from: {:?}", table);
+
         self.current_table = Some(table.inner.to_string());
 
         if self.from_table.is_none() {
@@ -69,11 +77,15 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn apply_join(&mut self, table: &TableNameNode) {
+        debug!("Found join: {:?}", table);
+
         self.current_table = Some(table.inner.to_string());
         self.query.joins.push(table.inner.to_string());
     }
 
     fn apply_selections(&mut self, selections: &[ColumnNameNode]) -> InternalResult {
+        debug!("Found select: {:?}", selections);
+
         if selections.is_empty() {
             return Ok(());
         }
@@ -94,6 +106,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn apply_filters(&mut self, filters: &[FilterNode]) -> Result<(), SyntaxError> {
+        debug!("Found where: {:?}", filters);
+
         if filters.is_empty() {
             return Ok(());
         }
@@ -120,6 +134,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
     fn apply_limit(&mut self, value: &ValueNode) -> Result<(), SyntaxError> {
         use std::str::FromStr;
+        debug!("Found limit: {:?}", value);
 
         match usize::from_str(value.inner) {
             Ok(limit) => {

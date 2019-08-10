@@ -6,6 +6,7 @@
 use crate::query::*;
 use crate::sql::structure::{ForeignKey, Table};
 use join_finder::JoinFinder;
+use log::info;
 
 mod join_finder;
 
@@ -78,6 +79,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
     }
 
     pub fn make_explicit_query(&mut self, query: &'t Query) -> Result<ExplicitQuery<'t>, String> {
+        info!("Preparing query for rendering");
+
         self.working_with_single_table = query.joins.len() == 0;
 
         let joins = self.translate_joins(&query.from[..], &query.joins[..])?;

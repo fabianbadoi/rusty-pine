@@ -7,6 +7,7 @@ use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
 use std::convert::From;
+use log::info;
 
 // Look at the test at the end of this file to better understand
 // the tree structures involved.
@@ -43,6 +44,8 @@ impl Translator {
     }
 
     pub fn translate<'a>(mut self, root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
+        info!("Parsing pine query into first internal representation: {}", input);
+
         expect(Rule::pine, &root_node);
 
         let position = node_to_position(&root_node);
@@ -55,6 +58,7 @@ impl Translator {
             pine_string: input,
         };
 
+        info!("Parse done");
         PineNode { position, inner }
     }
 

@@ -1,5 +1,6 @@
 use crate::error::PineError;
 use mysql::{from_row, OptsBuilder, Pool};
+use log::info;
 
 pub trait Connection {
     fn databases(&self) -> Result<Vec<String>, PineError>;
@@ -42,6 +43,7 @@ impl Connection for LiveConnection {
             .filter(|database| !MYSQL_BUILTIN_DATABASES.contains(&(&*database as &str)))
             .collect();
 
+        info!("Found databases: {:?}", user_databases);
         Ok(user_databases)
     }
 
@@ -51,6 +53,7 @@ impl Connection for LiveConnection {
             .prep_exec(format!("show tables from {}", db), ())?;
         let all_tables: Vec<_> = query_result.map(|row| from_row(row.unwrap())).collect();
 
+        info!("Found tables for db '{}': {:?}", db, all_tables);
         Ok(all_tables)
     }
 
@@ -66,6 +69,7 @@ impl Connection for LiveConnection {
             .take(1)
             .collect();
 
+        info!("Table create query retrieved for {}.{}", db, table);
         Ok(all_tables.remove(0))
     }
 }

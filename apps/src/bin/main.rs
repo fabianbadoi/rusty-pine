@@ -1,9 +1,12 @@
 extern crate rusty_pine_lib;
+extern crate pretty_env_logger;
 
 use rusty_pine_lib::read_config;
 use rusty_pine_lib::{connect_transpiler, Transpiler};
 
 fn main() {
+    pretty_env_logger::init();
+
     // TODO: connection is needed? even if cached
     let transpiler = connect_transpiler(&read_config(), "penneo").unwrap();
 

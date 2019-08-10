@@ -5,6 +5,7 @@ use crate::query::{Condition, Query};
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder,
 };
+use log::info;
 
 mod explicit_representation;
 
@@ -15,9 +16,15 @@ pub struct SmartRenderer {
 
 impl Renderer<Query, String> for &SmartRenderer {
     fn render(self, query: &Query) -> Result<String, PineError> {
+        info!("Rendering query");
+
         let explicit_query = self.build_explicit_query(query)?;
 
-        Ok(self.render_explicit_query(explicit_query))
+        let query = self.render_explicit_query(explicit_query);
+
+        info!("Rendering done");
+
+        Ok(query)
     }
 }
 
@@ -27,18 +34,25 @@ impl SmartRenderer {
     }
 
     fn build_explicit_query<'a>(&'a self, query: &'a Query) -> Result<ExplicitQuery<'a>, String> {
+        info!("Building render-ready intermediate representation");
         let mut builder = ExplicitQueryBuilder::new(&self.tables[..]);
         let result = builder.make_explicit_query(query);
+
+        info!("Done building render-ready intermediate representation");
 
         result
     }
 
     fn render_explicit_query(&self, query: ExplicitQuery) -> String {
+        info!("Rendering reander-ready representation");
+
         let select = render_select(&query.selections[..]);
         let from = render_from(query.from);
         let join = render_joins(&query.joins[..]);
         let filter = render_filters(&query.filters[..]);
         let limit = render_limit(query.limit);
+
+        info!("Done rendering reander-ready representation");
 
         vec![select, from, join, filter, limit]
             .into_iter()

@@ -15,6 +15,11 @@ WHERE id = 3
 ... and I plan on making it more powerful.
 
 
+Logging
+-------
+Run with `RUST_LOG=rusty_pine_lib=info` to enable logging.
+
+
 Mission Statement
 -----------------
 
@@ -40,7 +45,7 @@ TODO:
 - [x] Implement live SQL analisys
 - [x] Move complexity from SmartRenderer to Builder
 - [x] Usable binaries
-- [ ] Add logging
+- [x] Add logging
 - [ ] Run without connection
 - [ ] Run clippy on code
 - [ ] Display available joins on join fail
