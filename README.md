@@ -38,10 +38,13 @@ TODO:
 - [x] Compound expression join statements
 - [x] Support for limit
 - [x] Implement live SQL analisys
-- [ ] Move complexity from SmartRenderer to Builder
+- [x] Move complexity from SmartRenderer to Builder
 - [ ] Usable binaries
 - [ ] Add logging
-- [ ] Auto join
+- [ ] Run without connection
+- [ ] Run clippy on code
+- [ ] Display available joins on join fail
+- [ ] Unselect specific columns
 - [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
 - [ ] Complex values
@@ -55,5 +58,4 @@ TODO:
 - [ ] Support multiple filters (OR)
 - [ ] Updates
 - [ ] Deletes
-- [ ] Unselect specific columns
 
