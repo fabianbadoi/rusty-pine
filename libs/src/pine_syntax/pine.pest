@@ -1,25 +1,64 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
 operation = _{ (from | select | filters | join | limit | compound_expression) }
 
-compound_expression = { table_name ~ (value | filter)* }
+compound_expression = { table_name ~ (numeric_value | filter)* }
 
+
+// actual pines
 from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
-table_name = { sql_name }
-
 select = { ("select:" | "s:") ~ column_name ~ ("," ~ column_name)* }
-
 filters = { ("where:" | "w:") ~ filter+ }
-filter = { column_name ~ condition }
-condition = _{ equals }
-
 limit = { ("limit:" | "l:") ~ numeric_value }
-equals = { "=" ~ value }
+
+
+// identifiers
+table_name = { sql_name }
 column_name = { sql_name }
-value = _{ numeric_value }
+identified_column = { fully_qualified_column | column_name }
+fully_qualified_column = { table_name ~ "." ~ column_name }
+sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+
+// conditions
+filter = { binary_filter }
+
+binary_filter = { operand ~ operator ~ operand }
+
+operand = { identified_column | value }
+
+operator = _{ optr_eq | optr_ne | optr_gt | optr_gte | optr_lt | optr_lte }
+optr_eq  = { "="  }
+optr_ne  = { "!=" }
+optr_gt  = { ">"  }
+optr_gte = { ">=" }
+optr_lt  = { "<"  }
+optr_lte = { "<=" }
+
+
+// values
+value = _{ numeric_value | string_value }
+
 numeric_value = { (ASCII_DIGIT | "_")+ }
 
-sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+string_value = { quote_string_value | apostrophe_string_value }
+
+quote_string_value = ${ "\"" ~ quote_string_inner ~ "\"" }
+quote_string_inner = @{ quote_string_char* }
+quote_string_char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+apostrophe_string_value = ${ "'" ~ apostrophe_string_inner ~ "'" }
+apostrophe_string_inner = @{ apostrophe_string_char* }
+apostrophe_string_char = {
+    !("'" | "\\") ~ ANY
+    | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
 
 // special rule, makes all ~ accept whitespace
 WHITESPACE = _{ " " }

@@ -1,9 +1,9 @@
 use super::structure::Table;
 use super::Renderer;
 use crate::error::PineError;
-use crate::query::{Condition, Query};
+use crate::query::Query;
 use explicit_representation::{
-    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder,
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder, ExplicitOperand
 };
 use log::info;
 
@@ -111,18 +111,24 @@ fn render_filters(filters: &[ExplicitFilter]) -> String {
 }
 
 fn render_filter(filter: &ExplicitFilter) -> String {
-    let column = render_column(&filter.column);
-    let condition = render_condition(filter.condition);
+    use ExplicitFilter::*;
 
-    format!("{} {}", column, condition)
+    match filter {
+        Equals(rhs, lhs) => format!("{} = {}", render_operand(rhs), render_operand(lhs)),
+    }
 }
 
-fn render_condition(condition: &Condition) -> String {
-    use Condition::*;
+fn render_operand(operand: &ExplicitOperand) -> String {
+    use ExplicitOperand::*;
 
-    match condition {
-        Equals(value) => format!("= '{}'", value),
+    match operand {
+        Column(column) => render_column(column),
+        Value(value) => render_value(value),
     }
+}
+
+fn render_value(value: &str) -> String {
+    format!("{}", value)
 }
 
 fn render_limit(limit: usize) -> String {
@@ -143,7 +149,7 @@ mod tests {
         let rendering = renderer.render(&query).unwrap();
 
         assert_eq!(
-            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nWHERE users.id = '1' AND users.mojo = 'great'\nLIMIT 10",
+            "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nWHERE users.id = 1 AND users.mojo = 'great'\nLIMIT 10",
             rendering
         );
     }
@@ -193,7 +199,7 @@ mod tests {
         let query = QueryShorthand(
             Select(&["id", "name"]),
             From("users"),
-            &[Filter::Equals("id", "1"), Filter::Equals("mojo", "great")],
+            &[Filter::Equals("users.id", "1"), Filter::Equals("users.mojo", "'great'")],
         );
         let mut query: Query = query.into();
         query.joins.push("friends".to_string());

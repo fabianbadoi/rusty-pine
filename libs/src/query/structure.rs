@@ -19,21 +19,21 @@ impl Default for Query {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct QualifiedColumnIdentifier {
     pub table: TableName,
     pub column: ColumnName,
 }
 
-#[derive(Debug)]
-pub struct Filter {
-    pub column: QualifiedColumnIdentifier,
-    pub condition: Condition,
+#[derive(Debug, PartialEq, Eq)]
+pub enum Filter {
+    Equals(Operand, Operand),
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub enum Condition {
-    Equals(Value),
+pub enum Operand {
+    Value(Value),
+    Column(QualifiedColumnIdentifier),
 }
 
 pub type TableName = String;

@@ -1,26 +1,18 @@
 use crate::error::Position;
 
-pub type PineNode<'a> = Node<Pine<'a>>;
-pub type OperationNode<'a> = Node<Operation<'a>>;
-pub type FilterNode<'a> = Node<Filter<'a>>;
-pub type ConditionNode<'a> = Node<Condition<'a>>;
-pub type TableNameNode<'a> = Node<TableName<'a>>;
-pub type ColumnNameNode<'a> = Node<ColumnName<'a>>;
-pub type ValueNode<'a> = Node<Value<'a>>;
-
 #[derive(Debug)]
 pub struct Pine<'a> {
-    pub operations: Vec<OperationNode<'a>>,
+    pub operations: Vec<Node<Operation<'a>>>,
     pub pine_string: InputType<'a>,
 }
 
 #[derive(Debug)]
 pub enum Operation<'a> {
-    From(TableNameNode<'a>),
-    Join(TableNameNode<'a>),
-    Select(Vec<ColumnNameNode<'a>>),
-    Filter(Vec<FilterNode<'a>>),
-    Limit(ValueNode<'a>),
+    From(Node<TableName<'a>>),
+    Join(Node<TableName<'a>>),
+    Select(Vec<Node<ColumnName<'a>>>),
+    Filter(Vec<Node<Filter<'a>>>),
+    Limit(Node<Value<'a>>),
 }
 
 impl<'a> Operation<'a> {
@@ -39,20 +31,31 @@ impl<'a> Operation<'a> {
 }
 
 #[derive(Debug)]
-pub struct Filter<'a> {
-    pub column: ColumnNameNode<'a>,
-    pub condition: ConditionNode<'a>,
+pub enum Filter<'a> {
+    Equals(Node<Operand<'a>>, Node<Operand<'a>>),
 }
 
 #[derive(Debug)]
-pub enum Condition<'a> {
-    Equals(ValueNode<'a>),
+pub enum Value<'a> {
+    Numeric(InputType<'a>),
+    String(InputType<'a>),
+}
+
+#[derive(Debug)]
+pub enum Operand<'a> {
+    Value(Node<Value<'a>>),
+    Column(Node<ColumnIdentifier<'a>>),
+}
+
+#[derive(Debug)]
+pub enum ColumnIdentifier<'a> {
+    Implicit(Node<ColumnName<'a>>),
+    Explicit(Node<TableName<'a>>, Node<ColumnName<'a>>),
 }
 
 pub type Identifier<'a> = InputType<'a>;
 pub type TableName<'a> = Identifier<'a>;
 pub type ColumnName<'a> = Identifier<'a>;
-pub type Value<'a> = InputType<'a>;
 pub type InputType<'a> = &'a str;
 
 #[derive(Debug, Default)]
@@ -61,11 +64,32 @@ pub struct Node<T> {
     pub inner: T,
 }
 
-impl<'a> IntoIterator for &'a PineNode<'a> {
-    type Item = &'a OperationNode<'a>;
-    type IntoIter = std::slice::Iter<'a, OperationNode<'a>>;
+impl<'a> IntoIterator for &'a Node<Pine<'a>> {
+    type Item = &'a Node<Operation<'a>>;
+    type IntoIter = std::slice::Iter<'a, Node<Operation<'a>>>;
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.operations.iter()
+    }
+}
+
+impl Value<'_> {
+    pub fn to_string(&self) -> String {
+        match self {
+            Value::Numeric(value) => value.to_string(),
+            Value::String(value)  => format!("{}", value),
+        }
+    }
+
+    pub fn as_str(&self) -> &str {
+        match self {
+            Value::Numeric(value) | Value::String(value)=> value,
+        }
+    }
+}
+
+impl Node<&'_ str> {
+    pub fn to_string(&self) -> String {
+        self.inner.to_string()
     }
 }

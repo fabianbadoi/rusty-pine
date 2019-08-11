@@ -25,6 +25,12 @@ pub enum ExplicitColumn<'a> {
     FullyQualified(&'a str, &'a str),
 }
 
+#[derive(PartialEq, Eq, Debug)]
+pub enum ExplicitOperand<'a> {
+    Column(ExplicitColumn<'a>),
+    Value(&'a str),
+}
+
 impl<'a> ExplicitColumn<'a> {
     #[cfg(test)]
     fn is_simple(&self) -> bool {
@@ -41,9 +47,8 @@ impl<'a> ExplicitColumn<'a> {
 }
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct ExplicitFilter<'a> {
-    pub column: ExplicitColumn<'a>,
-    pub condition: &'a Condition,
+pub enum ExplicitFilter<'a> {
+    Equals(ExplicitOperand<'a>, ExplicitOperand<'a>),
 }
 
 #[derive(Debug)]
@@ -104,18 +109,22 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect()
     }
 
-    fn translate_filters(&self, selections: &'t [Filter]) -> Vec<ExplicitFilter<'t>> {
-        selections
+    fn translate_filters(&self, filters: &'t [Filter]) -> Vec<ExplicitFilter<'t>> {
+        filters
             .iter()
-            .map(|filter| {
-                let column = self.make_explicit_column(&filter.column);
-
-                ExplicitFilter {
-                    column,
-                    condition: &filter.condition,
-                }
-            })
+            .map(|filter| self.translate_filter(filter))
             .collect()
+    }
+
+    fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
+        match filter {
+            Filter::Equals(rhs, lhs) => {
+                let rhs = self.make_operand(rhs);
+                let lhs = self.make_operand(lhs);
+
+                ExplicitFilter::Equals(rhs, lhs)
+            },
+        }
     }
 
     fn translate_joins(
@@ -129,6 +138,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
         let to: Vec<_> = joins.iter().map(|table_name| table_name.as_ref()).collect();
 
         Ok(finder.find(from, to.as_ref())?)
+    }
+
+    fn make_operand(&self, operand: &'t Operand) -> ExplicitOperand<'t> {
+        match operand {
+            Operand::Column(column) => ExplicitOperand::Column(self.make_explicit_column(column)),
+            Operand::Value(value) => ExplicitOperand::Value(value.as_ref()),
+        }
     }
 
     fn make_explicit_column(&self, column: &'t QualifiedColumnIdentifier) -> ExplicitColumn<'t> {
@@ -239,20 +255,23 @@ mod tests {
     #[test]
     fn can_build_simple_filters() {
         let filters = vec![
-            Filter {
-                column: QualifiedColumnIdentifier {
+            Filter::Equals(
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
-                },
-                condition: Condition::Equals("3".to_owned()),
-            },
-            Filter {
-                column: QualifiedColumnIdentifier {
+                }),
+                Operand::Column(QualifiedColumnIdentifier {
+                    table: "users".into(),
+                    column: "column1".into(),
+                }),
+            ),
+            Filter::Equals(
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column2".into(),
-                },
-                condition: Condition::Equals("3".to_owned()),
-            },
+                }),
+                Operand::Value("3".to_owned()),
+            ),
         ];
         let builder = ExplicitQueryBuilder {
             tables: &[],
@@ -262,27 +281,30 @@ mod tests {
         let better_filters = builder.translate_filters(&filters[..]);
 
         assert_eq!(2, better_filters.len());
-        assert!(better_filters[0].column.is_simple());
-        assert!(better_filters[1].column.is_simple());
+        assert!(better_filters[0].rhs().as_column().is_simple());
+        assert!(better_filters[1].rhs().as_column().is_simple());
     }
 
     #[test]
     fn can_build_complex_filters() {
         let filters = vec![
-            Filter {
-                column: QualifiedColumnIdentifier {
+            Filter::Equals(
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
-                },
-                condition: Condition::Equals("3".to_owned()),
-            },
-            Filter {
-                column: QualifiedColumnIdentifier {
+                }),
+                Operand::Column(QualifiedColumnIdentifier {
+                    table: "users".into(),
+                    column: "column1".into(),
+                }),
+            ),
+            Filter::Equals(
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "friends".into(),
                     column: "column2".into(),
-                },
-                condition: Condition::Equals("3".to_owned()),
-            },
+                }),
+                Operand::Value("3".to_owned()),
+            ),
         ];
         let builder = ExplicitQueryBuilder {
             tables: &[],
@@ -292,8 +314,8 @@ mod tests {
         let better_filters = builder.translate_filters(&filters[..]);
 
         assert_eq!(2, better_filters.len());
-        assert!(better_filters[0].column.is_explicit());
-        assert!(better_filters[1].column.is_explicit());
+        assert!(better_filters[0].rhs().as_column().is_explicit());
+        assert!(better_filters[1].rhs().as_column().is_explicit());
     }
 
     #[test]
@@ -349,6 +371,25 @@ mod tests {
                 from_column,
                 to_table,
                 to_column,
+            }
+        }
+    }
+
+    impl ExplicitOperand<'_> {
+        pub fn as_column(&self) -> &ExplicitColumn {
+            match self {
+                ExplicitOperand::Column(column) => column,
+                _ => panic!("Can't use operand as column"),
+            }
+        }
+    }
+
+    impl ExplicitFilter<'_> {
+        pub fn rhs(&self) -> &ExplicitOperand {
+            #[allow(unreachable_patterns)]
+            match self {
+                ExplicitFilter::Equals(rhs, _) => rhs,
+                _ => panic!("Filter doesn't have a rhs"),
             }
         }
     }

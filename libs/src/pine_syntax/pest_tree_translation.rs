@@ -18,7 +18,7 @@ type PestNode<'a> = Pair<'a, Rule>;
 pub struct PestPineParser;
 
 impl PineParser for &PestPineParser {
-    fn parse(self, input: &str) -> Result<PineNode, SyntaxError> {
+    fn parse(self, input: &str) -> Result<Node<Pine>, SyntaxError> {
         let ast = pest::PinePestParser::parse(pest::Rule::pine, input)?
             .next()
             .expect("Pest should have failed to parse this input");
@@ -29,7 +29,7 @@ impl PineParser for &PestPineParser {
     }
 }
 
-pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
+pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> {
     let translator = Translator::new();
     translator.translate(root_node, input)
 }
@@ -43,12 +43,12 @@ impl Translator {
         Translator { has_from: false }
     }
 
-    pub fn translate<'a>(mut self, root_node: PestNode<'a>, input: &'a str) -> PineNode<'a> {
+    pub fn translate<'a>(mut self, root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> {
         info!("Parsing pine query into first internal representation: {}", input);
 
         expect(Rule::pine, &root_node);
 
-        let position = node_to_position(&root_node);
+        let position = position(&root_node);
         let operations: Vec<_> = root_node
             .into_inner()
             .flat_map(|node| self.translate_operation(node))
@@ -59,11 +59,11 @@ impl Translator {
         };
 
         info!("Parse done");
-        PineNode { position, inner }
+        Node { position, inner }
     }
 
-    fn translate_operation<'a>(&mut self, node: PestNode<'a>) -> Vec<OperationNode<'a>> {
-        let position = node_to_position(&node);
+    fn translate_operation<'a>(&mut self, node: PestNode<'a>) -> Vec<Node<Operation<'a>>> {
+        let position = position(&node);
         let operations = match node.as_rule() {
             Rule::from => self.translate_from(node),
             Rule::select => self.translate_select(node),
@@ -77,7 +77,7 @@ impl Translator {
 
         operations
             .into_iter()
-            .map(|inner| OperationNode { position, inner })
+            .map(|inner| Node { position, inner })
             .collect()
     }
 
@@ -111,7 +111,7 @@ impl Translator {
 
     fn translate_limit<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let value_node = node.into_inner().next().unwrap();
-        let limit = translate_value(&value_node);
+        let limit = translate_value(value_node);
 
         vec![Operation::Limit(limit)]
     }
@@ -148,80 +148,148 @@ impl Translator {
     }
 }
 
-fn translate_filter(node: PestNode) -> FilterNode {
-    expect(Rule::filter, &node);
+fn translate_filter(node: PestNode) -> Node<Filter> {
+    let inner = node.into_inner().next().unwrap();
 
-    let position = node_to_position(&node);
-    let mut parts: Vec<_> = node.into_inner().collect();
-
-    if parts.len() != 2 {
-        panic!(
-            "Filters must have 2 parts: a column and a condition. Found:\n{:#?}",
-            parts
-        );
+    match inner.as_rule() {
+        Rule::binary_filter => translate_binary_filter(inner),
+        _ => panic!("Unexpected condition rule: {:?}", inner.as_rule()),
     }
-
-    let condition = parts.pop().unwrap();
-    let condition = translate_condition(condition);
-
-    let column = parts
-        .pop()
-        .expect("First part of a filter must be the column");
-    let column = translate_sql_name(column);
-
-    let inner = Filter { column, condition };
-
-    FilterNode { inner, position }
 }
 
-fn translate_condition(node: PestNode) -> ConditionNode {
-    expect(Rule::equals, &node);
+fn translate_binary_filter(node: PestNode) -> Node<Filter> {
+    expect(Rule::binary_filter, &node);
 
-    let position = node_to_position(&node);
-    let value = translate_value(
-        &node.into_inner()
-            .next()
-            .expect("For now, conditions must have a value"),
-    );
-    let inner = Condition::Equals(value);
+    let position = position(&node);
 
-    ConditionNode { position, inner }
-}
+    let mut parts = node.into_inner();
 
-fn translate_implicit_id_equals(node: PestNode) -> FilterNode {
-    let position = node_to_position(&node);
-    let filter = Filter {
-        column: TableNameNode {
-            position,
-            inner: "id",
-        },
-        condition: ConditionNode {
-            position,
-            inner: Condition::Equals(translate_value(&node)),
-        },
+    let lhs = translate_operand(parts.next().unwrap());
+    let operator = parts.next().unwrap();
+    let rhs = translate_operand(parts.next().unwrap());
+
+    let inner = match operator.as_rule() {
+        Rule::optr_eq => Filter::Equals(rhs, lhs),
+        _ => panic!("Unexpected rule: {:?}", operator.as_rule()),
     };
 
-    FilterNode {
+    Node { position, inner }
+}
+
+fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
+    expect(Rule::identified_column, &node);
+
+    let inner = node.into_inner().next().unwrap();
+    match inner.as_rule() {
+        Rule::column_name => translate_implicit_column(inner),
+        Rule::fully_qualified_column => translate_explicit_column(inner),
+        _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
+    }
+}
+
+fn translate_operand(node: PestNode) -> Node<Operand> {
+    expect(Rule::operand, &node);
+
+    let inner = node.into_inner().next().unwrap();
+    let position = position(&inner);
+
+    let operand = match inner.as_rule() {
+        Rule::numeric_value | Rule::string_value => Operand::Value(translate_value(inner)),
+        Rule::identified_column => Operand::Column(translate_identified_column(inner)),
+        _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
+    };
+
+    Node {
+        position,
+        inner: operand,
+    }
+}
+
+fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
+    let position = position(&node);
+
+    let column = ColumnIdentifier::Implicit(Node {
+        position,
+        inner: "id",
+    });
+    let rhs = Operand::Column(Node {
+        position,
+        inner: column,
+    });
+    let rhs = Node { position, inner: rhs };
+
+    let lhs = Node {
+        position,
+        inner: Operand::Value(translate_value(node))
+    };
+
+    let filter = Filter::Equals(rhs, lhs);
+
+    Node {
         position,
         inner: filter,
     }
 }
 
-fn translate_value<'a>(node: &PestNode<'a>) -> ValueNode<'a> {
-    expect(Rule::numeric_value, &node);
+fn translate_implicit_column(node: PestNode) -> Node<ColumnIdentifier> {
+    expect(Rule::column_name, &node);
 
-    let position = node_to_position(&node);
-    let inner = node.as_str().trim();
+    let position = position(&node);
+    let inner = ColumnIdentifier::Implicit(translate_sql_name(node));
 
-    ValueNode { inner, position }
+    Node { position, inner }
 }
 
-fn translate_sql_name(node: PestNode) -> TableNameNode {
+fn translate_explicit_column(node: PestNode) -> Node<ColumnIdentifier> {
+    expect(Rule::fully_qualified_column, &node);
+
+    let position = position(&node);
+
+    let mut parts = node.into_inner();
+
+    let table  = translate_sql_name(parts.next().unwrap());
+    let column = translate_sql_name(parts.next().unwrap());
+    let inner  = ColumnIdentifier::Explicit(table, column);
+
+    Node { position, inner }
+}
+
+fn translate_value(node: PestNode) -> Node<Value> {
+    match node.as_rule() {
+        Rule::numeric_value => translate_numeric_value(node),
+        Rule::string_value  => translate_string_value(node),
+        _ => {
+            expect_one_of(&[Rule::numeric_value, Rule::string_value], &node);
+            panic!("previous statement should have panicked")
+        },
+    }
+}
+
+fn translate_string_value(node: PestNode) -> Node<Value> {
+    let inner = node.into_inner().next().expect("String values MUST have child nodes");
+    expect_one_of(&[Rule::apostrophe_string_value, Rule::quote_string_value], &inner);
+
+    let position = position(&inner);
+    let inner = Value::String(inner.as_str().trim());
+
+    Node { inner, position }
+}
+
+fn translate_numeric_value(node: PestNode) -> Node<Value> {
+    expect(Rule::numeric_value, &node);
+
+    let position = position(&node);
+    let inner = Value::Numeric(node.as_str().trim());
+
+    Node { inner, position }
+}
+
+fn translate_sql_name(node: PestNode) -> Node<TableName> {
     expect_one_of(&[Rule::column_name, Rule::table_name], &node);
 
-    let position = node_to_position(&node);
+    let position = position(&node);
 
-    TableNameNode {
+    Node {
         inner: node.as_str(),
         position,
     }
@@ -247,7 +315,7 @@ fn expect_one_of(expected_types: &[Rule], node: &PestNode) {
     }
 }
 
-fn node_to_position(node: &PestNode) -> Position {
+fn position(node: &PestNode) -> Position {
     let span = node.as_span();
 
     Position {
@@ -264,7 +332,7 @@ impl From<PestError<Rule>> for SyntaxError {
     }
 }
 
-fn translate_filter_or_implicit_id(node: PestNode) -> FilterNode {
+fn translate_filter_or_implicit_id(node: PestNode) -> Node<Filter> {
     match node.as_rule() {
         Rule::numeric_value => translate_implicit_id_equals(node),
         Rule::filter => translate_filter(node),
@@ -415,5 +483,49 @@ mod tests {
         if let Operation::Join(ref table_name) = pine_node.inner.operations[3].inner {
             assert_eq!("friends", table_name.inner);
         }
+    }
+
+    #[test]
+    fn parse_quote_string_value() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = \"a string\"")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+    }
+
+    #[test]
+    fn parse_apostrophe_string_value() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = 'a string'")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+    }
+
+    #[test]
+    fn compare_two_columns() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = parentId")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+    }
+
+    #[test]
+    fn compare_two_columns_from_different_tables() {
+        let parser = PestPineParser {};
+        let pine_node = parser
+            .parse("users id = other.parentId")
+            .unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
     }
 }

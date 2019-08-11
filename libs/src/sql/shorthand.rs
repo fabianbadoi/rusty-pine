@@ -1,4 +1,4 @@
-use crate::query::{Condition, Filter as SqlFilter, QualifiedColumnIdentifier, Query};
+use crate::query::{Filter as SqlFilter, QualifiedColumnIdentifier, Query, Operand};
 
 pub struct QueryShorthand(pub Select, pub From, pub &'static [Filter]);
 
@@ -31,17 +31,28 @@ impl Into<Query> for QueryShorthand {
             .2
             .iter()
             .map(|filter| match filter {
-                Filter::Equals(column, value) => {
-                    let column = column.to_string();
-                    let table = table.clone();
-                    let column = QualifiedColumnIdentifier { table, column };
-                    let condition = Condition::Equals(value.to_string());
+                Filter::Equals(rhs, lhs) => {
+                    let rhs = parse_operand(rhs);
+                    let lhs = parse_operand(lhs);
 
-                    SqlFilter { column, condition }
+                    SqlFilter::Equals(rhs, lhs)
                 }
             })
             .collect();
 
         query
+    }
+}
+
+fn parse_operand(operand: &str) -> Operand {
+    if operand.contains('.') {
+        let parts: Vec<&str> = operand.split('.').collect();
+
+        Operand::Column(QualifiedColumnIdentifier {
+            table: parts[0].to_string(),
+            column: parts[1].to_string(),
+        })
+    } else {
+        Operand::Value(operand.to_string())
     }
 }
