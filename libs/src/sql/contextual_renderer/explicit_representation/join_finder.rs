@@ -78,10 +78,10 @@ impl<'t> JoinFinder<'t> {
     ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
         let (joins, failed_joins): (Vec<_>, Vec<_>) = potential_joins.partition(Result::is_ok);
 
-        if failed_joins.len() > 0 {
-            Err(JoinsNotFound::new(failed_joins))
-        } else {
+        if failed_joins.is_empty() {
             Ok(joins.into_iter().map(Result::unwrap).collect())
+        } else {
+            Err(JoinsNotFound::new(failed_joins))
         }
     }
 }

@@ -21,7 +21,7 @@ where
 
         match cached {
             Some(item) => serde_json::from_slice(item.as_slice())
-                .map(|o| Some(o))
+                .map(Some)
                 .unwrap_or(None),
             None => None,
         }

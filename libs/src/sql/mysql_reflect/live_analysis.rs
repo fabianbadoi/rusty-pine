@@ -46,7 +46,7 @@ where
 
         Ok(Database {
             name: db_name.to_string(),
-            tables: tables,
+            tables,
         })
     }
 

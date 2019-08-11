@@ -20,7 +20,7 @@ impl Renderer<Query, String> for &SmartRenderer {
 
         let explicit_query = self.build_explicit_query(query)?;
 
-        let query = self.render_explicit_query(explicit_query);
+        let query = self.render_explicit_query(&explicit_query);
 
         info!("Rendering done");
 
@@ -43,7 +43,7 @@ impl SmartRenderer {
         result
     }
 
-    fn render_explicit_query(&self, query: ExplicitQuery) -> String {
+    fn render_explicit_query(&self, query: &ExplicitQuery) -> String {
         info!("Rendering reander-ready representation");
 
         let select = render_select(&query.selections[..]);
@@ -56,7 +56,7 @@ impl SmartRenderer {
 
         vec![select, from, join, filter, limit]
             .into_iter()
-            .filter(|s| s.len() > 0)
+            .filter(|s| !s.is_empty())
             .collect::<Vec<_>>()
             .join("\n")
     }
@@ -157,7 +157,7 @@ mod tests {
         let error = renderer.render(&query).unwrap_err();
 
         assert_eq!(
-            "Table missing not found, try: users, friends",
+            "Table missing not found.",
             format!("{}", error)
         );
     }
@@ -178,13 +178,13 @@ mod tests {
     fn select_from_unknown_table() {
         let renderer = make_renderer();
         let mut query = make_join_query();
-        query.from = "missing".to_string();
+        query.from = "rusers".to_string();
 
         let error = renderer.render(&query).unwrap_err();
 
         println!("{}", error);
         assert_eq!(
-            "Table missing not found, try: users, friends",
+            "Table rusers not found, try: users",
             format!("{}", error)
         );
     }

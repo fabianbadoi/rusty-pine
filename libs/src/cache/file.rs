@@ -33,11 +33,11 @@ impl Cache<Vec<u8>> for ByteFileCache {
 
         let path = self.get_path(tag);
         let mut file =
-            File::create(path.clone()).expect(&format!("could not open file: {:?}", path.clone()));
+            File::create(path.clone()).unwrap_or_else(|_| panic!("could not open file: {:?}", path.clone()));
 
-        let _ = file
+        file
             .write_all(data)
-            .expect(&format!("could not write to file: {:?}", path));
+            .unwrap_or_else(|_| panic!("could not write to file: {:?}", path));
     }
 
     fn clear(&mut self) {
@@ -66,7 +66,7 @@ impl ByteFileCache {
 
     fn ensure_dir_exists(path: &OsString) {
         std::fs::create_dir_all(path.clone())
-            .expect(&format!("Could not write to dir: {:?}", path));
+            .unwrap_or_else(|_| panic!("Could not write to dir: {:?}", path));
     }
 }
 

@@ -71,7 +71,7 @@ pub struct ExplicitQueryBuilder<'t> {
 }
 
 impl<'t> ExplicitQueryBuilder<'t> {
-    pub fn new<'a>(tables: &'a [Table]) -> ExplicitQueryBuilder<'a> {
+    pub fn new(tables: &[Table]) -> ExplicitQueryBuilder {
         ExplicitQueryBuilder {
             tables,
             working_with_single_table: false,
@@ -81,14 +81,14 @@ impl<'t> ExplicitQueryBuilder<'t> {
     pub fn make_explicit_query(&mut self, query: &'t Query) -> Result<ExplicitQuery<'t>, String> {
         info!("Preparing query for rendering");
 
-        self.working_with_single_table = query.joins.len() == 0;
+        self.working_with_single_table = query.joins.is_empty();
 
         let joins = self.translate_joins(&query.from[..], &query.joins[..])?;
 
         Ok(ExplicitQuery {
             selections: self.translate_selection(&query.selections[..]),
             from: query.from.as_ref(),
-            joins: joins,
+            joins,
             filters: self.translate_filters(&query.filters[..]),
             limit: query.limit,
         })
@@ -111,7 +111,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 let column = self.make_explicit_column(&filter.column);
 
                 ExplicitFilter {
-                    column: column,
+                    column,
                     condition: &filter.condition,
                 }
             })
@@ -164,13 +164,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 .filter(|existing_table_name| strsim::normalized_damerau_levenshtein(table_name, existing_table_name) > 0.75)
                 .collect::<Vec<_>>();
 
-            let message = if all_tables.len() > 0 {
+            let message = if all_tables.is_empty() {
+                format!("Table {} not found.", table_name)
+            } else {
                 format!(
                     "Table {} not found, try: {}",
                     table_name, all_tables.join(", ")
                 )
-            } else {
-                format!("Table {} not found.", table_name)
             };
 
             Err(message)

@@ -32,7 +32,7 @@ impl QueryBuilder for &NaiveBuilder {
 impl<'a> SingleUseQueryBuilder<'a> {
     fn new(pine: &'a PineNode) -> SingleUseQueryBuilder<'a> {
         SingleUseQueryBuilder {
-            pine: pine,
+            pine,
             current_table: None,
             from_table: None,
             query: Default::default(),

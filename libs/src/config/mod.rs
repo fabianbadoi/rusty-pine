@@ -51,10 +51,10 @@ impl FileProvider {
     pub fn new(path: &Path) -> FileProvider {
         let base_dir = path
             .parent()
-            .expect(&format!("Invalid path specified: {:?}", path));
+            .unwrap_or_else(|| panic!("Invalid path specified: {:?}", path));
         let tag = path
             .file_name()
-            .expect(&format!("Invalid path specified: {:?}", path))
+            .unwrap_or_else(|| panic!("Invalid path specified: {:?}", path))
             .to_str()
             .unwrap()
             .to_owned();
@@ -72,7 +72,7 @@ impl FileProvider {
         info!("Setting up default config");
 
         if (&*self.store.borrow() as &dyn Cache<Config>).has(&self.tag) {
-            panic!("Invalid config file is already present at {:?}, please fix or remove it");
+            panic!("Invalid config file is already present at {:?}, please fix or remove it", self.file_path);
         }
 
         let default_config = Default::default();

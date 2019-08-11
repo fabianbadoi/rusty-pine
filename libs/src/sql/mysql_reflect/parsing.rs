@@ -97,8 +97,7 @@ impl Table {
     fn parse_foreign_keys(lines: &mut Iterator<Item = &str>) -> Vec<ForeignKey> {
         lines
             .map(|line| ForeignKey::from_sql_string(line))
-            .filter(|result| result.is_ok())
-            .map(|result| result.unwrap())
+            .filter_map(Result::ok)
             .collect()
     }
 }

@@ -46,17 +46,17 @@ TODO:
 - [x] Move complexity from SmartRenderer to Builder
 - [x] Usable binaries
 - [x] Add logging
-- [ ] Run without connection
-- [ ] Run clippy on code
+- [x] Run clippy on code
 - [ ] Display available joins on join fail
 - [ ] Unselect specific columns
 - [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
-- [ ] Complex values
+- [ ] Complex values (`parentId = .id`?)
 - [ ] Auto deep join
 - [ ] Functions on a column
 - [ ] Group on a column
 - [ ] Order by a column
+- [ ] Run without connection
 - [ ] Meta function show create
 - [ ] Meta function show neighbors
 - [ ] Support null checks

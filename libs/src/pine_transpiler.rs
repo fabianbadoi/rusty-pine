@@ -31,9 +31,8 @@ where
     fn transpile(self, input: I) -> TranspileResult<O> {
         let pine = self.parser.parse(input.into())?;
         let query = self.builder.build(&pine)?;
-        let output = self.renderer.render(&query);
 
-        output
+        self.renderer.render(&query)
     }
 }
 

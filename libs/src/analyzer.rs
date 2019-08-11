@@ -26,7 +26,7 @@ impl Analyzer {
         let databases = self.inner.analyze()?;
         let all_db_names: Vec<_> = databases.iter().map(|db| db.name.clone()).collect();
 
-        for database in databases.into_iter() {
+        for database in databases {
             if database.name == db_name {
                 return Ok(database);
             }

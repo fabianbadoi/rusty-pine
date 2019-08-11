@@ -110,7 +110,8 @@ impl Translator {
     }
 
     fn translate_limit<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let limit = translate_value(node.into_inner().next().unwrap());
+        let value_node = node.into_inner().next().unwrap();
+        let limit = translate_value(&value_node);
 
         vec![Operation::Limit(limit)]
     }
@@ -136,9 +137,10 @@ impl Translator {
 
         let filters: Vec<_> = inner
             .skip(1)
-            .map(|f| translate_filter_or_implicit_id(f))
+            .map(translate_filter_or_implicit_id)
             .collect();
-        if filters.len() > 0 {
+
+        if !filters.is_empty() {
             operations.push(Operation::Filter(filters));
         }
 
@@ -177,7 +179,7 @@ fn translate_condition(node: PestNode) -> ConditionNode {
 
     let position = node_to_position(&node);
     let value = translate_value(
-        node.into_inner()
+        &node.into_inner()
             .next()
             .expect("For now, conditions must have a value"),
     );
@@ -195,7 +197,7 @@ fn translate_implicit_id_equals(node: PestNode) -> FilterNode {
         },
         condition: ConditionNode {
             position,
-            inner: Condition::Equals(translate_value(node)),
+            inner: Condition::Equals(translate_value(&node)),
         },
     };
 
@@ -205,7 +207,7 @@ fn translate_implicit_id_equals(node: PestNode) -> FilterNode {
     }
 }
 
-fn translate_value(node: PestNode) -> ValueNode {
+fn translate_value<'a>(node: &PestNode<'a>) -> ValueNode<'a> {
     expect(Rule::numeric_value, &node);
 
     let position = node_to_position(&node);
@@ -215,7 +217,7 @@ fn translate_value(node: PestNode) -> ValueNode {
 }
 
 fn translate_sql_name(node: PestNode) -> TableNameNode {
-    expect_one_of(vec![Rule::column_name, Rule::table_name], &node);
+    expect_one_of(&[Rule::column_name, Rule::table_name], &node);
 
     let position = node_to_position(&node);
 
@@ -235,7 +237,7 @@ fn expect(expected_type: Rule, node: &PestNode) {
     }
 }
 
-fn expect_one_of(expected_types: Vec<Rule>, node: &PestNode) {
+fn expect_one_of(expected_types: &[Rule], node: &PestNode) {
     if !expected_types.contains(&node.as_rule()) {
         panic!(
             "node be a one of {:?}, found '{:?}'",
