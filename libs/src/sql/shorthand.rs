@@ -1,4 +1,4 @@
-use crate::query::{Filter as SqlFilter, QualifiedColumnIdentifier, Query, Operand};
+use crate::query::{Filter as SqlFilter, Operand, QualifiedColumnIdentifier, Query};
 
 pub struct QueryShorthand(pub Select, pub From, pub &'static [Filter]);
 

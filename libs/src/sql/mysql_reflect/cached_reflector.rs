@@ -2,8 +2,8 @@ use crate::cache::Cache;
 use crate::error::PineError;
 use crate::sql::structure::Database;
 use crate::sql::Reflector;
-use std::cell::RefCell;
 use log::info;
+use std::cell::RefCell;
 
 pub struct CachedReflector<T, U> {
     inner: T,
@@ -25,7 +25,7 @@ where
             Some(value) => {
                 info!("Using cahe");
                 Ok(value)
-            },
+            }
             None => {
                 info!("Using live data");
 

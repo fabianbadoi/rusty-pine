@@ -1,10 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::cache::{make_config, Cache, DefaultCache};
+use log::info;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::path::Path;
-use log::info;
 
 pub fn get_config_file_name(file: &str) -> OsString {
     let path = Path::new(&std::env::var("HOME").unwrap())
@@ -72,7 +72,10 @@ impl FileProvider {
         info!("Setting up default config");
 
         if (&*self.store.borrow() as &dyn Cache<Config>).has(&self.tag) {
-            panic!("Invalid config file is already present at {:?}, please fix or remove it", self.file_path);
+            panic!(
+                "Invalid config file is already present at {:?}, please fix or remove it",
+                self.file_path
+            );
         }
 
         let default_config = Default::default();

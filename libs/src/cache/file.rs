@@ -32,11 +32,10 @@ impl Cache<Vec<u8>> for ByteFileCache {
         Self::ensure_dir_exists(&self.base_dir);
 
         let path = self.get_path(tag);
-        let mut file =
-            File::create(path.clone()).unwrap_or_else(|_| panic!("could not open file: {:?}", path.clone()));
+        let mut file = File::create(path.clone())
+            .unwrap_or_else(|_| panic!("could not open file: {:?}", path.clone()));
 
-        file
-            .write_all(data)
+        file.write_all(data)
             .unwrap_or_else(|_| panic!("could not write to file: {:?}", path));
     }
 

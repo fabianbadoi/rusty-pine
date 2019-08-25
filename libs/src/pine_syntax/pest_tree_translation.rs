@@ -6,8 +6,8 @@ use crate::error::{Position, SyntaxError};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
 use ::pest::Parser;
-use std::convert::From;
 use log::info;
+use std::convert::From;
 
 // Look at the test at the end of this file to better understand
 // the tree structures involved.
@@ -44,7 +44,10 @@ impl Translator {
     }
 
     pub fn translate<'a>(mut self, root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> {
-        info!("Parsing pine query into first internal representation: {}", input);
+        info!(
+            "Parsing pine query into first internal representation: {}",
+            input
+        );
 
         expect(Rule::pine, &root_node);
 
@@ -135,10 +138,7 @@ impl Translator {
 
         let mut operations = vec_with_from;
 
-        let filters: Vec<_> = inner
-            .skip(1)
-            .map(translate_filter_or_implicit_id)
-            .collect();
+        let filters: Vec<_> = inner.skip(1).map(translate_filter_or_implicit_id).collect();
 
         if !filters.is_empty() {
             operations.push(Operation::Filter(filters));
@@ -216,11 +216,14 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
         position,
         inner: column,
     });
-    let rhs = Node { position, inner: rhs };
+    let rhs = Node {
+        position,
+        inner: rhs,
+    };
 
     let lhs = Node {
         position,
-        inner: Operand::Value(translate_value(node))
+        inner: Operand::Value(translate_value(node)),
     };
 
     let filter = Filter::Equals(rhs, lhs);
@@ -247,9 +250,9 @@ fn translate_explicit_column(node: PestNode) -> Node<ColumnIdentifier> {
 
     let mut parts = node.into_inner();
 
-    let table  = translate_sql_name(parts.next().unwrap());
+    let table = translate_sql_name(parts.next().unwrap());
     let column = translate_sql_name(parts.next().unwrap());
-    let inner  = ColumnIdentifier::Explicit(table, column);
+    let inner = ColumnIdentifier::Explicit(table, column);
 
     Node { position, inner }
 }
@@ -257,17 +260,23 @@ fn translate_explicit_column(node: PestNode) -> Node<ColumnIdentifier> {
 fn translate_value(node: PestNode) -> Node<Value> {
     match node.as_rule() {
         Rule::numeric_value => translate_numeric_value(node),
-        Rule::string_value  => translate_string_value(node),
+        Rule::string_value => translate_string_value(node),
         _ => {
             expect_one_of(&[Rule::numeric_value, Rule::string_value], &node);
             panic!("previous statement should have panicked")
-        },
+        }
     }
 }
 
 fn translate_string_value(node: PestNode) -> Node<Value> {
-    let inner = node.into_inner().next().expect("String values MUST have child nodes");
-    expect_one_of(&[Rule::apostrophe_string_value, Rule::quote_string_value], &inner);
+    let inner = node
+        .into_inner()
+        .next()
+        .expect("String values MUST have child nodes");
+    expect_one_of(
+        &[Rule::apostrophe_string_value, Rule::quote_string_value],
+        &inner,
+    );
 
     let position = position(&inner);
     let inner = Value::String(inner.as_str().trim());
@@ -488,9 +497,7 @@ mod tests {
     #[test]
     fn parse_quote_string_value() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users id = \"a string\"")
-            .unwrap();
+        let pine_node = parser.parse("users id = \"a string\"").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
@@ -499,9 +506,7 @@ mod tests {
     #[test]
     fn parse_apostrophe_string_value() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users id = 'a string'")
-            .unwrap();
+        let pine_node = parser.parse("users id = 'a string'").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
@@ -510,9 +515,7 @@ mod tests {
     #[test]
     fn compare_two_columns() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users id = parentId")
-            .unwrap();
+        let pine_node = parser.parse("users id = parentId").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
@@ -521,9 +524,7 @@ mod tests {
     #[test]
     fn compare_two_columns_from_different_tables() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users id = other.parentId")
-            .unwrap();
+        let pine_node = parser.parse("users id = other.parentId").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());

@@ -123,7 +123,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 let lhs = self.make_operand(lhs);
 
                 ExplicitFilter::Equals(rhs, lhs)
-            },
+            }
         }
     }
 
@@ -177,7 +177,9 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 .tables
                 .iter()
                 .map(|table| table.name.as_ref())
-                .filter(|existing_table_name| strsim::normalized_damerau_levenshtein(table_name, existing_table_name) > 0.75)
+                .filter(|existing_table_name| {
+                    strsim::normalized_damerau_levenshtein(table_name, existing_table_name) > 0.75
+                })
                 .collect::<Vec<_>>();
 
             let message = if all_tables.is_empty() {
@@ -185,7 +187,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
             } else {
                 format!(
                     "Table {} not found, try: {}",
-                    table_name, all_tables.join(", ")
+                    table_name,
+                    all_tables.join(", ")
                 )
             };
 

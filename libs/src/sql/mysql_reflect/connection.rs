@@ -1,6 +1,6 @@
 use crate::error::PineError;
-use mysql::{from_row, OptsBuilder, Pool};
 use log::info;
+use mysql::{from_row, OptsBuilder, Pool};
 
 pub trait Connection {
     fn databases(&self) -> Result<Vec<String>, PineError>;

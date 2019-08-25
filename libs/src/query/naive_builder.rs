@@ -2,13 +2,11 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnName as AstColumnName, Filter as AstFilter, Operation as AstOperation, Pine,
-    TableName as AstTableName, Value as AstValue, Operand, ColumnIdentifier, Node
+    ColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter, Node, Operand,
+    Operation as AstOperation, Pine, TableName as AstTableName, Value as AstValue,
 };
-use crate::query::{
-    Filter as SqlFilter, QualifiedColumnIdentifier, Query, Operand as SqlOperand
-};
-use log::{info, debug};
+use crate::query::{Filter as SqlFilter, Operand as SqlOperand, QualifiedColumnIdentifier, Query};
+use log::{debug, info};
 
 /// Has no concept of context, more complex queries will fail to build
 #[derive(Debug)]
@@ -115,9 +113,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         let table = self.require_table(filters[0].position)?;
         let mut filters: Vec<_> = filters
             .iter()
-            .map(|filter_node| {
-                translate_filter(filter_node, table)
-            })
+            .map(|filter_node| translate_filter(filter_node, table))
             .collect();
 
         self.query.filters.append(&mut filters);
@@ -188,15 +184,22 @@ fn translate_operand(operand: &Operand, default_table: &str) -> SqlOperand {
         Operand::Column(column_identifier) => {
             let column = translate_column_identifier(&column_identifier.inner, default_table);
             SqlOperand::Column(column)
-        },
+        }
         Operand::Value(value) => SqlOperand::Value(value.inner.to_string()),
     }
 }
 
-fn translate_column_identifier(identifier: &ColumnIdentifier, default_table: &str) -> QualifiedColumnIdentifier {
+fn translate_column_identifier(
+    identifier: &ColumnIdentifier,
+    default_table: &str,
+) -> QualifiedColumnIdentifier {
     let (table, column) = match identifier {
-        ColumnIdentifier::Implicit(column_name)             => (default_table.to_string(), column_name.to_string()),
-        ColumnIdentifier::Explicit(table_name, column_name) => (table_name.to_string(),    column_name.to_string()),
+        ColumnIdentifier::Implicit(column_name) => {
+            (default_table.to_string(), column_name.to_string())
+        }
+        ColumnIdentifier::Explicit(table_name, column_name) => {
+            (table_name.to_string(), column_name.to_string())
+        }
     };
 
     QualifiedColumnIdentifier { table, column }
@@ -206,8 +209,8 @@ type InternalResult = Result<(), SyntaxError>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::QualifiedColumnIdentifier;
+    use super::*;
     use super::{NaiveBuilder, QueryBuilder};
     use crate::pine_syntax::ast::*;
 
@@ -264,7 +267,10 @@ mod tests {
 
         assert_eq!(query.filters.len(), 1);
 
-        assert_eq!(query.filters[0], SqlFilter::Equals(("users", "id").into(), "3".into()));
+        assert_eq!(
+            query.filters[0],
+            SqlFilter::Equals(("users", "id").into(), "3".into())
+        );
     }
 
     #[test]
@@ -278,7 +284,10 @@ mod tests {
 
         assert_eq!(query.filters.len(), 1);
 
-        assert_eq!(query.filters[0], SqlFilter::Equals(("users", "id").into(), "3".into()));
+        assert_eq!(
+            query.filters[0],
+            SqlFilter::Equals(("users", "id").into(), "3".into())
+        );
     }
 
     #[test]
@@ -373,7 +382,6 @@ mod tests {
             })
         }
     }
-
 
     impl From<&str> for SqlOperand {
         fn from(other: &str) -> SqlOperand {

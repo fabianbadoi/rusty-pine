@@ -77,13 +77,13 @@ impl Value<'_> {
     pub fn to_string(&self) -> String {
         match self {
             Value::Numeric(value) => value.to_string(),
-            Value::String(value)  => format!("{}", value),
+            Value::String(value) => format!("{}", value),
         }
     }
 
     pub fn as_str(&self) -> &str {
         match self {
-            Value::Numeric(value) | Value::String(value)=> value,
+            Value::Numeric(value) | Value::String(value) => value,
         }
     }
 }

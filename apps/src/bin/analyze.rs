@@ -1,5 +1,5 @@
-extern crate rusty_pine_lib;
 extern crate pretty_env_logger;
+extern crate rusty_pine_lib;
 
 use rusty_pine_lib::read_config;
 use rusty_pine_lib::Analyzer;

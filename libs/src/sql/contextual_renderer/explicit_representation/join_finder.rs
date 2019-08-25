@@ -1,8 +1,8 @@
 use super::ExplicitJoin;
 use crate::sql::structure::Table;
+use log::info;
 use std::error::Error;
 use std::fmt::Display;
-use log::info;
 
 pub struct JoinFinder<'tables> {
     tables: &'tables [Table],
@@ -56,13 +56,13 @@ impl<'t> JoinFinder<'t> {
         info!("Finding join {} to {}", table1, table2);
 
         let direct = self.find_direct_join_for(table1, table2);
-        let direct_or_inverse = direct.or_else(move || {
-            info!("Trying inverse: {} to {}", table2, table1);
 
+        if direct.is_none() {
+            // get inverse
             self.find_direct_join_for(table2, table1)
-        });
-
-        direct_or_inverse
+        } else {
+            direct
+        }
     }
 
     fn find_direct_join_for(&self, source: &'t str, dest: &str) -> Option<ExplicitJoin<'t>> {
@@ -105,7 +105,7 @@ impl JoinsNotFound {
 }
 
 impl Display for JoinsNotFound {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let failed_join_list = self
             .joins
             .iter()
@@ -114,7 +114,7 @@ impl Display for JoinsNotFound {
             .join("\n");
 
         write!(
-            f,
+            formatter,
             "Can't figure out how to join these tables:\n{}",
             failed_join_list
         )

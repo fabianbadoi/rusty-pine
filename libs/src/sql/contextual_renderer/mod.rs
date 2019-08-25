@@ -3,7 +3,8 @@ use super::Renderer;
 use crate::error::PineError;
 use crate::query::Query;
 use explicit_representation::{
-    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitQuery, ExplicitQueryBuilder, ExplicitOperand
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitQuery,
+    ExplicitQueryBuilder,
 };
 use log::info;
 
@@ -162,10 +163,7 @@ mod tests {
 
         let error = renderer.render(&query).unwrap_err();
 
-        assert_eq!(
-            "Table missing not found.",
-            format!("{}", error)
-        );
+        assert_eq!("Table missing not found.", format!("{}", error));
     }
 
     #[test]
@@ -189,17 +187,17 @@ mod tests {
         let error = renderer.render(&query).unwrap_err();
 
         println!("{}", error);
-        assert_eq!(
-            "Table rusers not found, try: users",
-            format!("{}", error)
-        );
+        assert_eq!("Table rusers not found, try: users", format!("{}", error));
     }
 
     fn make_join_query() -> Query {
         let query = QueryShorthand(
             Select(&["id", "name"]),
             From("users"),
-            &[Filter::Equals("users.id", "1"), Filter::Equals("users.mojo", "'great'")],
+            &[
+                Filter::Equals("users.id", "1"),
+                Filter::Equals("users.mojo", "'great'"),
+            ],
         );
         let mut query: Query = query.into();
         query.joins.push("friends".to_string());
