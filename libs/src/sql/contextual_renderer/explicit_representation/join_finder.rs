@@ -49,7 +49,7 @@ impl<'t> JoinFinder<'t> {
                 .ok_or((*table1, *table2))
         });
 
-        Self::potential_joins_to_result(joins)
+        self.potential_joins_to_result(joins)
     }
 
     fn find_join_for_tables(&self, table1: &'t str, table2: &'t str) -> Option<ExplicitJoin<'t>> {
@@ -74,6 +74,7 @@ impl<'t> JoinFinder<'t> {
     }
 
     fn potential_joins_to_result(
+        &self,
         potential_joins: impl Iterator<Item = IntermediateResult<'t>>,
     ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
         let (joins, failed_joins): (Vec<_>, Vec<_>) = potential_joins.partition(Result::is_ok);
@@ -81,26 +82,46 @@ impl<'t> JoinFinder<'t> {
         if failed_joins.is_empty() {
             Ok(joins.into_iter().map(Result::unwrap).collect())
         } else {
-            Err(JoinsNotFound::new(failed_joins))
+            let first_table = failed_joins.last().unwrap().as_ref().unwrap_err().0.as_ref();
+            let suggested_joins = self.find_all_joins(first_table);
+
+            Err(JoinsNotFound::new(failed_joins, suggested_joins))
         }
+    }
+
+
+    fn find_all_joins(&self, target: &str) -> Vec<String> {
+        let direct = self.tables
+            .iter()
+            .filter(|table| table.name == target)
+            .flat_map(|table| table.foreign_keys.iter())
+            .map(|fk| fk.to_table.0.clone());
+        let indirect = self.tables
+            .iter()
+            .filter(|table| {
+                table.foreign_keys.iter().find(|fk| fk.to_table == target).is_some()
+            })
+            .map(|table| table.name.clone());
+
+        direct.chain(indirect).collect()
     }
 }
 
-// TODO: add data about what joins ARE available?
 #[derive(Debug, Clone)]
 pub struct JoinsNotFound {
     joins: Vec<(String, String)>,
+    suggested_joins: Vec<String>,
 }
 
 impl JoinsNotFound {
-    fn new(joins: Vec<Result<ExplicitJoin, (&str, &str)>>) -> JoinsNotFound {
+    fn new(joins: Vec<Result<ExplicitJoin, (&str, &str)>>, suggested_joins: Vec<String>) -> JoinsNotFound {
         let joins = joins
             .into_iter()
             .map(Result::unwrap_err)
             .map(|(table1, table2)| (table1.to_owned(), table2.to_owned()))
             .collect();
 
-        JoinsNotFound { joins }
+        JoinsNotFound { joins, suggested_joins }
     }
 }
 
@@ -113,11 +134,21 @@ impl Display for JoinsNotFound {
             .collect::<Vec<String>>()
             .join("\n");
 
-        write!(
+        let res = write!(
             formatter,
             "Can't figure out how to join these tables:\n{}",
             failed_join_list
-        )
+        );
+
+        if self.suggested_joins.is_empty() {
+            res
+        } else {
+            write!(
+                formatter,
+                "\nTry one of: {}",
+                self.suggested_joins.join(", ")
+            )
+        }
     }
 }
 

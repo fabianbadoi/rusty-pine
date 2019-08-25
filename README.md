@@ -47,9 +47,9 @@ TODO:
 - [x] Usable binaries
 - [x] Add logging
 - [x] Run clippy on code
-- [ ] Display available joins on join fail
+- [x] Display available joins on join fail
+- [x] All outputted errors must be SQL commnets
 - [ ] Unselect specific columns
-- [ ] All outputted errors must be SQL commnets
 - [ ] other comparisons
 - [ ] Complex values (`parentId = .id`?)
 - [ ] Auto deep join
