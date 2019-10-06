@@ -82,24 +82,35 @@ impl<'t> JoinFinder<'t> {
         if failed_joins.is_empty() {
             Ok(joins.into_iter().map(Result::unwrap).collect())
         } else {
-            let first_table = failed_joins.last().unwrap().as_ref().unwrap_err().0.as_ref();
+            let first_table = failed_joins
+                .last()
+                .unwrap()
+                .as_ref()
+                .unwrap_err()
+                .0
+                .as_ref();
             let suggested_joins = self.find_all_joins(first_table);
 
             Err(JoinsNotFound::new(failed_joins, suggested_joins))
         }
     }
 
-
     fn find_all_joins(&self, target: &str) -> Vec<String> {
-        let direct = self.tables
+        let direct = self
+            .tables
             .iter()
             .filter(|table| table.name == target)
             .flat_map(|table| table.foreign_keys.iter())
             .map(|fk| fk.to_table.0.clone());
-        let indirect = self.tables
+        let indirect = self
+            .tables
             .iter()
             .filter(|table| {
-                table.foreign_keys.iter().find(|fk| fk.to_table == target).is_some()
+                table
+                    .foreign_keys
+                    .iter()
+                    .find(|fk| fk.to_table == target)
+                    .is_some()
             })
             .map(|table| table.name.clone());
 
@@ -114,14 +125,20 @@ pub struct JoinsNotFound {
 }
 
 impl JoinsNotFound {
-    fn new(joins: Vec<Result<ExplicitJoin, (&str, &str)>>, suggested_joins: Vec<String>) -> JoinsNotFound {
+    fn new(
+        joins: Vec<Result<ExplicitJoin, (&str, &str)>>,
+        suggested_joins: Vec<String>,
+    ) -> JoinsNotFound {
         let joins = joins
             .into_iter()
             .map(Result::unwrap_err)
             .map(|(table1, table2)| (table1.to_owned(), table2.to_owned()))
             .collect();
 
-        JoinsNotFound { joins, suggested_joins }
+        JoinsNotFound {
+            joins,
+            suggested_joins,
+        }
     }
 }
 

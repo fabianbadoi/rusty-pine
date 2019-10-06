@@ -3,9 +3,12 @@ use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
     ColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter, Node, Operand,
-    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, Value as AstValue,
+    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName,
+    Value as AstValue,
 };
-use crate::query::{Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query};
+use crate::query::{
+    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query,
+};
 use log::{debug, info};
 
 /// Has no concept of context, more complex queries will fail to build
@@ -202,7 +205,9 @@ fn translate_order(order_node: &Node<AstOrder>, default_table: &str) -> SqlOrder
     debug!("Found order: {:?}", order_node);
 
     let operand = match &order_node.inner {
-        AstOrder::Ascending(operand) | AstOrder::Descending(operand) => translate_operand(&operand.inner, default_table),
+        AstOrder::Ascending(operand) | AstOrder::Descending(operand) => {
+            translate_operand(&operand.inner, default_table)
+        }
     };
 
     match &order_node.inner {

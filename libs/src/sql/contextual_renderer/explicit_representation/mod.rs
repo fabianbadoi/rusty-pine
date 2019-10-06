@@ -378,15 +378,11 @@ mod tests {
     #[test]
     fn can_build_order() {
         let orders = vec![
-            Order::Ascending(
-                Operand::Column(QualifiedColumnIdentifier {
-                    table: "users".into(),
-                    column: "column1".into(),
-                }),
-            ),
-            Order::Descending(
-                Operand::Value("3".to_owned()),
-            ),
+            Order::Ascending(Operand::Column(QualifiedColumnIdentifier {
+                table: "users".into(),
+                column: "column1".into(),
+            })),
+            Order::Descending(Operand::Value("3".to_owned())),
         ];
 
         let builder = ExplicitQueryBuilder {

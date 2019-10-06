@@ -205,14 +205,16 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
     let operand = inner.into_inner().next().unwrap();
     let operand = translate_operand(operand);
 
-
     let ordering = match ordering_type_rule {
         Rule::ordering_asc => Order::Ascending(operand),
         Rule::ordering_desc => Order::Descending(operand),
         _ => unimplemented!("Unexpected node type {:?}", ordering_type_rule),
     };
 
-    Node { inner: ordering, position }
+    Node {
+        inner: ordering,
+        position,
+    }
 }
 
 fn translate_operand(node: PestNode) -> Node<Operand> {
@@ -561,7 +563,9 @@ mod tests {
     #[test]
     fn order() {
         let parser = PestPineParser {};
-        let pine_node = parser.parse("users | order: id asc, users.id, friends.friendId DESC, 3-, u+").unwrap();
+        let pine_node = parser
+            .parse("users | order: id asc, users.id, friends.friendId DESC, 3-, u+")
+            .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("order", pine_node.inner.operations[1].inner.get_name());

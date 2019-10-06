@@ -140,7 +140,9 @@ fn render_orders(orders: &[ExplicitOrder]) -> String {
 
 fn render_order(order: &ExplicitOrder) -> String {
     let operand = match order {
-        ExplicitOrder::Ascending(operand) | ExplicitOrder::Descending(operand) => render_operand(operand),
+        ExplicitOrder::Ascending(operand) | ExplicitOrder::Descending(operand) => {
+            render_operand(operand)
+        }
     };
 
     let direction = match order {
@@ -212,32 +214,41 @@ mod tests {
 
     #[test]
     fn order() {
-        use crate::query::{ Order, Operand, QualifiedColumnIdentifier};
+        use crate::query::{Operand, Order, QualifiedColumnIdentifier};
 
         let renderer = make_renderer();
         let mut query = make_query();
-        query.order.push(Order::Descending(Operand::Column(QualifiedColumnIdentifier{
-            table: "users".to_owned(),
-            column: "id".to_owned(),
-        })));
-        query.order.push(Order::Ascending(Operand::Value("3".to_owned())));
+        query.order.push(Order::Descending(Operand::Column(
+            QualifiedColumnIdentifier {
+                table: "users".to_owned(),
+                column: "id".to_owned(),
+            },
+        )));
+        query
+            .order
+            .push(Order::Ascending(Operand::Value("3".to_owned())));
 
         let rendering = renderer.render(&query).unwrap();
 
-        assert_eq!("SELECT *\nFROM users\nORDER BY id DESC, 3\nLIMIT 10", rendering);
+        assert_eq!(
+            "SELECT *\nFROM users\nORDER BY id DESC, 3\nLIMIT 10",
+            rendering
+        );
     }
 
     #[test]
     fn order_with_explict_column() {
-        use crate::query::{ Order, Operand, QualifiedColumnIdentifier};
+        use crate::query::{Operand, Order, QualifiedColumnIdentifier};
 
         let renderer = make_renderer();
         let mut query = make_query();
         query.joins.push("friends".to_owned());
-        query.order.push(Order::Descending(Operand::Column(QualifiedColumnIdentifier{
-            table: "users".to_owned(),
-            column: "id".to_owned(),
-        })));
+        query.order.push(Order::Descending(Operand::Column(
+            QualifiedColumnIdentifier {
+                table: "users".to_owned(),
+                column: "id".to_owned(),
+            },
+        )));
 
         let rendering = renderer.render(&query).unwrap();
 
@@ -272,11 +283,7 @@ mod tests {
     }
 
     fn make_query() -> Query {
-        let query = QueryShorthand(
-            Select(&[]),
-            From("users"),
-            &[]
-        );
+        let query = QueryShorthand(Select(&[]), From("users"), &[]);
 
         query.into()
     }
