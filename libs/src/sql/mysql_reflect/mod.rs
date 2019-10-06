@@ -42,7 +42,7 @@ pub fn connect_fresh(
     let mut cache = make_reflector_cache();
 
     // it doesn't matter what cache type this is, it will clear everything anyway
-    (&mut cache as &mut Cache<u8>).clear();
+    (&mut cache as &mut dyn Cache<u8>).clear();
 
     Ok(DefaultReflector::wrap(
         MySqlReflector::for_connection(connection),

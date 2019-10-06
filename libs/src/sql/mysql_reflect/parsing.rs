@@ -56,7 +56,7 @@ impl Table {
         })
     }
 
-    fn parse_table_name_line(lines: &mut Iterator<Item = &str>) -> Result<String, String> {
+    fn parse_table_name_line(lines: &mut dyn Iterator<Item = &str>) -> Result<String, String> {
         if let Some(table_name_line) = lines.next() {
             let regex = Regex::new("(?i)^CREATE TABLE `([a-z0-9_]+)`").unwrap();
             let matches = regex.captures(table_name_line);
@@ -76,7 +76,7 @@ impl Table {
         }
     }
 
-    fn parse_columns(lines: &mut Iterator<Item = &str>) -> Vec<Column> {
+    fn parse_columns(lines: &mut dyn Iterator<Item = &str>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::new();
 
         for line in lines {
@@ -94,7 +94,7 @@ impl Table {
     }
 
     /// Consumes the rest of the iterator
-    fn parse_foreign_keys(lines: &mut Iterator<Item = &str>) -> Vec<ForeignKey> {
+    fn parse_foreign_keys(lines: &mut dyn Iterator<Item = &str>) -> Vec<ForeignKey> {
         lines
             .map(|line| ForeignKey::from_sql_string(line))
             .filter_map(Result::ok)

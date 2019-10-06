@@ -73,7 +73,7 @@ impl Error for PineError {
         &self.message
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         self.cause.as_ref().map(|boxed| &**boxed)
     }
 }
@@ -89,7 +89,7 @@ impl Error for SyntaxError {
         self.message()
     }
 
-    fn cause(&self) -> Option<&Error> {
+    fn cause(&self) -> Option<&dyn Error> {
         None
     }
 }
