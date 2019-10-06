@@ -3,9 +3,9 @@ use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
     ColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter, Node, Operand,
-    Operation as AstOperation, Pine, TableName as AstTableName, Value as AstValue,
+    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, Value as AstValue,
 };
-use crate::query::{Filter as SqlFilter, Operand as SqlOperand, QualifiedColumnIdentifier, Query};
+use crate::query::{Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query};
 use log::{debug, info};
 
 /// Has no concept of context, more complex queries will fail to build
@@ -58,6 +58,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             AstOperation::Join(ref table) => self.apply_join(table),
             AstOperation::Select(ref selections) => self.apply_selections(selections)?,
             AstOperation::Filter(ref filters) => self.apply_filters(filters)?,
+            AstOperation::Order(ref orders) => self.apply_orders(orders)?,
             AstOperation::Limit(ref limit) => self.apply_limit(limit)?,
         };
 
@@ -121,6 +122,24 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
+    fn apply_orders(&mut self, orders: &[Node<AstOrder>]) -> Result<(), SyntaxError> {
+        debug!("Found orders: {:?}", orders);
+
+        if orders.is_empty() {
+            return Ok(());
+        }
+
+        let table = self.require_table(orders[0].position)?;
+        let mut order: Vec<_> = orders
+            .iter()
+            .map(|order_node| translate_order(order_node, table))
+            .collect();
+
+        self.query.order.append(&mut order);
+
+        Ok(())
+    }
+
     fn apply_limit(&mut self, value: &Node<AstValue>) -> Result<(), SyntaxError> {
         use std::str::FromStr;
         debug!("Found limit: {:?}", value);
@@ -176,6 +195,19 @@ fn translate_filter(filter_node: &Node<AstFilter>, default_table: &str) -> SqlFi
 
             SqlFilter::Equals(rhs, lhs)
         }
+    }
+}
+
+fn translate_order(order_node: &Node<AstOrder>, default_table: &str) -> SqlOrder {
+    debug!("Found order: {:?}", order_node);
+
+    let operand = match &order_node.inner {
+        AstOrder::Ascending(operand) | AstOrder::Descending(operand) => translate_operand(&operand.inner, default_table),
+    };
+
+    match &order_node.inner {
+        AstOrder::Ascending(_) => SqlOrder::Ascending(operand),
+        AstOrder::Descending(_) => SqlOrder::Descending(operand),
     }
 }
 
@@ -299,6 +331,24 @@ mod tests {
 
         assert_eq!(query.from, "users");
         assert_eq!(query.joins[0], "friends");
+    }
+
+    #[test]
+    fn build_order() {
+        let order_1 = Operand::Column(node(ColumnIdentifier::Explicit(node("users"), node("id"))));
+        let order_2 = Operand::Value(node(Value::Numeric("3")));
+        let order = vec![
+            node(AstOrder::Ascending(node(order_1))),
+            node(AstOrder::Descending(node(order_2))),
+        ];
+        let mut pine = select(&["id", "name"], "users");
+        append_operation(&mut pine, AstOperation::Order(order));
+
+        let query_builder = NaiveBuilder {};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(query.order[0], SqlOrder::Ascending(("users", "id").into()));
+        assert_eq!(query.order[1], SqlOrder::Descending(("3").into()));
     }
 
     fn make_equals(

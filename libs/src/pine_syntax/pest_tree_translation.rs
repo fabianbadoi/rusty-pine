@@ -73,6 +73,7 @@ impl Translator {
             Rule::filters => self.translate_filters(node),
             Rule::compound_expression => self.translate_compound_expression(node),
             Rule::join => self.translate_join(node),
+            Rule::order => self.translate_order(node),
             Rule::limit => self.translate_limit(node),
             Rule::EOI => Vec::new(),
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
@@ -110,6 +111,12 @@ impl Translator {
         let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
 
         vec![Operation::Select(columns)]
+    }
+
+    fn translate_order<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let orders = node.into_inner().map(translate_ordering).collect();
+
+        vec![Operation::Order(orders)]
     }
 
     fn translate_limit<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
@@ -185,6 +192,27 @@ fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
         Rule::fully_qualified_column => translate_explicit_column(inner),
         _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
     }
+}
+
+fn translate_ordering(node: PestNode) -> Node<Order> {
+    expect(Rule::ordering, &node);
+
+    let position = position(&node);
+    let inner = node.into_inner().next().unwrap();
+
+    let ordering_type_rule = inner.as_rule();
+
+    let operand = inner.into_inner().next().unwrap();
+    let operand = translate_operand(operand);
+
+
+    let ordering = match ordering_type_rule {
+        Rule::ordering_asc => Order::Ascending(operand),
+        Rule::ordering_desc => Order::Descending(operand),
+        _ => unimplemented!("Unexpected node type {:?}", ordering_type_rule),
+    };
+
+    Node { inner: ordering, position }
 }
 
 fn translate_operand(node: PestNode) -> Node<Operand> {
@@ -528,5 +556,14 @@ mod tests {
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+    }
+
+    #[test]
+    fn order() {
+        let parser = PestPineParser {};
+        let pine_node = parser.parse("users | order: id asc, users.id, friends.friendId DESC, 3-, u+").unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("order", pine_node.inner.operations[1].inner.get_name());
     }
 }

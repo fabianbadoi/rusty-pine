@@ -12,6 +12,7 @@ pub enum Operation<'a> {
     Join(Node<TableName<'a>>),
     Select(Vec<Node<ColumnName<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
+    Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
 }
 
@@ -25,6 +26,7 @@ impl<'a> Operation<'a> {
             Join(_) => "join",
             Select(_) => "select",
             Filter(_) => "filter",
+            Order(_) => "order",
             Limit(_) => "limit",
         }
     }
@@ -33,6 +35,12 @@ impl<'a> Operation<'a> {
 #[derive(Debug)]
 pub enum Filter<'a> {
     Equals(Node<Operand<'a>>, Node<Operand<'a>>),
+}
+
+#[derive(Debug)]
+pub enum Order<'a> {
+    Ascending(Node<Operand<'a>>),
+    Descending(Node<Operand<'a>>),
 }
 
 #[derive(Debug)]

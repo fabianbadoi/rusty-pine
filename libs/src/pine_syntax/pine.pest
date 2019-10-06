@@ -1,5 +1,5 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
-operation = _{ (from | select | filters | join | limit | compound_expression) }
+operation = _{ (from | select | filters | join | order | limit | compound_expression) }
 
 compound_expression = { table_name ~ (numeric_value | filter)* }
 
@@ -9,6 +9,7 @@ from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
 select = { ("select:" | "s:") ~ column_name ~ ("," ~ column_name)* }
 filters = { ("where:" | "w:") ~ filter+ }
+order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
 
 
@@ -34,6 +35,14 @@ optr_gt  = { ">"  }
 optr_gte = { ">=" }
 optr_lt  = { "<"  }
 optr_lte = { "<=" }
+
+
+// orders
+ordering = { ordering_asc | ordering_desc }
+ordering_desc = { operand ~ direction_desc? }
+ordering_asc  = { operand ~ direction_asc }
+direction_asc = _{ "asc" | "ASC" | "+" }
+direction_desc = _ { "desc" | "DESC" | "-" }
 
 
 // values

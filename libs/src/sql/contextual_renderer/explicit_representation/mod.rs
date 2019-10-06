@@ -16,6 +16,7 @@ pub struct ExplicitQuery<'a> {
     pub from: &'a str,
     pub joins: Vec<ExplicitJoin<'a>>,
     pub filters: Vec<ExplicitFilter<'a>>,
+    pub order: Vec<ExplicitOrder<'a>>,
     pub limit: usize,
 }
 
@@ -70,6 +71,12 @@ impl ExplicitJoin<'_> {
     }
 }
 
+#[derive(Debug)]
+pub enum ExplicitOrder<'a> {
+    Ascending(ExplicitOperand<'a>),
+    Descending(ExplicitOperand<'a>),
+}
+
 pub struct ExplicitQueryBuilder<'t> {
     tables: &'t [Table],
     working_with_single_table: bool,
@@ -95,6 +102,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
             from: query.from.as_ref(),
             joins,
             filters: self.translate_filters(&query.filters[..]),
+            order: self.translate_orders(&query.order[..]),
             limit: query.limit,
         })
     }
@@ -138,6 +146,24 @@ impl<'t> ExplicitQueryBuilder<'t> {
         let to: Vec<_> = joins.iter().map(|table_name| table_name.as_ref()).collect();
 
         Ok(finder.find(from, to.as_ref())?)
+    }
+
+    fn translate_orders(&self, orders: &'t [Order]) -> Vec<ExplicitOrder<'t>> {
+        orders
+            .iter()
+            .map(|order| self.translate_order(order))
+            .collect()
+    }
+
+    fn translate_order(&self, order: &'t Order) -> ExplicitOrder<'t> {
+        let operand = match order {
+            Order::Ascending(operand) | Order::Descending(operand) => self.make_operand(operand),
+        };
+
+        match order {
+            Order::Ascending(_) => ExplicitOrder::Ascending(operand),
+            Order::Descending(_) => ExplicitOrder::Descending(operand),
+        }
     }
 
     fn make_operand(&self, operand: &'t Operand) -> ExplicitOperand<'t> {
@@ -347,6 +373,30 @@ mod tests {
             ExplicitJoin::new("users", "id", "friends", "userId"),
             better_joins.unwrap()[0]
         );
+    }
+
+    #[test]
+    fn can_build_order() {
+        let orders = vec![
+            Order::Ascending(
+                Operand::Column(QualifiedColumnIdentifier {
+                    table: "users".into(),
+                    column: "column1".into(),
+                }),
+            ),
+            Order::Descending(
+                Operand::Value("3".to_owned()),
+            ),
+        ];
+
+        let builder = ExplicitQueryBuilder {
+            tables: &[],
+            working_with_single_table: false,
+        };
+
+        let better_orders = builder.translate_orders(&orders[..]);
+
+        assert_eq!(2, better_orders.len());
     }
 
     // this is used when testing if we can find joins, the might fail when chaning the find*

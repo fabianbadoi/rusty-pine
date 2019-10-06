@@ -4,6 +4,7 @@ pub struct Query {
     pub from: TableName,
     pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
+    pub order: Vec<Order>,
     pub limit: usize,
 }
 
@@ -14,6 +15,7 @@ impl Default for Query {
             from: Default::default(),
             joins: Default::default(),
             filters: Default::default(),
+            order: Default::default(),
             limit: 10,
         }
     }
@@ -28,6 +30,12 @@ pub struct QualifiedColumnIdentifier {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
     Equals(Operand, Operand),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Order {
+    Ascending(Operand),
+    Descending(Operand),
 }
 
 #[derive(Debug, Eq, PartialEq)]

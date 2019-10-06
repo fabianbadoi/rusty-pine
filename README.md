@@ -49,17 +49,17 @@ TODO:
 - [x] Run clippy on code
 - [x] Display available joins on join fail
 - [x] All outputted errors must be SQL commnets
+- [x] Order by a column
+- [ ] Support null checks
 - [ ] Unselect specific columns
 - [ ] other comparisons
 - [ ] Complex values (`parentId = .id`?)
 - [ ] Auto deep join
 - [ ] Functions on a column
 - [ ] Group on a column
-- [ ] Order by a column
 - [ ] Run without connection
 - [ ] Meta function show create
 - [ ] Meta function show neighbors
-- [ ] Support null checks
 - [ ] Support multiple filters (OR)
 - [ ] Updates
 - [ ] Deletes

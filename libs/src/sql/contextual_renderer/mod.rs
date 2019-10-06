@@ -3,7 +3,7 @@ use super::Renderer;
 use crate::error::PineError;
 use crate::query::Query;
 use explicit_representation::{
-    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitQuery,
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
 };
 use log::info;
@@ -51,11 +51,12 @@ impl SmartRenderer {
         let from = render_from(query.from);
         let join = render_joins(&query.joins[..]);
         let filter = render_filters(&query.filters[..]);
+        let order = render_orders(&query.order[..]);
         let limit = render_limit(query.limit);
 
         info!("Done rendering reander-ready representation");
 
-        vec![select, from, join, filter, limit]
+        vec![select, from, join, filter, order, limit]
             .into_iter()
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>()
@@ -102,6 +103,10 @@ fn render_join(join: &ExplicitJoin) -> String {
 }
 
 fn render_filters(filters: &[ExplicitFilter]) -> String {
+    if filters.is_empty() {
+        return "".to_owned();
+    }
+
     let filters = filters
         .iter()
         .map(render_filter)
@@ -117,6 +122,33 @@ fn render_filter(filter: &ExplicitFilter) -> String {
     match filter {
         Equals(rhs, lhs) => format!("{} = {}", render_operand(rhs), render_operand(lhs)),
     }
+}
+
+fn render_orders(orders: &[ExplicitOrder]) -> String {
+    if orders.is_empty() {
+        return "".to_owned();
+    }
+
+    let orders = orders
+        .iter()
+        .map(render_order)
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    format!("ORDER BY {}", orders)
+}
+
+fn render_order(order: &ExplicitOrder) -> String {
+    let operand = match order {
+        ExplicitOrder::Ascending(operand) | ExplicitOrder::Descending(operand) => render_operand(operand),
+    };
+
+    let direction = match order {
+        ExplicitOrder::Ascending(_) => "",
+        ExplicitOrder::Descending(_) => " DESC",
+    };
+
+    format!("{}{}", operand, direction)
 }
 
 fn render_operand(operand: &ExplicitOperand) -> String {
@@ -179,6 +211,40 @@ mod tests {
     }
 
     #[test]
+    fn order() {
+        use crate::query::{ Order, Operand, QualifiedColumnIdentifier};
+
+        let renderer = make_renderer();
+        let mut query = make_query();
+        query.order.push(Order::Descending(Operand::Column(QualifiedColumnIdentifier{
+            table: "users".to_owned(),
+            column: "id".to_owned(),
+        })));
+        query.order.push(Order::Ascending(Operand::Value("3".to_owned())));
+
+        let rendering = renderer.render(&query).unwrap();
+
+        assert_eq!("SELECT *\nFROM users\nORDER BY id DESC, 3\nLIMIT 10", rendering);
+    }
+
+    #[test]
+    fn order_with_explict_column() {
+        use crate::query::{ Order, Operand, QualifiedColumnIdentifier};
+
+        let renderer = make_renderer();
+        let mut query = make_query();
+        query.joins.push("friends".to_owned());
+        query.order.push(Order::Descending(Operand::Column(QualifiedColumnIdentifier{
+            table: "users".to_owned(),
+            column: "id".to_owned(),
+        })));
+
+        let rendering = renderer.render(&query).unwrap();
+
+        assert_eq!("SELECT *\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nORDER BY users.id DESC\nLIMIT 10", rendering);
+    }
+
+    #[test]
     fn select_from_unknown_table() {
         let renderer = make_renderer();
         let mut query = make_join_query();
@@ -203,6 +269,16 @@ mod tests {
         query.joins.push("friends".to_string());
 
         query
+    }
+
+    fn make_query() -> Query {
+        let query = QueryShorthand(
+            Select(&[]),
+            From("users"),
+            &[]
+        );
+
+        query.into()
     }
 
     fn make_renderer() -> SmartRenderer {
