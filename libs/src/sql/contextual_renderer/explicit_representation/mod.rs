@@ -50,6 +50,8 @@ impl<'a> ExplicitColumn<'a> {
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExplicitFilter<'a> {
     Equals(ExplicitOperand<'a>, ExplicitOperand<'a>),
+    IsNull(ExplicitOperand<'a>),
+    IsNotNull(ExplicitOperand<'a>),
 }
 
 #[derive(Debug)]
@@ -126,6 +128,16 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
         match filter {
+            Filter::IsNull(operand) => {
+                let operand = self.make_operand(operand);
+
+                ExplicitFilter::IsNull(operand)
+            },
+            Filter::IsNotNull(operand) => {
+                let operand = self.make_operand(operand);
+
+                ExplicitFilter::IsNotNull(operand)
+            },
             Filter::Equals(rhs, lhs) => {
                 let rhs = self.make_operand(rhs);
                 let lhs = self.make_operand(lhs);

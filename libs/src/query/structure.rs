@@ -30,6 +30,8 @@ pub struct QualifiedColumnIdentifier {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
     Equals(Operand, Operand),
+    IsNull(Operand),
+    IsNotNull(Operand),
 }
 
 #[derive(Debug, PartialEq, Eq)]

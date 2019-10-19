@@ -50,7 +50,8 @@ TODO:
 - [x] Display available joins on join fail
 - [x] All outputted errors must be SQL commnets
 - [x] Order by a column
-- [ ] Support null checks
+- [x] Support null checks
+- [ ] Add some integration test
 - [ ] Unselect specific columns
 - [ ] other comparisons
 - [ ] Complex values (`parentId = .id`?)

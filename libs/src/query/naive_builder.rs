@@ -197,7 +197,17 @@ fn translate_filter(filter_node: &Node<AstFilter>, default_table: &str) -> SqlFi
             let lhs = translate_operand(&lhs.inner, default_table);
 
             SqlFilter::Equals(rhs, lhs)
-        }
+        },
+        AstFilter::IsNull(operand) => {
+            let operand = translate_operand(&operand.inner, default_table);
+
+            SqlFilter::IsNull(operand)
+        },
+        AstFilter::IsNotNull(operand) => {
+            let operand = translate_operand(&operand.inner, default_table);
+
+            SqlFilter::IsNotNull(operand)
+        },
     }
 }
 
@@ -307,6 +317,25 @@ mod tests {
         assert_eq!(
             query.filters[0],
             SqlFilter::Equals(("users", "id").into(), "3".into())
+        );
+    }
+
+    #[test]
+    fn build_is_null_filter() {
+        let mut pine = from("users");
+        let column = Operand::Column(node(ColumnIdentifier::Implicit(node("id"))));
+        let column = node(column);
+        let filter = node(Filter::IsNull(column));
+        append_operation(&mut pine, AstOperation::Filter(vec![filter]));
+
+        let query_builder = NaiveBuilder {};
+        let query = query_builder.build(&pine).unwrap();
+
+        assert_eq!(query.filters.len(), 1);
+
+        assert_eq!(
+            query.filters[0],
+            SqlFilter::IsNull(("users", "id").into())
         );
     }
 

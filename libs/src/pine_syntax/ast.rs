@@ -35,6 +35,8 @@ impl<'a> Operation<'a> {
 #[derive(Debug)]
 pub enum Filter<'a> {
     Equals(Node<Operand<'a>>, Node<Operand<'a>>),
+    IsNull(Node<Operand<'a>>),
+    IsNotNull(Node<Operand<'a>>),
 }
 
 #[derive(Debug)]

@@ -121,6 +121,8 @@ fn render_filter(filter: &ExplicitFilter) -> String {
 
     match filter {
         Equals(rhs, lhs) => format!("{} = {}", render_operand(rhs), render_operand(lhs)),
+        IsNull(operand) => format!("{} IS NULL", render_operand(operand)),
+        IsNotNull(operand) => format!("{} IS NOT NULL", render_operand(operand)),
     }
 }
 
