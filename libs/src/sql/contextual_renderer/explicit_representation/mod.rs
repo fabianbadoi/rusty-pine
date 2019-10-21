@@ -71,6 +71,15 @@ impl ExplicitJoin<'_> {
             to_column: fk.to_column.0.as_ref(),
         }
     }
+
+    pub fn reversed(self) -> Self {
+        ExplicitJoin {
+            from_table: self.to_table,
+            from_column: self.to_column,
+            to_table: self.from_table,
+            to_column: self.from_column,
+        }
+    }
 }
 
 #[derive(Debug)]
