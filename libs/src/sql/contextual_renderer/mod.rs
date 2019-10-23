@@ -47,7 +47,7 @@ impl SmartRenderer {
     fn render_explicit_query(&self, query: &ExplicitQuery) -> String {
         info!("Rendering reander-ready representation");
 
-        let select = render_select(&query.selections[..]);
+        let select = render_select(&query);
         let from = render_from(query.from);
         let join = render_joins(&query.joins[..]);
         let filter = render_filters(&query.filters[..]);
@@ -64,18 +64,30 @@ impl SmartRenderer {
     }
 }
 
-fn render_select(columns: &[ExplicitColumn]) -> String {
-    let columns = if columns.len() > 1 {
-        columns
-            .iter()
-            .map(render_column)
-            .collect::<Vec<_>>()
-            .join(", ")
+fn render_select(query: &ExplicitQuery) -> String {
+    let columns = if query.selections.len() > 1 {
+        render_columns(&query.selections[..])
     } else {
-        "*".to_string()
+        render_wildcard_select(&query)
     };
 
     format!("SELECT {}", columns)
+}
+
+fn render_columns(columns: &[ExplicitColumn]) -> String {
+    columns
+        .iter()
+        .map(render_column)
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+
+fn render_wildcard_select(query: &ExplicitQuery) -> String {
+    // always get data from the last table used
+    match query.joins.last() {
+        Some(join) => format!("{}.*", join.to_table),
+        None => "*".to_string()
+    }
 }
 
 fn render_column(column: &ExplicitColumn) -> String {
@@ -254,7 +266,7 @@ mod tests {
 
         let rendering = renderer.render(&query).unwrap();
 
-        assert_eq!("SELECT *\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nORDER BY users.id DESC\nLIMIT 10", rendering);
+        assert_eq!("SELECT friends.*\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nORDER BY users.id DESC\nLIMIT 10", rendering);
     }
 
     #[test]
