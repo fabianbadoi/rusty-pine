@@ -86,7 +86,7 @@ fn render_wildcard_select(query: &ExplicitQuery) -> String {
     // always get data from the last table used
     match query.joins.last() {
         Some(join) => format!("{}.*", join.to_table),
-        None => "*".to_string()
+        None => "*".to_string(),
     }
 }
 

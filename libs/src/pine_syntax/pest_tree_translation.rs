@@ -164,7 +164,7 @@ fn translate_filter(node: PestNode) -> Node<Filter> {
 
     match inner.as_rule() {
         Rule::binary_filter => translate_binary_filter(inner),
-        Rule::unary_filter  => translate_unary_filter(inner),
+        Rule::unary_filter => translate_unary_filter(inner),
         _ => panic!("Unexpected condition rule: {:?}", inner.as_rule()),
     }
 }
@@ -195,12 +195,19 @@ fn translate_unary_filter(node: PestNode) -> Node<Filter> {
     let inner = node.into_inner().next().unwrap();
 
     let filter = match inner.as_rule() {
-        Rule::filter_is_null     => Filter::IsNull(translate_operand(inner.into_inner().next().unwrap())),
-        Rule::filter_is_not_null => Filter::IsNotNull(translate_operand(inner.into_inner().next().unwrap())),
+        Rule::filter_is_null => {
+            Filter::IsNull(translate_operand(inner.into_inner().next().unwrap()))
+        }
+        Rule::filter_is_not_null => {
+            Filter::IsNotNull(translate_operand(inner.into_inner().next().unwrap()))
+        }
         _ => panic!("Unexpected unary filter rule: {:?}", inner.as_rule()),
     };
 
-    Node { position, inner: filter }
+    Node {
+        position,
+        inner: filter,
+    }
 }
 
 fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
@@ -594,9 +601,7 @@ mod tests {
     #[test]
     fn is_null() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users parent? | w: parent!?")
-            .unwrap();
+        let pine_node = parser.parse("users parent? | w: parent!?").unwrap();
 
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[2].inner.get_name());

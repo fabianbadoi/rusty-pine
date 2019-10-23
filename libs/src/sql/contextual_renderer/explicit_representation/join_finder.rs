@@ -59,7 +59,8 @@ impl<'t> JoinFinder<'t> {
 
         if direct.is_none() {
             // get inverse
-            self.find_direct_join_for(table2, table1).map(ExplicitJoin::reversed)
+            self.find_direct_join_for(table2, table1)
+                .map(ExplicitJoin::reversed)
         } else {
             direct
         }

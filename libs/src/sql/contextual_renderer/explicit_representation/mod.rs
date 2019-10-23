@@ -141,12 +141,12 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 let operand = self.make_operand(operand);
 
                 ExplicitFilter::IsNull(operand)
-            },
+            }
             Filter::IsNotNull(operand) => {
                 let operand = self.make_operand(operand);
 
                 ExplicitFilter::IsNotNull(operand)
-            },
+            }
             Filter::Equals(rhs, lhs) => {
                 let rhs = self.make_operand(rhs);
                 let lhs = self.make_operand(lhs);
