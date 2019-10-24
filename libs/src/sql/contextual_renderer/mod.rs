@@ -65,7 +65,7 @@ impl SmartRenderer {
 }
 
 fn render_select(query: &ExplicitQuery) -> String {
-    let columns = if query.selections.len() > 1 {
+    let columns = if query.selections.len() > 0 {
         render_columns(&query.selections[..])
     } else {
         render_wildcard_select(&query)
