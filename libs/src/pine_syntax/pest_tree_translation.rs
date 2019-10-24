@@ -283,7 +283,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
         inner: Operand::Value(translate_value(node)),
     };
 
-    let filter = Filter::Equals(rhs, lhs);
+    let filter = Filter::Equals(lhs, rhs);
 
     Node {
         position,
