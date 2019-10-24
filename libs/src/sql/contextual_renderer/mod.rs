@@ -132,10 +132,21 @@ fn render_filter(filter: &ExplicitFilter) -> String {
     use ExplicitFilter::*;
 
     match filter {
-        Equals(lhs, rhs) => format!("{} = {}", render_operand(lhs), render_operand(rhs)),
+        Equals(lhs, rhs) => render_smart_equals(lhs, rhs),
         IsNull(operand) => format!("{} IS NULL", render_operand(operand)),
         IsNotNull(operand) => format!("{} IS NOT NULL", render_operand(operand)),
     }
+}
+
+fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
+    use ExplicitOperand::*;
+
+    let operator = match rhs {
+        Value(value) if value.contains('%') => "LIKE",
+        _ => "=",
+    };
+
+    format!("{} {} {}", render_operand(lhs), operator, render_operand(rhs))
 }
 
 fn render_orders(orders: &[ExplicitOrder]) -> String {
