@@ -192,11 +192,11 @@ fn translate_filter(filter_node: &Node<AstFilter>, default_table: &str) -> SqlFi
     debug!("Found filter: {:?}", filter_node);
 
     match &filter_node.inner {
-        AstFilter::Equals(rhs, lhs) => {
-            let rhs = translate_operand(&rhs.inner, default_table);
+        AstFilter::Equals(lhs, rhs) => {
             let lhs = translate_operand(&lhs.inner, default_table);
+            let rhs = translate_operand(&rhs.inner, default_table);
 
-            SqlFilter::Equals(rhs, lhs)
+            SqlFilter::Equals(lhs, rhs)
         }
         AstFilter::IsNull(operand) => {
             let operand = translate_operand(&operand.inner, default_table);

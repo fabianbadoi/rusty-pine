@@ -181,7 +181,7 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
     let rhs = translate_operand(parts.next().unwrap());
 
     let inner = match operator.as_rule() {
-        Rule::optr_eq => Filter::Equals(rhs, lhs),
+        Rule::optr_eq => Filter::Equals(lhs, rhs),
         _ => panic!("Unexpected rule: {:?}", operator.as_rule()),
     };
 
