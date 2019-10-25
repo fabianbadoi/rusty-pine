@@ -16,10 +16,22 @@ use log::{debug, info};
 pub struct NaiveBuilder;
 
 struct SingleUseQueryBuilder<'a> {
+    /// The pine we're going through
     pine: &'a Node<Pine<'a>>,
+
+    /// This is the query currenly being built.
     query: Query,
+
+    /// Holds the table all (future) pine statements operate on.
+    ///
+    /// Is changed by from, join and implicit join operations.
     current_table: Option<String>,
+
+    /// Holds the initial table, pines that don't have one are invalid
     from_table: Option<String>,
+
+    /// At the end of the build process, we add a select for last_joined_table.*
+    implicit_select_all_from: Option<String>,
 }
 
 impl QueryBuilder for &NaiveBuilder {
@@ -36,6 +48,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             pine,
             current_table: None,
             from_table: None,
+            implicit_select_all_from: None,
             query: Default::default(),
         }
     }
@@ -83,6 +96,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
         self.current_table = Some(table.inner.to_string());
         self.query.joins.push(table.inner.to_string());
+        self.implicit_select_all_from = Some(table.inner.to_string());
     }
 
     fn apply_selections(&mut self, selections: &[Node<AstColumnName>]) -> InternalResult {
@@ -103,6 +117,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         self.query.selections.append(&mut selections);
+
+        // selecting only some tables MUST clear the implicit most_recent_table.* select
+        self.implicit_select_all_from = None;
 
         Ok(())
     }
@@ -163,16 +180,40 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn finalize(&mut self) -> Result<(), SyntaxError> {
-        match self.from_table.clone() {
+        self.set_from_table()?;
+        self.add_implicit_select_all();
+
+        Ok(())
+    }
+
+    fn set_from_table(&mut self) -> Result<(), SyntaxError> {
+         match self.from_table.clone() {
             Some(table) => {
                 self.query.from = table;
                 Ok(())
-            }
+            },
             None => Err(SyntaxError::Positioned {
                 message: "Missing a 'from:' statement".to_string(),
                 position: self.pine.position,
                 input: self.pine.inner.pine_string.to_string(),
             }),
+        }
+    }
+
+    fn add_implicit_select_all(&mut self) {
+        if self.query.selections.is_empty() {
+            // this is an implicit select *
+            return;
+        }
+
+        if let Some(table) = self.implicit_select_all_from.clone() {
+            // you always have select last_joined_table.*, unless it's been reset
+            self.query.selections.push(
+                QualifiedColumnIdentifier {
+                    table,
+                    column: "*".to_string(),
+                }
+            );
         }
     }
 
