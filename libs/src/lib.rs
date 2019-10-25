@@ -15,8 +15,10 @@ mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
-
 mod analyzer;
+
+#[cfg(test)]
+mod integration_tests;
 
 pub use analyzer::Analyzer;
 pub use config::{read as read_config, Config};

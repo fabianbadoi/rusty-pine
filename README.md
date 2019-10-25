@@ -51,7 +51,7 @@ TODO:
 - [x] All outputted errors must be SQL commnets
 - [x] Order by a column
 - [x] Support null checks
-- [ ] Add some integration test
+- [x] Add some integration test
 - [ ] Unselect specific columns
 - [ ] other comparisons
 - [ ] Complex values (`parentId = .id`?)

@@ -46,3 +46,17 @@ pub fn connect(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineEr
         renderer: SmartRenderer::for_tables(database.tables),
     })
 }
+
+#[cfg(test)]
+pub mod demo {
+    use super::*;
+    use crate::sql::structure::Table;
+
+    pub fn transpiler_for(tables: Vec<Table>) -> MySqlTranspiler {
+        GenericTranspiler {
+            parser: PestPineParser {},
+            builder: NaiveBuilder {},
+            renderer: SmartRenderer::for_tables(tables),
+        }
+    }
+}
