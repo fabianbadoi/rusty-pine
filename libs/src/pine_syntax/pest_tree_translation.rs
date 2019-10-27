@@ -435,7 +435,7 @@ mod tests {
     fn parsing_simple_form_statement() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("from: users | select: id, name | where: id = 3 x = 4")
+            .parse("from: users | select: id name | where: id = 3 x = 4")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
@@ -485,7 +485,7 @@ mod tests {
     fn parse_limit_expression() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("from: users | select: id, name | limit: 5")
+            .parse("from: users | select: id name | limit: 5")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
@@ -501,7 +501,7 @@ mod tests {
     fn parsing_compound_expression() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("users id = 3 | select: id, name | where: x = 4")
+            .parse("users id = 3 | select: id name | where: x = 4")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
@@ -518,7 +518,7 @@ mod tests {
     fn parsing_join_expression() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("users id = 3 | select: id, name | join: friends | where: x = 4")
+            .parse("users id = 3 | select: id name | join: friends | where: x = 4")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
@@ -536,7 +536,7 @@ mod tests {
     fn parsing_compound_join_expression() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("users id = 3 | select: id, name | friends stylish = 1 | where: x = 4")
+            .parse("users id = 3 | select: id name | friends stylish = 1 | where: x = 4")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());

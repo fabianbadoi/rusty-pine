@@ -7,6 +7,12 @@ static TEST_SPECS: &str = r#"
     FROM humans
     LEFT JOIN preferences ON preferences.humanId = humans.id
     LIMIT 10
+
+    humans | s: id isBlue
+    ==============================
+    SELECT id, isBlue
+    FROM humans
+    LIMIT 10
 "#;
 
 #[test]
@@ -19,17 +25,25 @@ fn test_transpiler() {
     for (pine, expected_query) in &tests[..] {
         let result = transpiler.transpile(pine.as_ref() as &str);
 
-        if let Ok(generated_query) = result {
-            assert_eq!(
-                expected_query,
-                &generated_query,
-                "\n\nFailed to parse:\n\x1b[0;1;32m{}\x1b[0m\n\nExpected:\n\x1b[0;32m{}\x1b[0m\n\nFound:\n\x1b[0;31m{}\x1b[0m\n\n",
-                pine,
-                expected_query,
-                generated_query
-            );
-        } else {
-            assert!(false, "Expected to be able to parse expression:\n{}", pine);
+        match result {
+            Ok(generated_query) => {
+                assert_eq!(
+                    expected_query,
+                    &generated_query,
+                    "\n\nFailed to parse:\n\x1b[0;1;32m{}\x1b[0m\n\nExpected:\n\x1b[0;32m{}\x1b[0m\n\nFound:\n\x1b[0;31m{}\x1b[0m\n\n",
+                    pine,
+                    expected_query,
+                    generated_query
+                );
+            },
+            Err(error) => {
+                assert!(
+                    false,
+                    "Expected to be able to parse expression:\n\x1b[0;1;32m{}\x1b[0m\n\x1b[0;31m{}\x1b[0m\n",
+                    pine,
+                    error
+                );
+            }
         }
     }
 }
