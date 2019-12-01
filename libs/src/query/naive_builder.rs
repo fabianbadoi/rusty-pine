@@ -22,16 +22,11 @@ struct SingleUseQueryBuilder<'a> {
     /// This is the query currenly being built.
     query: Query,
 
-    /// Holds the table all (future) pine statements operate on.
-    ///
-    /// Is changed by from, join and implicit join operations.
-    current_table: Option<String>,
-
     /// Holds the initial table, pines that don't have one are invalid
     from_table: Option<String>,
 
-    /// At the end of the build process, we add a select for last_joined_table.*
-    implicit_select_all_from: Option<String>,
+    /// At the end of the build process, we may add a select for last_joined_table.*
+    implicit_select_all_from_last_table: bool,
 }
 
 impl QueryBuilder for &NaiveBuilder {
@@ -46,9 +41,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn new(pine: &'a Node<Pine>) -> SingleUseQueryBuilder<'a> {
         SingleUseQueryBuilder {
             pine,
-            current_table: None,
             from_table: None,
-            implicit_select_all_from: None,
+            implicit_select_all_from_last_table: false,
             query: Default::default(),
         }
     }
@@ -84,19 +78,18 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn apply_from(&mut self, table: &Node<AstTableName>) {
         debug!("Found from: {:?}", table);
 
-        self.current_table = Some(table.inner.to_string());
-
-        if self.from_table.is_none() {
-            self.from_table = Some(table.inner.to_string());
+        if let Some(table) = &self.from_table {
+            self.query.joins.push(table.clone());
         }
+
+        self.from_table = Some(table.inner.to_string());
+        self.implicit_select_all_from_last_table = true;
     }
 
     fn apply_join(&mut self, table: &Node<AstTableName>) {
         debug!("Found join: {:?}", table);
 
-        self.current_table = Some(table.inner.to_string());
-        self.query.joins.push(table.inner.to_string());
-        self.implicit_select_all_from = Some(table.inner.to_string());
+        self.apply_from(table);
     }
 
     fn apply_selections(&mut self, selections: &[Node<AstColumnName>]) -> InternalResult {
@@ -119,7 +112,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.query.selections.append(&mut selections);
 
         // selecting only some tables MUST clear the implicit most_recent_table.* select
-        self.implicit_select_all_from = None;
+        self.implicit_select_all_from_last_table = false;
 
         Ok(())
     }
@@ -201,13 +194,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn add_implicit_select_all(&mut self) {
-        if self.query.selections.is_empty() {
-            // this is an implicit select *
-            return;
-        }
+        if self.implicit_select_all_from_last_table {
+            let table = self.from_table.clone().unwrap();
 
-        if let Some(table) = self.implicit_select_all_from.clone() {
-            // you always have select last_joined_table.*, unless it's been reset
             self.query.selections.push(
                 QualifiedColumnIdentifier {
                     table,
@@ -218,7 +207,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn require_table(&self, pine_position: Position) -> Result<&str, SyntaxError> {
-        match &self.current_table {
+        match &self.from_table {
             Some(table) => Ok(table.as_str()),
             None => Err(SyntaxError::Positioned {
                 message: "Place a 'from:' statement in front fo this".to_string(),
@@ -401,8 +390,8 @@ mod tests {
         let query_builder = NaiveBuilder {};
         let query = query_builder.build(&pine).unwrap();
 
-        assert_eq!(query.from, "users");
-        assert_eq!(query.joins[0], "friends");
+        assert_eq!(query.from, "friends");
+        assert_eq!(query.joins[0], "users");
     }
 
     #[test]

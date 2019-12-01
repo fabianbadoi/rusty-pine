@@ -4,14 +4,21 @@ static TEST_SPECS: &str = r#"
     humans | s: name | preferences
     ==============================
     SELECT humans.name, preferences.*
-    FROM humans
-    LEFT JOIN preferences ON preferences.humanId = humans.id
+    FROM preferences
+    LEFT JOIN humans ON humans.id = preferences.humanId
     LIMIT 10
 
     humans | s: id isBlue
     ==============================
     SELECT id, isBlue
     FROM humans
+    LIMIT 10
+
+    humans | preferences
+    ==============================
+    SELECT preferences.*
+    FROM preferences
+    LEFT JOIN humans ON humans.id = preferences.humanId
     LIMIT 10
 "#;
 
