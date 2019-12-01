@@ -107,9 +107,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
         self.working_with_single_table = query.joins.is_empty();
 
         let joins = self.translate_joins(&query.from[..], &query.joins[..])?;
+        let selections = self.translate_selection(
+            &query.selections[..],
+            &query.unselections[..]
+        );
 
         Ok(ExplicitQuery {
-            selections: self.translate_selection(&query.selections[..]),
+            selections,
             from: query.from.as_ref(),
             joins,
             filters: self.translate_filters(&query.filters[..]),
@@ -121,11 +125,30 @@ impl<'t> ExplicitQueryBuilder<'t> {
     fn translate_selection(
         &self,
         selections: &'t [QualifiedColumnIdentifier],
+        unselections: &'t [QualifiedColumnIdentifier]
     ) -> Vec<ExplicitColumn<'t>> {
+        // TODO need to beef up the selections array
         selections
             .iter()
-            .map(|select| self.make_explicit_column(select))
+            .flat_map(|select| self.process_selection(select, unselections))
             .collect()
+    }
+
+    fn process_selection(
+        &self,
+        select: &'t QualifiedColumnIdentifier,
+        unselections: &'t [QualifiedColumnIdentifier]
+    ) -> Vec<ExplicitColumn<'t>> {
+        if unselections.contains(select) {
+            return Vec::with_capacity(0);
+        }
+
+        let select_wildcard = QualifiedColumnIdentifier {
+            column: "*".to_string(),
+            table: select.table.clone()
+        };
+
+        return vec![self.make_explicit_column(select)];
     }
 
     fn translate_filters(&self, filters: &'t [Filter]) -> Vec<ExplicitFilter<'t>> {
@@ -265,7 +288,7 @@ mod tests {
             working_with_single_table: true,
         };
 
-        let better_selections = builder.translate_selection(&selections[..]);
+        let better_selections = builder.translate_selection(&selections[..], &[]);
 
         assert_eq!(2, better_selections.len());
         assert_eq!(ExplicitColumn::Simple("column1"), better_selections[0]);
@@ -289,7 +312,7 @@ mod tests {
             working_with_single_table: false,
         };
 
-        let better_selections = builder.translate_selection(&selections[..]);
+        let better_selections = builder.translate_selection(&selections[..], &[]);
 
         assert_eq!(2, better_selections.len());
         assert_eq!(

@@ -20,6 +20,12 @@ static TEST_SPECS: &str = r#"
     FROM preferences
     LEFT JOIN humans ON humans.id = preferences.humanId
     LIMIT 10
+
+    humans | s: id name | u: id isBlue
+    ==============================
+    SELECT name
+    FROM humans
+    LIMIT 10
 "#;
 
 #[test]

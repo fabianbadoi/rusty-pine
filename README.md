@@ -52,7 +52,7 @@ TODO:
 - [x] Order by a column
 - [x] Support null checks
 - [x] Add some integration test
-- [ ] Unselect specific columns
+- [-] Unselect specific columns
 - [ ] Functions on a column
 - [ ] Group on a column
 - [ ] other comparisons

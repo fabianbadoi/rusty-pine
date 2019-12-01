@@ -1,5 +1,5 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
-operation = _{ (from | select | filters | join | order | limit | compound_expression) }
+operation = _{ (from | select | unselect | filters | join | order | limit | compound_expression) }
 
 compound_expression = { table_name ~ (numeric_value | filter)* }
 
@@ -8,6 +8,7 @@ compound_expression = { table_name ~ (numeric_value | filter)* }
 from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
 select = { ("select:" | "s:") ~ column_name+ }
+unselect = { ("unselect:" | "u:") ~ column_name+ }
 filters = { ("where:" | "w:") ~ filter+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }

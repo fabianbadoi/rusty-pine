@@ -74,6 +74,7 @@ impl Translator {
         let operations = match node.as_rule() {
             Rule::from => self.translate_from(node),
             Rule::select => self.translate_select(node),
+            Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
             Rule::compound_expression => self.translate_compound_expression(node),
             Rule::join => self.translate_join(node),
@@ -115,6 +116,12 @@ impl Translator {
         let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
 
         vec![Operation::Select(columns)]
+    }
+
+    fn translate_unselect<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
+
+        vec![Operation::Unselect(columns)]
     }
 
     fn translate_order<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {

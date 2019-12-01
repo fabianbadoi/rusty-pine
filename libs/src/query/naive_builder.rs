@@ -67,6 +67,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             AstOperation::From(ref table) => self.apply_from(table),
             AstOperation::Join(ref table) => self.apply_join(table),
             AstOperation::Select(ref selections) => self.apply_selections(selections)?,
+            AstOperation::Unselect(ref selections) => self.apply_unselections(selections)?,
             AstOperation::Filter(ref filters) => self.apply_filters(filters)?,
             AstOperation::Order(ref orders) => self.apply_orders(orders)?,
             AstOperation::Limit(ref limit) => self.apply_limit(limit)?,
@@ -95,24 +96,20 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn apply_selections(&mut self, selections: &[Node<AstColumnName>]) -> InternalResult {
         debug!("Found select: {:?}", selections);
 
-        if selections.is_empty() {
-            return Ok(());
-        }
-
-        let table = self.require_table(selections[0].position)?;
-        let mut selections: Vec<_> = selections
-            .iter()
-            .map(|name_node| name_node.inner.to_string())
-            .map(|column| QualifiedColumnIdentifier {
-                table: table.to_string(),
-                column,
-            })
-            .collect();
-
+        let mut selections = self.build_columns(selections)?;
         self.query.selections.append(&mut selections);
 
         // selecting only some tables MUST clear the implicit most_recent_table.* select
         self.implicit_select_all_from_last_table = false;
+
+        Ok(())
+    }
+
+    fn apply_unselections(&mut self, unselect: &[Node<AstColumnName>]) -> InternalResult {
+        debug!("Found unselect: {:?}", unselect);
+
+        let mut unselect = self.build_columns(unselect)?;
+        self.query.unselections.append(&mut unselect);
 
         Ok(())
     }
@@ -215,6 +212,21 @@ impl<'a> SingleUseQueryBuilder<'a> {
                 input: self.pine.inner.pine_string.to_string(),
             }),
         }
+    }
+
+    fn build_columns(&self, columns: &[Node<AstColumnName>])
+        -> Result<(Vec<QualifiedColumnIdentifier>), SyntaxError> {
+        let table = self.require_table(columns[0].position)?;
+        let qualified_columns = columns
+            .iter()
+            .map(|name_node| name_node.inner.to_string())
+            .map(|column| QualifiedColumnIdentifier {
+                table: table.to_string(),
+                column,
+            })
+            .collect();
+
+        Ok(qualified_columns)
     }
 }
 
