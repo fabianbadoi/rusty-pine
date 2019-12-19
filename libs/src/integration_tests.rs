@@ -21,6 +21,14 @@ static TEST_SPECS: &str = r#"
     LEFT JOIN humans ON humans.id = preferences.humanId
     LIMIT 10
 
+    humans | friendMap | friendshipLog
+    ==================================
+    SELECT friendshipLog.*
+    FROM friendshipLog
+    LEFT JOIN friendMap ON friendMap.id = friendshipLog.friendshipId
+    LEFT JOIN humans ON humans.id = friendMap.friendA
+    LIMIT 10
+
     humans | s: id name | u: id isBlue
     ==============================
     SELECT name

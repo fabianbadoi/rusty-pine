@@ -187,7 +187,11 @@ impl<'t> ExplicitQueryBuilder<'t> {
         self.ensure_all_join_tables_exist(from, joins)?;
 
         let finder = JoinFinder::new(&self.tables[..]);
-        let to: Vec<_> = joins.iter().map(|table_name| table_name.as_ref()).collect();
+        let to: Vec<_> = joins
+            .iter()
+            .map(|table_name| table_name.as_ref())
+            .rev()
+            .collect();
 
         Ok(finder.find(from, to.as_ref())?)
     }

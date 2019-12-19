@@ -26,7 +26,7 @@ impl<'t> JoinFinder<'t> {
          *  - shortest path (not relevant now)
          *  - direct path
          *  - reverse path
-         *  - don't try to look for join posibilities with other tables
+         *  - don't try to look for join possibilities with other tables
          *
          * How:
          * Having a list of joins: j1, j2, j3, etc.; we only want to join consecutive joins.
