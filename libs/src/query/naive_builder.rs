@@ -177,11 +177,11 @@ impl<'a> SingleUseQueryBuilder<'a> {
     }
 
     fn set_from_table(&mut self) -> Result<(), SyntaxError> {
-         match self.from_table.clone() {
+        match self.from_table.clone() {
             Some(table) => {
                 self.query.from = table;
                 Ok(())
-            },
+            }
             None => Err(SyntaxError::Positioned {
                 message: "Missing a 'from:' statement".to_string(),
                 position: self.pine.position,
@@ -194,12 +194,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
         if self.implicit_select_all_from_last_table {
             let table = self.from_table.clone().unwrap();
 
-            self.query.selections.push(
-                QualifiedColumnIdentifier {
-                    table,
-                    column: "*".to_string(),
-                }
-            );
+            self.query.selections.push(QualifiedColumnIdentifier {
+                table,
+                column: "*".to_string(),
+            });
         }
     }
 

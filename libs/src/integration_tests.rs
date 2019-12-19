@@ -56,7 +56,7 @@ fn test_transpiler() {
                     expected_query,
                     generated_query
                 );
-            },
+            }
             Err(error) => {
                 assert!(
                     false,
@@ -70,9 +70,9 @@ fn test_transpiler() {
 }
 
 mod aux {
-    use crate::MySqlTranspiler;
     use crate::pine_transpiler::demo::transpiler_for;
-    use crate::sql::structure::{Table, ForeignKey};
+    use crate::sql::structure::{ForeignKey, Table};
+    use crate::MySqlTranspiler;
     use regex::Regex;
 
     pub fn demo_transpiler() -> MySqlTranspiler {
@@ -98,9 +98,7 @@ mod aux {
                     "createdAt".into(),
                     "updatedAt".into(),
                 ],
-                foreign_keys: vec![
-                   fk("humanId", ("humans", "id")),
-                ],
+                foreign_keys: vec![fk("humanId", ("humans", "id"))],
             },
             Table {
                 name: "friendMap".to_string(),
@@ -125,9 +123,7 @@ mod aux {
                     "time".into(),
                     "data".into(),
                 ],
-                foreign_keys: vec![
-                    fk("friendshipId", ("friendMap", "id")),
-                ],
+                foreign_keys: vec![fk("friendshipId", ("friendMap", "id"))],
             },
         ];
 
@@ -145,7 +141,6 @@ mod aux {
         let tests = specs
             .split("\n\n")
             .map(|spec| {
-
                 let pieces = pine_and_expected_sql_splitter
                     .split(spec)
                     .collect::<Vec<&str>>();

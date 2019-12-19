@@ -8,6 +8,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate strsim;
 
+mod analyzer;
 mod cache;
 mod config;
 mod error;
@@ -15,7 +16,6 @@ mod pine_syntax;
 mod pine_transpiler;
 mod query;
 mod sql;
-mod analyzer;
 
 #[cfg(test)]
 mod integration_tests;
