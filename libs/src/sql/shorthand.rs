@@ -1,5 +1,5 @@
 use crate::common::BinaryFilterType;
-use crate::query::{Filter as SqlFilter, Operand, QualifiedColumnIdentifier, Query, Selection};
+use crate::query::{Filter as SqlFilter, Operand, QualifiedColumnIdentifier, Query, ResultColumn};
 
 pub struct QueryShorthand(pub Select, pub From, pub &'static [Filter]);
 
@@ -26,7 +26,7 @@ impl Into<Query> for QueryShorthand {
                 table: table.clone(),
                 column,
             })
-            .map(|column| Selection::Column(column))
+            .map(|column| ResultColumn::Column(column))
             .collect();
 
         query.filters = self

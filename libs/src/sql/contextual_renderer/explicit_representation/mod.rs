@@ -168,8 +168,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_selection(
         &self,
-        selections: &'t [Selection],
-        unselections: &'t [QualifiedColumnIdentifier],
+        selections: &'t [ResultColumn],
+        unselections: &'t [ResultColumn],
     ) -> Vec<ExplicitSelection<'t>> {
         let selections = selections
             .iter()
@@ -188,27 +188,41 @@ impl<'t> ExplicitQueryBuilder<'t> {
     fn process_unselection(
         &self,
         selections: Vec<ExplicitSelection<'t>>,
-        unselect: &'t QualifiedColumnIdentifier,
+        unselect: &'t ResultColumn,
     ) -> Vec<ExplicitSelection<'t>> {
+        let full_selections = self.expand_wildcard(selections, unselect);
+
+        full_selections
+            .into_iter()
+            .filter(|select| select != unselect)
+            .collect()
+    }
+
+    fn expand_wildcard(
+        &self,
+        selections: Vec<ExplicitSelection<'t>>,
+        unselect: &'t ResultColumn,
+    ) -> Vec<ExplicitSelection<'t>> {
+        let unselect_column = if let ResultColumn::Column(column) = unselect {
+            column
+        } else {
+            return selections;
+        };
+
         let found_wildcard = selections
             .iter()
             .filter_map(|selection| match selection {
                 ExplicitSelection::Column(column) => Some(column),
                 _ => None,
             })
-            .find(|select| select.is_wildcard_of(&unselect.table))
+            .find(|select| select.is_wildcard_of(&unselect_column.table))
             .is_some();
 
-        let full_selections = if found_wildcard {
-            self.expand_selections(selections, &unselect.table)
+        if found_wildcard {
+            self.expand_selections(selections, &unselect_column.table)
         } else {
             selections
-        };
-
-        full_selections
-            .into_iter()
-            .filter(|select| select != unselect)
-            .collect()
+        }
     }
 
     fn expand_selections(
@@ -310,15 +324,15 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn make_selection(&self, select: &'t Selection) -> ExplicitSelection<'t> {
+    fn make_selection(&self, select: &'t ResultColumn) -> ExplicitSelection<'t> {
         match select {
-            Selection::Value(value) => {
+            ResultColumn::Value(value) => {
                 ExplicitSelection::Value(value.as_ref())
             }
-            Selection::Column(column) => {
+            ResultColumn::Column(column) => {
                 ExplicitSelection::Column(self.make_explicit_column(column))
             }
-            Selection::FunctionCall(function_name, column) => ExplicitSelection::FunctionCall(
+            ResultColumn::FunctionCall(function_name, column) => ExplicitSelection::FunctionCall(
                 function_name.as_str(),
                 self.make_explicit_column(column),
             ),
@@ -392,12 +406,19 @@ impl<'t> ExplicitQueryBuilder<'t> {
     }
 }
 
-impl PartialEq<QualifiedColumnIdentifier> for ExplicitSelection<'_> {
-    fn eq(&self, other: &QualifiedColumnIdentifier) -> bool {
-        match self {
-            ExplicitSelection::Column(column) => column == other,
-            _ => false,
+impl PartialEq<ResultColumn> for ExplicitSelection<'_> {
+    fn eq(&self, other: &ResultColumn) -> bool {
+        use ExplicitSelection as S; // for self
+        use ResultColumn as O; // for other
+
+        match (self, other) {
+            (S::Column(column), O::Column(other)) => column == other,
+            (S::FunctionCall(s_function, s_column), O::FunctionCall(o_function, o_column))
+                => s_function == o_function && s_column == o_column,
+            (S::Value(s_value), O::Value(o_value)) => s_value == o_value,
+            _ => false
         }
+
     }
 }
 
@@ -408,11 +429,11 @@ mod tests {
     #[test]
     fn can_build_simple_selections() {
         let selections = vec![
-            Selection::Column(QualifiedColumnIdentifier {
+            ResultColumn::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             }),
-            Selection::Column(QualifiedColumnIdentifier {
+            ResultColumn::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column2".into(),
             }),
@@ -438,11 +459,11 @@ mod tests {
     #[test]
     fn can_build_complex_selections() {
         let selections = vec![
-            Selection::Column(QualifiedColumnIdentifier {
+            ResultColumn::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             }),
-            Selection::Column(QualifiedColumnIdentifier {
+            ResultColumn::Column(QualifiedColumnIdentifier {
                 table: "friends".into(),
                 column: "column2".into(),
             }),

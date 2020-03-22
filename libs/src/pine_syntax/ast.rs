@@ -11,8 +11,8 @@ pub struct Pine<'a> {
 pub enum Operation<'a> {
     From(Node<TableName<'a>>),
     Join(Node<TableName<'a>>),
-    Select(Vec<Node<Selection<'a>>>),
-    Unselect(Vec<Node<ColumnIdentifier<'a>>>),
+    Select(Vec<Node<ResultColumn<'a>>>),
+    Unselect(Vec<Node<ResultColumn<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
     GroupBy(Vec<Node<Operand<'a>>>),
     Order(Vec<Node<Order<'a>>>),
@@ -38,7 +38,7 @@ impl<'a> Operation<'a> {
 }
 
 #[derive(Debug)]
-pub enum Selection<'a> {
+pub enum ResultColumn<'a> {
     Value(Node<Value<'a>>),
     Column(Node<ColumnIdentifier<'a>>),
     FunctionCall(Node<FunctionName<'a>>, Node<ColumnIdentifier<'a>>),

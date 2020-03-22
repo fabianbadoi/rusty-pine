@@ -145,7 +145,7 @@ impl Translator {
     }
 
     fn translate_unselect<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_identified_column).collect();
+        let columns: Vec<_> = node.into_inner().map(translate_result_column).collect();
 
         vec![Operation::Unselect(columns)]
     }
@@ -198,7 +198,7 @@ impl Translator {
     }
 }
 
-fn translate_result_column(node: PestNode) -> Node<Selection> {
+fn translate_result_column(node: PestNode) -> Node<ResultColumn> {
     expect_rule!(Rule::result_column, node);
 
     let inner = node.into_inner().next().unwrap();
@@ -211,17 +211,17 @@ fn translate_result_column(node: PestNode) -> Node<Selection> {
     }
 }
 
-fn translate_select_column(node: PestNode) -> Node<Selection> {
+fn translate_select_column(node: PestNode) -> Node<ResultColumn> {
     expect_rule!(Rule::identified_column, node);
 
     let position = position(&node);
     let column = translate_identified_column(node);
-    let inner = Selection::Column(column);
+    let inner = ResultColumn::Column(column);
 
     Node { position, inner }
 }
 
-fn translate_function_call(node: PestNode) -> Node<Selection> {
+fn translate_function_call(node: PestNode) -> Node<ResultColumn> {
     let position = position(&node);
 
     let mut parts = node.into_inner();
@@ -229,17 +229,17 @@ fn translate_function_call(node: PestNode) -> Node<Selection> {
     let function_name = translate_sql_name(parts.next().unwrap());
     let column = translate_identified_column(parts.next().unwrap());
 
-    let inner = Selection::FunctionCall(function_name, column);
+    let inner = ResultColumn::FunctionCall(function_name, column);
 
     Node { position, inner }
 }
 
-fn translate_select_value(node: PestNode) -> Node<Selection> {
+fn translate_select_value(node: PestNode) -> Node<ResultColumn> {
     expect_rule!(Rule::value, node);
 
     let position = position(&node);
     let value  = translate_value(node);
-    let inner = Selection::Value(value);
+    let inner = ResultColumn::Value(value);
 
     Node { position, inner }
 }

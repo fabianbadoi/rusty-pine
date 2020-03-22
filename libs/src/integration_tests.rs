@@ -58,6 +58,12 @@ static TEST_SPECS: &str = r#"
     s: 1
     ====
     SELECT 1
+
+    humans | s: count(id) name | u: count(id)
+    =========================================
+    SELECT name
+    FROM humans
+    LIMIT 10
 "#;
 
 #[test]

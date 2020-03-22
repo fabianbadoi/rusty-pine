@@ -2,8 +2,8 @@ use crate::common::{BinaryFilterType, UnaryFilterType};
 
 #[derive(Debug)]
 pub struct Query {
-    pub selections: Vec<Selection>,
-    pub unselections: Vec<QualifiedColumnIdentifier>,
+    pub selections: Vec<ResultColumn>,
+    pub unselections: Vec<ResultColumn>,
     pub from: TableName,
     pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
@@ -28,7 +28,7 @@ impl Default for Query {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum Selection {
+pub enum ResultColumn {
     Value(Value),
     Column(QualifiedColumnIdentifier),
     FunctionCall(FunctionName, QualifiedColumnIdentifier),
