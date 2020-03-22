@@ -39,6 +39,28 @@ pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> 
     translator.translate(root_node, input)
 }
 
+/// panics if the rule is not found
+macro_rules! expect_rule {
+    ($rule:expr, $node:expr) => {{
+        if $node.as_rule() != $rule {
+            panic!("node be a '{:?}' expression, found '{:?}'", $rule, $node);
+        }
+    }};
+}
+
+/// panics if node is not of those rules
+macro_rules! expect_rule_in {
+    ($rules:expr, $node:expr) => {{
+        if !$rules.contains(&$node.as_rule()) {
+            panic!(
+                "node be a one of {:?}, found '{:?}'",
+                $rules,
+                $node.as_rule()
+            );
+        }
+    }};
+}
+
 struct Translator {
     has_from: bool,
 }
@@ -54,7 +76,7 @@ impl Translator {
             input
         );
 
-        expect(Rule::pine, &root_node);
+        expect_rule!(Rule::pine, root_node);
 
         let position = position(&root_node);
         let operations: Vec<_> = root_node
@@ -147,7 +169,7 @@ impl Translator {
     fn translate_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let inner = node.clone().into_inner();
 
-        expect(Rule::table_name, &inner.peek().unwrap());
+        expect_rule!(Rule::table_name, inner.peek().unwrap());
 
         let vec_with_from = if self.has_from {
             self.translate_join(node)
@@ -178,7 +200,7 @@ fn translate_filter(node: PestNode) -> Node<Filter> {
 }
 
 fn translate_binary_filter(node: PestNode) -> Node<Filter> {
-    expect(Rule::binary_filter, &node);
+    expect_rule!(Rule::binary_filter, node);
 
     let position = position(&node);
 
@@ -189,11 +211,11 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
     let rhs = translate_operand(parts.next().unwrap());
 
     let filter_type = match operator.as_rule() {
-        Rule::optr_lt  => BinaryFilterType::LesserThan,
+        Rule::optr_lt => BinaryFilterType::LesserThan,
         Rule::optr_lte => BinaryFilterType::LesserThanOrEquals,
-        Rule::optr_eq  => BinaryFilterType::Equals,
-        Rule::optr_ne  => BinaryFilterType::NotEquals,
-        Rule::optr_gt  => BinaryFilterType::GreaterThan,
+        Rule::optr_eq => BinaryFilterType::Equals,
+        Rule::optr_ne => BinaryFilterType::NotEquals,
+        Rule::optr_gt => BinaryFilterType::GreaterThan,
         Rule::optr_gte => BinaryFilterType::GreaterThanOrEquals,
         _ => panic!("Unexpected rule: {:?}", operator.as_rule()),
     };
@@ -204,7 +226,7 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
 }
 
 fn translate_unary_filter(node: PestNode) -> Node<Filter> {
-    expect(Rule::unary_filter, &node);
+    expect_rule!(Rule::unary_filter, node);
 
     let position = position(&node);
     let inner = node.into_inner().next().unwrap();
@@ -224,7 +246,7 @@ fn translate_unary_filter(node: PestNode) -> Node<Filter> {
 }
 
 fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
-    expect(Rule::identified_column, &node);
+    expect_rule!(Rule::identified_column, node);
 
     let inner = node.into_inner().next().unwrap();
     match inner.as_rule() {
@@ -235,7 +257,7 @@ fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
 }
 
 fn translate_ordering(node: PestNode) -> Node<Order> {
-    expect(Rule::ordering, &node);
+    expect_rule!(Rule::ordering, node);
 
     let position = position(&node);
     let inner = node.into_inner().next().unwrap();
@@ -258,7 +280,7 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
 }
 
 fn translate_operand(node: PestNode) -> Node<Operand> {
-    expect(Rule::operand, &node);
+    expect_rule!(Rule::operand, node);
 
     let inner = node.into_inner().next().unwrap();
     let position = position(&inner);
@@ -305,7 +327,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
 }
 
 fn translate_implicit_column(node: PestNode) -> Node<ColumnIdentifier> {
-    expect(Rule::column_name, &node);
+    expect_rule!(Rule::column_name, node);
 
     let position = position(&node);
     let inner = ColumnIdentifier::Implicit(translate_sql_name(node));
@@ -314,7 +336,7 @@ fn translate_implicit_column(node: PestNode) -> Node<ColumnIdentifier> {
 }
 
 fn translate_explicit_column(node: PestNode) -> Node<ColumnIdentifier> {
-    expect(Rule::fully_qualified_column, &node);
+    expect_rule!(Rule::fully_qualified_column, node);
 
     let position = position(&node);
 
@@ -332,7 +354,7 @@ fn translate_value(node: PestNode) -> Node<Value> {
         Rule::numeric_value => translate_numeric_value(node),
         Rule::string_value => translate_string_value(node),
         _ => {
-            expect_one_of(&[Rule::numeric_value, Rule::string_value], &node);
+            expect_rule_in!([Rule::numeric_value, Rule::string_value], node);
             panic!("previous statement should have panicked")
         }
     }
@@ -343,9 +365,9 @@ fn translate_string_value(node: PestNode) -> Node<Value> {
         .into_inner()
         .next()
         .expect("String values MUST have child nodes");
-    expect_one_of(
-        &[Rule::apostrophe_string_value, Rule::quote_string_value],
-        &inner,
+    expect_rule_in!(
+        [Rule::apostrophe_string_value, Rule::quote_string_value],
+        inner
     );
 
     let position = position(&inner);
@@ -355,7 +377,7 @@ fn translate_string_value(node: PestNode) -> Node<Value> {
 }
 
 fn translate_numeric_value(node: PestNode) -> Node<Value> {
-    expect(Rule::numeric_value, &node);
+    expect_rule!(Rule::numeric_value, node);
 
     let position = position(&node);
     let inner = Value::Numeric(node.as_str().trim());
@@ -364,33 +386,13 @@ fn translate_numeric_value(node: PestNode) -> Node<Value> {
 }
 
 fn translate_sql_name(node: PestNode) -> Node<TableName> {
-    expect_one_of(&[Rule::column_name, Rule::table_name], &node);
+    expect_rule_in!([Rule::column_name, Rule::table_name], node);
 
     let position = position(&node);
 
     Node {
         inner: node.as_str(),
         position,
-    }
-}
-
-fn expect(expected_type: Rule, node: &PestNode) {
-    if node.as_rule() != expected_type {
-        panic!(
-            "node be a '{:?}' expression, found '{:?}'",
-            expected_type,
-            node.as_rule()
-        );
-    }
-}
-
-fn expect_one_of(expected_types: &[Rule], node: &PestNode) {
-    if !expected_types.contains(&node.as_rule()) {
-        panic!(
-            "node be a one of {:?}, found '{:?}'",
-            expected_types,
-            node.as_rule()
-        );
     }
 }
 
