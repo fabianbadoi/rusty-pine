@@ -73,7 +73,7 @@ TODO:
 - [x] Unselect specific columns
 - [x] other comparisons
 - [x] Functions on a column
-- [ ] Group on a column
+- [x] Group on a column
 - [ ] Read from stdin
 - [ ] Meta function show neighbors
 - [ ] Meta function show create

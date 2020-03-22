@@ -2,9 +2,9 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnIdentifier as AstColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter,
-    Node, Operand, Operation as AstOperation, Order as AstOrder, Pine, Selection as AstSelection,
-    TableName as AstTableName, Value as AstValue,
+    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node, Operand,
+    Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine,
+    Selection as AstSelection, TableName as AstTableName, Value as AstValue,
 };
 use crate::query::{
     Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
@@ -70,6 +70,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             AstOperation::Select(ref selections) => self.apply_selections(selections)?,
             AstOperation::Unselect(ref selections) => self.apply_unselections(selections)?,
             AstOperation::Filter(ref filters) => self.apply_filters(filters)?,
+            AstOperation::GroupBy(ref group_by) => self.apply_group_by(group_by)?,
             AstOperation::Order(ref orders) => self.apply_orders(orders)?,
             AstOperation::Limit(ref limit) => self.apply_limit(limit)?,
         };
@@ -129,6 +130,26 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         self.query.filters.append(&mut filters);
+
+        Ok(())
+    }
+
+    fn apply_group_by(&mut self, operands: &[Node<AstOperand>]) -> Result<(), SyntaxError> {
+        debug!("Found group_by: {:?}", operands);
+
+        if operands.is_empty() {
+            return Ok(());
+        }
+
+        let table = self.require_table(operands[0].position)?;
+        let mut group_by: Vec<_> = operands
+            .iter()
+            .map(|operand| translate_operand(&operand.inner, table))
+            .collect();
+
+        // TODO once all fields have the same type, I should add an implicit select with group by fields
+
+        self.query.group_by.append(&mut group_by);
 
         Ok(())
     }

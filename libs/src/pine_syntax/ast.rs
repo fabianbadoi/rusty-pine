@@ -14,6 +14,7 @@ pub enum Operation<'a> {
     Select(Vec<Node<Selection<'a>>>),
     Unselect(Vec<Node<ColumnIdentifier<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
+    GroupBy(Vec<Node<Operand<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
 }
@@ -29,6 +30,7 @@ impl<'a> Operation<'a> {
             Select(_) => "select",
             Unselect(_) => "unselect",
             Filter(_) => "filter",
+            GroupBy(_) => "group by",
             Order(_) => "order",
             Limit(_) => "limit",
         }

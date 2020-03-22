@@ -7,6 +7,7 @@ pub struct Query {
     pub from: TableName,
     pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
+    pub group_by: Vec<Operand>,
     pub order: Vec<Order>,
     pub limit: usize,
 }
@@ -19,6 +20,7 @@ impl Default for Query {
             from: Default::default(),
             joins: Default::default(),
             filters: Default::default(),
+            group_by: Default::default(),
             order: Default::default(),
             limit: 10,
         }

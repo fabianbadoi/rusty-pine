@@ -53,12 +53,13 @@ impl SmartRenderer {
         let from = render_from(query.from);
         let join = render_joins(&query.joins[..]);
         let filter = render_filters(&query.filters[..]);
+        let group = render_group_by(&query.group_by[..]);
         let order = render_orders(&query.order[..]);
         let limit = render_limit(query.limit);
 
         info!("Done rendering reander-ready representation");
 
-        vec![select, from, join, filter, order, limit]
+        vec![select, from, join, filter, group, order, limit]
             .into_iter()
             .filter(|s| !s.is_empty())
             .collect::<Vec<_>>()
@@ -172,6 +173,20 @@ fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
         operator,
         render_operand(rhs)
     )
+}
+
+fn render_group_by(operands: &[ExplicitOperand]) -> String {
+    if operands.is_empty() {
+        return "".to_string();
+    }
+
+    let operands = operands
+        .iter()
+        .map(render_operand)
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    format!("GROUP BY {}", operands)
 }
 
 fn render_orders(orders: &[ExplicitOrder]) -> String {

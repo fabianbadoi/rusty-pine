@@ -47,6 +47,13 @@ static TEST_SPECS: &str = r#"
     SELECT count(id), name
     FROM humans
     LIMIT 10
+
+    humans | s: count(id) name | g: name
+    ===============================
+    SELECT count(id), name
+    FROM humans
+    GROUP BY name
+    LIMIT 10
 "#;
 
 #[test]

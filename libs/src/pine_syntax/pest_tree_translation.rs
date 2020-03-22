@@ -103,6 +103,7 @@ impl Translator {
             Rule::filters => self.translate_filters(node),
             Rule::compound_expression => self.translate_compound_expression(node),
             Rule::join => self.translate_join(node),
+            Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
             Rule::limit => self.translate_limit(node),
             Rule::EOI => Vec::new(),
@@ -147,6 +148,12 @@ impl Translator {
         let columns: Vec<_> = node.into_inner().map(translate_identified_column).collect();
 
         vec![Operation::Unselect(columns)]
+    }
+
+    fn translate_group_by<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let operands: Vec<_> = node.into_inner().map(translate_operand).collect();
+
+        vec![Operation::GroupBy(operands)]
     }
 
     fn translate_order<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {

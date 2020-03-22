@@ -17,6 +17,7 @@ pub struct ExplicitQuery<'a> {
     pub from: &'a str,
     pub joins: Vec<ExplicitJoin<'a>>,
     pub filters: Vec<ExplicitFilter<'a>>,
+    pub group_by: Vec<ExplicitOperand<'a>>,
     pub order: Vec<ExplicitOrder<'a>>,
     pub limit: usize,
 }
@@ -158,6 +159,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
             from: query.from.as_ref(),
             joins,
             filters: self.translate_filters(&query.filters[..]),
+            group_by: self.translate_group_by(&query.group_by[..]),
             order: self.translate_orders(&query.order[..]),
             limit: query.limit,
         })
@@ -268,6 +270,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect();
 
         Ok(finder.find(from, to.as_ref())?)
+    }
+
+    fn translate_group_by(&self, operands: &'t [Operand]) -> Vec<ExplicitOperand<'t>> {
+        operands
+            .iter()
+            .map(|operand| self.make_operand(operand))
+            .collect()
     }
 
     fn translate_orders(&self, orders: &'t [Order]) -> Vec<ExplicitOrder<'t>> {
