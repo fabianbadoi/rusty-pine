@@ -3,6 +3,7 @@ use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::Query;
+use crate::sql::contextual_renderer::explicit_representation::ExplicitSelection;
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
@@ -75,10 +76,15 @@ fn render_select(query: &ExplicitQuery) -> String {
     format!("SELECT {}", columns)
 }
 
-fn render_columns(columns: &[ExplicitColumn]) -> String {
+fn render_columns(columns: &[ExplicitSelection]) -> String {
     columns
         .iter()
-        .map(render_column)
+        .map(|selection| match selection {
+            ExplicitSelection::Column(column) => render_column(column),
+            ExplicitSelection::FunctionCall(function_name, column) => {
+                render_function_call(function_name, column)
+            }
+        })
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -98,6 +104,10 @@ fn render_column(column: &ExplicitColumn) -> String {
         Simple(column_name) => column_name.to_string(),
         FullyQualified(table_name, column_name) => format!("{}.{}", table_name, column_name),
     }
+}
+
+fn render_function_call(function_name: &str, column: &ExplicitColumn) -> String {
+    format!("{}({})", function_name, render_column(column))
 }
 
 fn render_from(table: &str) -> String {

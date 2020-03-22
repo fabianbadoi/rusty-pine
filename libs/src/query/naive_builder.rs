@@ -3,11 +3,12 @@ use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
     ColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter, Node, Operand,
-    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName,
-    Value as AstValue,
+    Operation as AstOperation, Order as AstOrder, Pine, Selection as AstSelection,
+    TableName as AstTableName, Value as AstValue,
 };
 use crate::query::{
-    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query,
+    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
+    Query, Selection as SqlSelection,
 };
 use log::{debug, info};
 
@@ -93,7 +94,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.apply_from(table);
     }
 
-    fn apply_selections(&mut self, selections: &[Node<AstColumnName>]) -> InternalResult {
+    fn apply_selections(&mut self, selections: &[Node<AstSelection>]) -> InternalResult {
         debug!("Found select: {:?}", selections);
 
         let mut selections = self.build_columns(selections)?;
@@ -108,7 +109,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn apply_unselections(&mut self, unselect: &[Node<AstColumnName>]) -> InternalResult {
         debug!("Found unselect: {:?}", unselect);
 
-        let mut unselect = self.build_columns(unselect)?;
+        let mut unselect = self.build_unselect_columns(unselect)?;
         self.query.unselections.append(&mut unselect);
 
         Ok(())
@@ -194,10 +195,14 @@ impl<'a> SingleUseQueryBuilder<'a> {
         if self.implicit_select_all_from_last_table {
             let table = self.from_table.clone().unwrap();
 
-            self.query.selections.push(QualifiedColumnIdentifier {
+            let magic_column = QualifiedColumnIdentifier {
                 table,
                 column: "*".to_string(),
-            });
+            };
+
+            self.query
+                .selections
+                .push(SqlSelection::Column(magic_column));
         }
     }
 
@@ -214,6 +219,19 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
     fn build_columns(
         &self,
+        columns: &[Node<AstSelection>],
+    ) -> Result<Vec<SqlSelection>, SyntaxError> {
+        let table = self.require_table(columns[0].position)?;
+        let qualified_columns = columns
+            .iter()
+            .map(|selection| translate_select(selection, table))
+            .collect();
+
+        Ok(qualified_columns)
+    }
+
+    fn build_unselect_columns(
+        &self,
         columns: &[Node<AstColumnName>],
     ) -> Result<Vec<QualifiedColumnIdentifier>, SyntaxError> {
         let table = self.require_table(columns[0].position)?;
@@ -227,6 +245,22 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         Ok(qualified_columns)
+    }
+}
+
+fn translate_select(select_node: &Node<AstSelection>, default_table: &str) -> SqlSelection {
+    match &select_node.inner {
+        AstSelection::Column(column) => SqlSelection::Column(QualifiedColumnIdentifier {
+            table: default_table.to_string(),
+            column: column.inner.to_string(),
+        }),
+        AstSelection::FunctionCall(function_name, column) => SqlSelection::FunctionCall(
+            function_name.inner.to_string(),
+            QualifiedColumnIdentifier {
+                table: default_table.to_string(),
+                column: column.inner.to_string(),
+            },
+        ),
     }
 }
 
@@ -466,7 +500,12 @@ mod tests {
         let mut pine = from(table);
         append_operation(
             &mut pine,
-            AstOperation::Select(columns.iter().map(|c| node(*c)).collect()),
+            AstOperation::Select(
+                columns
+                    .iter()
+                    .map(|c| node(Selection::Column(node(*c))))
+                    .collect(),
+            ),
         );
 
         pine
@@ -493,6 +532,18 @@ mod tests {
     impl PartialEq<(&str, &str)> for QualifiedColumnIdentifier {
         fn eq(&self, other: &(&str, &str)) -> bool {
             self.table == other.0 && self.column == other.1
+        }
+    }
+
+    use crate::query::structure::Selection as QuerySelection;
+    impl PartialEq<(&str, &str)> for QuerySelection {
+        fn eq(&self, other: &(&str, &str)) -> bool {
+            match self {
+                QuerySelection::Column(column) => column == other,
+                QuerySelection::FunctionCall(_, _) => {
+                    panic!("cannot compare (str,str) to function call")
+                }
+            }
         }
     }
 

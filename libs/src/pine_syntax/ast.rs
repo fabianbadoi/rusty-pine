@@ -11,7 +11,7 @@ pub struct Pine<'a> {
 pub enum Operation<'a> {
     From(Node<TableName<'a>>),
     Join(Node<TableName<'a>>),
-    Select(Vec<Node<ColumnName<'a>>>),
+    Select(Vec<Node<Selection<'a>>>),
     Unselect(Vec<Node<ColumnName<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
     Order(Vec<Node<Order<'a>>>),
@@ -33,6 +33,12 @@ impl<'a> Operation<'a> {
             Limit(_) => "limit",
         }
     }
+}
+
+#[derive(Debug)]
+pub enum Selection<'a> {
+    Column(Node<ColumnName<'a>>),
+    FunctionCall(Node<FunctionName<'a>>, Node<ColumnName<'a>>),
 }
 
 #[derive(Debug)]
@@ -68,6 +74,7 @@ pub enum ColumnIdentifier<'a> {
 pub type Identifier<'a> = InputType<'a>;
 pub type TableName<'a> = Identifier<'a>;
 pub type ColumnName<'a> = Identifier<'a>;
+pub type FunctionName<'a> = Identifier<'a>;
 pub type InputType<'a> = &'a str;
 
 #[derive(Debug, Default)]

@@ -7,12 +7,14 @@ compound_expression = { table_name ~ (numeric_value | filter)* }
 // actual pines
 from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
-select = { ("select:" | "s:") ~ column_name+ }
+select = { ("select:" | "s:") ~ (function_call | column_name)+ }
 unselect = { ("unselect:" | "u:") ~ column_name+ }
 filters = { ("where:" | "w:") ~ filter+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
 
+function_call = { function_name ~ "(" ~ column_name ~ ")" }
+function_name = @{ sql_name }
 
 // identifiers
 table_name = { sql_name }

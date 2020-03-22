@@ -72,7 +72,7 @@ TODO:
 - [x] Add some integration test
 - [x] Unselect specific columns
 - [x] other comparisons
-- [ ] Functions on a column
+- [x] Functions on a column
 - [ ] Group on a column
 - [ ] Read from stdin
 - [ ] Meta function show neighbors

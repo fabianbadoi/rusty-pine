@@ -39,7 +39,8 @@ pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> 
     translator.translate(root_node, input)
 }
 
-/// panics if the rule is not found
+/// Panics if the rule is not found.
+/// This is a macro so we get the proper line number of errors.
 macro_rules! expect_rule {
     ($rule:expr, $node:expr) => {{
         if $node.as_rule() != $rule {
@@ -48,7 +49,8 @@ macro_rules! expect_rule {
     }};
 }
 
-/// panics if node is not of those rules
+/// Panics if node is not of those rules.
+/// This is a macro so we get the proper line number of errors.
 macro_rules! expect_rule_in {
     ($rules:expr, $node:expr) => {{
         if !$rules.contains(&$node.as_rule()) {
@@ -96,7 +98,7 @@ impl Translator {
         let position = position(&node);
         let operations = match node.as_rule() {
             Rule::from => self.translate_from(node),
-            Rule::select => self.translate_select(node),
+            Rule::select => self.translate_selections(node),
             Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
             Rule::compound_expression => self.translate_compound_expression(node),
@@ -135,8 +137,8 @@ impl Translator {
         vec![Operation::Join(table_name)]
     }
 
-    fn translate_select<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
+    fn translate_selections<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let columns: Vec<_> = node.into_inner().map(translate_select).collect();
 
         vec![Operation::Select(columns)]
     }
@@ -187,6 +189,39 @@ impl Translator {
 
         operations
     }
+}
+
+fn translate_select(node: PestNode) -> Node<Selection> {
+    expect_rule_in!([Rule::column_name, Rule::function_call], node);
+
+    match node.as_rule() {
+        Rule::column_name => translate_select_column(node),
+        Rule::function_call => translate_function_call(node),
+        _ => panic!("Unexpected select rule: {:?}", node.as_rule()),
+    }
+}
+
+fn translate_select_column(node: PestNode) -> Node<Selection> {
+    expect_rule!(Rule::column_name, node);
+
+    let position = position(&node);
+    let column = translate_sql_name(node);
+    let inner = Selection::Column(column);
+
+    Node { position, inner }
+}
+
+fn translate_function_call(node: PestNode) -> Node<Selection> {
+    let position = position(&node);
+
+    let mut parts = node.into_inner();
+
+    let function_name = translate_sql_name(parts.next().unwrap());
+    let column = translate_sql_name(parts.next().unwrap());
+
+    let inner = Selection::FunctionCall(function_name, column);
+
+    Node { position, inner }
 }
 
 fn translate_filter(node: PestNode) -> Node<Filter> {
@@ -386,7 +421,10 @@ fn translate_numeric_value(node: PestNode) -> Node<Value> {
 }
 
 fn translate_sql_name(node: PestNode) -> Node<TableName> {
-    expect_rule_in!([Rule::column_name, Rule::table_name], node);
+    expect_rule_in!(
+        [Rule::column_name, Rule::table_name, Rule::function_name],
+        node
+    );
 
     let position = position(&node);
 

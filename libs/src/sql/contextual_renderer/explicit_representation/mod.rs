@@ -13,12 +13,18 @@ mod join_finder;
 
 #[derive(Debug)]
 pub struct ExplicitQuery<'a> {
-    pub selections: Vec<ExplicitColumn>,
+    pub selections: Vec<ExplicitSelection<'a>>,
     pub from: &'a str,
     pub joins: Vec<ExplicitJoin<'a>>,
     pub filters: Vec<ExplicitFilter<'a>>,
     pub order: Vec<ExplicitOrder<'a>>,
     pub limit: usize,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ExplicitSelection<'a> {
+    Column(ExplicitColumn),
+    FunctionCall(&'a str, ExplicitColumn),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -159,35 +165,41 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_selection(
         &self,
-        selections: &'t [QualifiedColumnIdentifier],
+        selections: &'t [Selection],
         unselections: &'t [QualifiedColumnIdentifier],
-    ) -> Vec<ExplicitColumn> {
+    ) -> Vec<ExplicitSelection<'t>> {
         let selections = selections
             .iter()
-            .map(|select| self.make_explicit_column(select))
+            .map(|select| self.make_selection(select))
             .collect::<Vec<_>>();
 
         unselections
             .iter()
             .fold(selections, |selections, unselect| {
-                self.process_unselection(&selections[..], unselect)
+                self.process_unselection(selections, unselect)
             })
+            .into_iter()
+            .collect()
     }
 
     fn process_unselection(
         &self,
-        selections: &'t [ExplicitColumn],
+        selections: Vec<ExplicitSelection<'t>>,
         unselect: &'t QualifiedColumnIdentifier,
-    ) -> Vec<ExplicitColumn> {
+    ) -> Vec<ExplicitSelection<'t>> {
         let found_wildcard = selections
             .iter()
+            .filter_map(|selection| match selection {
+                ExplicitSelection::Column(column) => Some(column),
+                _ => None,
+            })
             .find(|select| select.is_wildcard_of(&unselect.table))
             .is_some();
 
         let full_selections = if found_wildcard {
             self.expand_selections(selections, &unselect.table)
         } else {
-            selections.to_vec()
+            selections
         };
 
         full_selections
@@ -198,21 +210,20 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn expand_selections(
         &self,
-        selections: &'t [ExplicitColumn],
+        selections: Vec<ExplicitSelection<'t>>,
         table: &'t str,
-    ) -> Vec<ExplicitColumn> {
+    ) -> Vec<ExplicitSelection<'t>> {
         selections
             .iter()
-            .flat_map(|column| {
-                if column.table_is(table) {
+            .flat_map(|selection| match selection {
+                ExplicitSelection::Column(column) if column.table_is(table) => {
                     self.get_columns_of(table)
-                } else {
-                    vec![column.clone()]
                 }
+                _ => vec![selection.clone()],
             })
-            .fold(Vec::new(), |mut deduplicated, column| {
-                if !deduplicated.contains(&column) {
-                    deduplicated.push(column);
+            .fold(Vec::new(), |mut deduplicated, selection| {
+                if !deduplicated.contains(&selection) {
+                    deduplicated.push(selection);
                 }
 
                 deduplicated
@@ -284,6 +295,18 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
+    fn make_selection(&self, select: &'t Selection) -> ExplicitSelection<'t> {
+        match select {
+            Selection::Column(column) => {
+                ExplicitSelection::Column(self.make_explicit_column(column))
+            }
+            Selection::FunctionCall(function_name, column) => ExplicitSelection::FunctionCall(
+                function_name.as_str(),
+                self.make_explicit_column(column),
+            ),
+        }
+    }
+
     fn make_explicit_column(&self, column: &'t QualifiedColumnIdentifier) -> ExplicitColumn {
         if self.working_with_single_table {
             ExplicitColumn::Simple(column.column.clone())
@@ -292,7 +315,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitColumn> {
+    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitSelection<'t>> {
         self.tables
             .iter()
             .filter(|table| table.name == table_name)
@@ -301,12 +324,12 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect()
     }
 
-    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitColumn {
-        if self.working_with_single_table {
+    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitSelection<'t> {
+        ExplicitSelection::Column(if self.working_with_single_table {
             ExplicitColumn::Simple(column.name.clone())
         } else {
             ExplicitColumn::FullyQualified(table_name.to_string(), column.name.clone())
-        }
+        })
     }
 
     /// Knowing if we can't find a table because it's misspelled or because it doesn't exist can
@@ -351,6 +374,15 @@ impl<'t> ExplicitQueryBuilder<'t> {
     }
 }
 
+impl PartialEq<QualifiedColumnIdentifier> for ExplicitSelection<'_> {
+    fn eq(&self, other: &QualifiedColumnIdentifier) -> bool {
+        match self {
+            ExplicitSelection::Column(column) => column == other,
+            _ => false,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -358,14 +390,14 @@ mod tests {
     #[test]
     fn can_build_simple_selections() {
         let selections = vec![
-            QualifiedColumnIdentifier {
+            Selection::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
-            },
-            QualifiedColumnIdentifier {
+            }),
+            Selection::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column2".into(),
-            },
+            }),
         ];
         let builder = ExplicitQueryBuilder {
             tables: &[],
@@ -388,14 +420,14 @@ mod tests {
     #[test]
     fn can_build_complex_selections() {
         let selections = vec![
-            QualifiedColumnIdentifier {
+            Selection::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
-            },
-            QualifiedColumnIdentifier {
+            }),
+            Selection::Column(QualifiedColumnIdentifier {
                 table: "friends".into(),
                 column: "column2".into(),
-            },
+            }),
         ];
         let builder = ExplicitQueryBuilder {
             tables: &[],
@@ -541,6 +573,15 @@ mod tests {
                 (other.from_table, other.from_column, other.to_table, other.to_column)
                 || (self.to_table, self.to_column, self.from_table, self.from_column) ==     // are reversed
                 (other.from_table, other.from_column, other.to_table, other.to_column);
+        }
+    }
+
+    impl PartialEq<ExplicitSelection<'_>> for ExplicitColumn {
+        fn eq(&self, other: &ExplicitSelection) -> bool {
+            match other {
+                ExplicitSelection::Column(column) => self == column,
+                ExplicitSelection::FunctionCall(_, _) => false,
+            }
         }
     }
 
