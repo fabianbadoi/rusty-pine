@@ -29,6 +29,7 @@ impl Default for Query {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Selection {
+    Value(Value),
     Column(QualifiedColumnIdentifier),
     FunctionCall(FunctionName, QualifiedColumnIdentifier),
 }

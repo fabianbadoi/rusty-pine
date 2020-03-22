@@ -139,7 +139,7 @@ impl Translator {
     }
 
     fn translate_selections<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_select).collect();
+        let columns: Vec<_> = node.into_inner().map(translate_result_column).collect();
 
         vec![Operation::Select(columns)]
     }
@@ -164,7 +164,7 @@ impl Translator {
 
     fn translate_limit<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let value_node = node.into_inner().next().unwrap();
-        let limit = translate_value(value_node);
+        let limit = translate_numeric_value(value_node);
 
         vec![Operation::Limit(limit)]
     }
@@ -198,13 +198,16 @@ impl Translator {
     }
 }
 
-fn translate_select(node: PestNode) -> Node<Selection> {
-    expect_rule_in!([Rule::identified_column, Rule::function_call], node);
+fn translate_result_column(node: PestNode) -> Node<Selection> {
+    expect_rule!(Rule::result_column, node);
 
-    match node.as_rule() {
-        Rule::identified_column => translate_select_column(node),
-        Rule::function_call => translate_function_call(node),
-        _ => panic!("Unexpected select rule: {:?}", node.as_rule()),
+    let inner = node.into_inner().next().unwrap();
+
+    match inner.as_rule() {
+        Rule::identified_column => translate_select_column(inner),
+        Rule::function_call => translate_function_call(inner),
+        Rule::value => translate_select_value(inner),
+        _ => panic!("Unexpected select rule: {:?}", inner.as_rule()),
     }
 }
 
@@ -227,6 +230,16 @@ fn translate_function_call(node: PestNode) -> Node<Selection> {
     let column = translate_identified_column(parts.next().unwrap());
 
     let inner = Selection::FunctionCall(function_name, column);
+
+    Node { position, inner }
+}
+
+fn translate_select_value(node: PestNode) -> Node<Selection> {
+    expect_rule!(Rule::value, node);
+
+    let position = position(&node);
+    let value  = translate_value(node);
+    let inner = Selection::Value(value);
 
     Node { position, inner }
 }
@@ -328,7 +341,7 @@ fn translate_operand(node: PestNode) -> Node<Operand> {
     let position = position(&inner);
 
     let operand = match inner.as_rule() {
-        Rule::numeric_value | Rule::string_value => Operand::Value(translate_value(inner)),
+        Rule::value => Operand::Value(translate_value(inner)),
         Rule::identified_column => Operand::Column(translate_identified_column(inner)),
         _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
     };
@@ -392,11 +405,15 @@ fn translate_explicit_column(node: PestNode) -> Node<ColumnIdentifier> {
 }
 
 fn translate_value(node: PestNode) -> Node<Value> {
-    match node.as_rule() {
-        Rule::numeric_value => translate_numeric_value(node),
-        Rule::string_value => translate_string_value(node),
+    expect_rule!(Rule::value, node);
+
+    let inner = node.into_inner().next().unwrap();
+
+    match inner.as_rule() {
+        Rule::numeric_value => translate_numeric_value(inner),
+        Rule::string_value => translate_string_value(inner),
         _ => {
-            expect_rule_in!([Rule::numeric_value, Rule::string_value], node);
+            expect_rule_in!([Rule::numeric_value, Rule::string_value], inner);
             panic!("previous statement should have panicked")
         }
     }
@@ -460,7 +477,7 @@ impl From<PestError<Rule>> for SyntaxError {
 
 fn translate_filter_or_implicit_id(node: PestNode) -> Node<Filter> {
     match node.as_rule() {
-        Rule::numeric_value => translate_implicit_id_equals(node),
+        Rule::value => translate_implicit_id_equals(node),
         Rule::filter => translate_filter(node),
         _ => panic!("can't treat this node as a filter: {:#?}", node),
     }

@@ -54,6 +54,10 @@ static TEST_SPECS: &str = r#"
     FROM humans
     GROUP BY name
     LIMIT 10
+
+    s: 1
+    ====
+    SELECT 1
 "#;
 
 #[test]

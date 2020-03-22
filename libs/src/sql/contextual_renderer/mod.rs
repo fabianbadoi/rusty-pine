@@ -55,7 +55,7 @@ impl SmartRenderer {
         let filter = render_filters(&query.filters[..]);
         let group = render_group_by(&query.group_by[..]);
         let order = render_orders(&query.order[..]);
-        let limit = render_limit(query.limit);
+        let limit = render_limit(&query);
 
         info!("Done rendering reander-ready representation");
 
@@ -81,6 +81,7 @@ fn render_columns(columns: &[ExplicitSelection]) -> String {
     columns
         .iter()
         .map(|selection| match selection {
+            ExplicitSelection::Value(value) => render_value(value),
             ExplicitSelection::Column(column) => render_column(column),
             ExplicitSelection::FunctionCall(function_name, column) => {
                 render_function_call(function_name, column)
@@ -112,7 +113,11 @@ fn render_function_call(function_name: &str, column: &ExplicitColumn) -> String 
 }
 
 fn render_from(table: &str) -> String {
-    format!("FROM {}", table)
+    if table.is_empty() {
+        "".to_string()
+    } else {
+        format!("FROM {}", table)
+    }
 }
 
 fn render_joins(joins: &[ExplicitJoin]) -> String {
@@ -231,8 +236,12 @@ fn render_value(value: &str) -> String {
     format!("{}", value)
 }
 
-fn render_limit(limit: usize) -> String {
-    format!("LIMIT {}", limit)
+fn render_limit(query: &ExplicitQuery) -> String {
+    if query.from.is_empty() {
+        "".to_string()
+    } else {
+        format!("LIMIT {}", query.limit)
+    }
 }
 
 /// Used to simplify rendering

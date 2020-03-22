@@ -56,7 +56,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             self.apply_operation(operation_node)?;
         }
 
-        self.finalize()?;
+        self.finalize();
 
         info!("Done");
 
@@ -191,24 +191,36 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-    fn finalize(&mut self) -> Result<(), SyntaxError> {
-        self.set_from_table()?;
-        self.add_implicit_select_all();
 
-        Ok(())
+    fn translate_select(&self, select_node: &Node<AstSelection>)-> Result<SqlSelection, SyntaxError> {
+        let selection = match &select_node.inner {
+            AstSelection::Value(value) => {
+                SqlSelection::Value(value.inner.to_string())
+            }
+            AstSelection::Column(column) => {
+                let default_table = self.require_table(column.position)?;
+                SqlSelection::Column(translate_column_identifier(&column.inner, default_table))
+            }
+            AstSelection::FunctionCall(function_name, column) => {
+                let default_table = self.require_table(column.position)?;
+                SqlSelection::FunctionCall(
+                    function_name.inner.to_string(),
+                    translate_column_identifier(&column.inner, default_table),
+                )
+            },
+        };
+
+        Ok(selection)
     }
 
-    fn set_from_table(&mut self) -> Result<(), SyntaxError> {
-        match self.from_table.clone() {
-            Some(table) => {
-                self.query.from = table;
-                Ok(())
-            }
-            None => Err(SyntaxError::Positioned {
-                message: "Missing a 'from:' statement".to_string(),
-                position: self.pine.position,
-                input: self.pine.inner.pine_string.to_string(),
-            }),
+    fn finalize(&mut self) {
+        self.set_from_table();
+        self.add_implicit_select_all();
+    }
+
+    fn set_from_table(&mut self) {
+        if let Some(table) = self.from_table.clone() {
+            self.query.from = table;
         }
     }
 
@@ -242,13 +254,12 @@ impl<'a> SingleUseQueryBuilder<'a> {
         &self,
         columns: &[Node<AstSelection>],
     ) -> Result<Vec<SqlSelection>, SyntaxError> {
-        let table = self.require_table(columns[0].position)?;
-        let qualified_columns = columns
+        let qualified_columns: Result<Vec<_>, _> = columns
             .iter()
-            .map(|selection| translate_select(selection, table))
+            .map(|selection| self.translate_select(selection))
             .collect();
 
-        Ok(qualified_columns)
+        Ok(qualified_columns?)
     }
 
     fn build_unselect_columns(
@@ -262,18 +273,6 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         Ok(qualified_columns)
-    }
-}
-
-fn translate_select(select_node: &Node<AstSelection>, default_table: &str) -> SqlSelection {
-    match &select_node.inner {
-        AstSelection::Column(column) => {
-            SqlSelection::Column(translate_column_identifier(&column.inner, default_table))
-        }
-        AstSelection::FunctionCall(function_name, column) => SqlSelection::FunctionCall(
-            function_name.inner.to_string(),
-            translate_column_identifier(&column.inner, default_table),
-        ),
     }
 }
 
@@ -563,9 +562,7 @@ mod tests {
         fn eq(&self, other: &(&str, &str)) -> bool {
             match self {
                 QuerySelection::Column(column) => column == other,
-                QuerySelection::FunctionCall(_, _) => {
-                    panic!("cannot compare (str,str) to function call")
-                }
+                _ => panic!("cannot compare (str,str) to function call")
             }
         }
     }

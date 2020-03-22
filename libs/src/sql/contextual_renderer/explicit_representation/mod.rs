@@ -24,6 +24,7 @@ pub struct ExplicitQuery<'a> {
 
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub enum ExplicitSelection<'a> {
+    Value(&'a str),
     Column(ExplicitColumn),
     FunctionCall(&'a str, ExplicitColumn),
 }
@@ -260,6 +261,11 @@ impl<'t> ExplicitQueryBuilder<'t> {
         from: &'t str,
         joins: &'t [String],
     ) -> Result<Vec<ExplicitJoin<'t>>, String> {
+        // queries without a from: operation can just skip this step
+        if from.is_empty() {
+            return Ok(Vec::with_capacity(0));
+        }
+
         self.ensure_all_join_tables_exist(from, joins)?;
 
         let finder = JoinFinder::new(&self.tables[..]);
@@ -306,6 +312,9 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn make_selection(&self, select: &'t Selection) -> ExplicitSelection<'t> {
         match select {
+            Selection::Value(value) => {
+                ExplicitSelection::Value(value.as_ref())
+            }
             Selection::Column(column) => {
                 ExplicitSelection::Column(self.make_explicit_column(column))
             }
@@ -589,7 +598,7 @@ mod tests {
         fn eq(&self, other: &ExplicitSelection) -> bool {
             match other {
                 ExplicitSelection::Column(column) => self == column,
-                ExplicitSelection::FunctionCall(_, _) => false,
+                _ => false,
             }
         }
     }

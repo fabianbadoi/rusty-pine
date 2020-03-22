@@ -1,18 +1,20 @@
 pine = { SOI ~ operation ~ ("|" ~ operation)* ~ EOI }
 operation = _{ (from | select | unselect | filters | join | group_by | order | limit | compound_expression) }
 
-compound_expression = { table_name ~ (numeric_value | filter)* }
+compound_expression = { table_name ~ (value | filter)* }
 
 
 // actual pines
 from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
-select = { ("select:" | "s:") ~ (function_call | identified_column)+ }
+select = { ("select:" | "s:") ~ result_column+ }
 unselect = { ("unselect:" | "u:") ~ identified_column+ }
 filters = { ("where:" | "w:") ~ filter+ }
 group_by = { ("group:" | "g:") ~ operand+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
+
+result_column = { function_call | identified_column | value }
 
 function_call = { function_name ~ "(" ~ identified_column ~ ")" }
 function_name = @{ sql_name }
@@ -53,7 +55,7 @@ direction_desc = _ { "desc" | "DESC" | "-" }
 
 
 // values
-value = _{ numeric_value | string_value }
+value = { numeric_value | string_value }
 
 numeric_value = { (ASCII_DIGIT | "_")+ }
 
