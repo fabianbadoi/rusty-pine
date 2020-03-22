@@ -1,3 +1,5 @@
+use crate::common::{BinaryFilterType, UnaryFilterType};
+
 #[derive(Debug)]
 pub struct Query {
     pub selections: Vec<QualifiedColumnIdentifier>,
@@ -31,9 +33,8 @@ pub struct QualifiedColumnIdentifier {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
-    Equals(Operand, Operand),
-    IsNull(Operand),
-    IsNotNull(Operand),
+    Unary(Operand, UnaryFilterType),
+    Binary(Operand, Operand, BinaryFilterType),
 }
 
 #[derive(Debug, PartialEq, Eq)]

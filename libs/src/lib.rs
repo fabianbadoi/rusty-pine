@@ -10,6 +10,7 @@ extern crate strsim;
 
 mod analyzer;
 mod cache;
+mod common;
 mod config;
 mod error;
 mod pine_syntax;

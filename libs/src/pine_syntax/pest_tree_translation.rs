@@ -6,6 +6,7 @@ use super::ast::*;
 use super::pest;
 use super::pest::Rule;
 use super::PineParser;
+use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::{Position, SyntaxError};
 use ::pest::error::Error as PestError;
 use ::pest::iterators::Pair;
@@ -187,10 +188,12 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
     let operator = parts.next().unwrap();
     let rhs = translate_operand(parts.next().unwrap());
 
-    let inner = match operator.as_rule() {
-        Rule::optr_eq => Filter::Equals(lhs, rhs),
+    let filter_type = match operator.as_rule() {
+        Rule::optr_eq => BinaryFilterType::Equals,
         _ => panic!("Unexpected rule: {:?}", operator.as_rule()),
     };
+
+    let inner = Filter::Binary(lhs, rhs, filter_type);
 
     Node { position, inner }
 }
@@ -200,16 +203,14 @@ fn translate_unary_filter(node: PestNode) -> Node<Filter> {
 
     let position = position(&node);
     let inner = node.into_inner().next().unwrap();
-
-    let filter = match inner.as_rule() {
-        Rule::filter_is_null => {
-            Filter::IsNull(translate_operand(inner.into_inner().next().unwrap()))
-        }
-        Rule::filter_is_not_null => {
-            Filter::IsNotNull(translate_operand(inner.into_inner().next().unwrap()))
-        }
+    let filter_type = match inner.as_rule() {
+        Rule::filter_is_null => UnaryFilterType::IsNull,
+        Rule::filter_is_not_null => UnaryFilterType::IsNotNull,
         _ => panic!("Unexpected unary filter rule: {:?}", inner.as_rule()),
     };
+    let operand = translate_operand(inner.into_inner().next().unwrap());
+
+    let filter = Filter::Unary(operand, filter_type);
 
     Node {
         position,
@@ -290,7 +291,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
         inner: Operand::Value(translate_value(node)),
     };
 
-    let filter = Filter::Equals(lhs, rhs);
+    let filter = Filter::Binary(lhs, rhs, BinaryFilterType::Equals);
 
     Node {
         position,

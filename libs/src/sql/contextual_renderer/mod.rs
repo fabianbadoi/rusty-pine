@@ -1,5 +1,6 @@
 use super::structure::Table;
 use super::Renderer;
+use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::Query;
 use explicit_representation::{
@@ -132,9 +133,18 @@ fn render_filter(filter: &ExplicitFilter) -> String {
     use ExplicitFilter::*;
 
     match filter {
-        Equals(lhs, rhs) => render_smart_equals(lhs, rhs),
-        IsNull(operand) => format!("{} IS NULL", render_operand(operand)),
-        IsNotNull(operand) => format!("{} IS NOT NULL", render_operand(operand)),
+        Unary(operand, filter_type) => {
+            let operand = render_operand(operand);
+
+            format!("{} {}", operand, filter_type)
+        }
+        Binary(lhs, rhs, BinaryFilterType::Equals) => render_smart_equals(lhs, rhs),
+        Binary(lhs, rhs, filter_type) => {
+            let lhs = render_operand(lhs);
+            let rhs = render_operand(rhs);
+
+            format!("{} {} {}", lhs, filter_type, rhs)
+        }
     }
 }
 
@@ -146,7 +156,12 @@ fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
         _ => "=",
     };
 
-    format!("{} {} {}", render_operand(lhs), operator, render_operand(rhs))
+    format!(
+        "{} {} {}",
+        render_operand(lhs),
+        operator,
+        render_operand(rhs)
+    )
 }
 
 fn render_orders(orders: &[ExplicitOrder]) -> String {
@@ -193,6 +208,30 @@ fn render_value(value: &str) -> String {
 
 fn render_limit(limit: usize) -> String {
     format!("LIMIT {}", limit)
+}
+
+/// Used to simplify rendering
+impl std::fmt::Display for UnaryFilterType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnaryFilterType::IsNull => write!(f, "IS NULL"),
+            UnaryFilterType::IsNotNull => write!(f, "IS NOT NULL"),
+        }
+    }
+}
+
+/// Used to simplify rendering
+impl std::fmt::Display for BinaryFilterType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BinaryFilterType::LesserThan => write!(f, "<"),
+            BinaryFilterType::LesserThanOrEquals => write!(f, "<="),
+            BinaryFilterType::Equals => write!(f, "="),
+            BinaryFilterType::NotEquals => write!(f, "!="),
+            BinaryFilterType::GreaterThan => write!(f, ">"),
+            BinaryFilterType::GreaterThanOrEquals => write!(f, ">="),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -297,8 +336,8 @@ mod tests {
             Select(&["id", "name"]),
             From("users"),
             &[
-                Filter::Equals("users.id", "1"),
-                Filter::Equals("users.mojo", "'great'"),
+                Filter::Binary("users.id", "1", BinaryFilterType::Equals),
+                Filter::Binary("users.mojo", "'great'", BinaryFilterType::Equals),
             ],
         );
         let mut query: Query = query.into();

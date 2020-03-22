@@ -1,3 +1,4 @@
+use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::Position;
 
 #[derive(Debug)]
@@ -36,9 +37,8 @@ impl<'a> Operation<'a> {
 
 #[derive(Debug)]
 pub enum Filter<'a> {
-    Equals(Node<Operand<'a>>, Node<Operand<'a>>),
-    IsNull(Node<Operand<'a>>),
-    IsNotNull(Node<Operand<'a>>),
+    Unary(Node<Operand<'a>>, UnaryFilterType),
+    Binary(Node<Operand<'a>>, Node<Operand<'a>>, BinaryFilterType),
 }
 
 #[derive(Debug)]

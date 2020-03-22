@@ -215,7 +215,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn build_columns(
         &self,
         columns: &[Node<AstColumnName>],
-    ) -> Result<(Vec<QualifiedColumnIdentifier>), SyntaxError> {
+    ) -> Result<Vec<QualifiedColumnIdentifier>, SyntaxError> {
         let table = self.require_table(columns[0].position)?;
         let qualified_columns = columns
             .iter()
@@ -234,21 +234,16 @@ fn translate_filter(filter_node: &Node<AstFilter>, default_table: &str) -> SqlFi
     debug!("Found filter: {:?}", filter_node);
 
     match &filter_node.inner {
-        AstFilter::Equals(lhs, rhs) => {
+        AstFilter::Unary(operand, filter_type) => {
+            let operand = translate_operand(&operand.inner, default_table);
+
+            SqlFilter::Unary(operand, *filter_type)
+        }
+        AstFilter::Binary(lhs, rhs, filter_type) => {
             let lhs = translate_operand(&lhs.inner, default_table);
             let rhs = translate_operand(&rhs.inner, default_table);
 
-            SqlFilter::Equals(lhs, rhs)
-        }
-        AstFilter::IsNull(operand) => {
-            let operand = translate_operand(&operand.inner, default_table);
-
-            SqlFilter::IsNull(operand)
-        }
-        AstFilter::IsNotNull(operand) => {
-            let operand = translate_operand(&operand.inner, default_table);
-
-            SqlFilter::IsNotNull(operand)
+            SqlFilter::Binary(lhs, rhs, *filter_type)
         }
     }
 }
@@ -301,6 +296,7 @@ mod tests {
     use super::super::QualifiedColumnIdentifier;
     use super::*;
     use super::{NaiveBuilder, QueryBuilder};
+    use crate::common::{BinaryFilterType, UnaryFilterType};
     use crate::pine_syntax::ast::*;
 
     #[test]
@@ -358,7 +354,7 @@ mod tests {
 
         assert_eq!(
             query.filters[0],
-            SqlFilter::Equals(("users", "id").into(), "3".into())
+            SqlFilter::Binary(("users", "id").into(), "3".into(), BinaryFilterType::Equals)
         );
     }
 
@@ -367,7 +363,7 @@ mod tests {
         let mut pine = from("users");
         let column = Operand::Column(node(ColumnIdentifier::Implicit(node("id"))));
         let column = node(column);
-        let filter = node(Filter::IsNull(column));
+        let filter = node(Filter::Unary(column, UnaryFilterType::IsNull));
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));
 
         let query_builder = NaiveBuilder {};
@@ -375,7 +371,10 @@ mod tests {
 
         assert_eq!(query.filters.len(), 1);
 
-        assert_eq!(query.filters[0], SqlFilter::IsNull(("users", "id").into()));
+        assert_eq!(
+            query.filters[0],
+            SqlFilter::Unary(("users", "id").into(), UnaryFilterType::IsNull)
+        );
     }
 
     #[test]
@@ -391,7 +390,7 @@ mod tests {
 
         assert_eq!(
             query.filters[0],
-            SqlFilter::Equals(("users", "id").into(), "3".into())
+            SqlFilter::Binary(("users", "id").into(), "3".into(), BinaryFilterType::Equals)
         );
     }
 
@@ -433,7 +432,7 @@ mod tests {
 
         let rhs = node(rhs);
         let lhs = node(lhs);
-        let filter = node(Filter::Equals(rhs, lhs));
+        let filter = node(Filter::Binary(rhs, lhs, BinaryFilterType::Equals));
 
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));
 

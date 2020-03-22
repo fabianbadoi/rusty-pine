@@ -1,3 +1,4 @@
+use crate::common::BinaryFilterType;
 use crate::query::{Filter as SqlFilter, Operand, QualifiedColumnIdentifier, Query};
 
 pub struct QueryShorthand(pub Select, pub From, pub &'static [Filter]);
@@ -6,7 +7,7 @@ pub struct Select(pub &'static [&'static str]);
 pub struct From(pub &'static str);
 
 pub enum Filter {
-    Equals(&'static str, &'static str),
+    Binary(&'static str, &'static str, BinaryFilterType),
 }
 
 impl Into<Query> for QueryShorthand {
@@ -31,11 +32,11 @@ impl Into<Query> for QueryShorthand {
             .2
             .iter()
             .map(|filter| match filter {
-                Filter::Equals(rhs, lhs) => {
+                Filter::Binary(rhs, lhs, filter_type) => {
                     let rhs = parse_operand(rhs);
                     let lhs = parse_operand(lhs);
 
-                    SqlFilter::Equals(rhs, lhs)
+                    SqlFilter::Binary(rhs, lhs, *filter_type)
                 }
             })
             .collect();

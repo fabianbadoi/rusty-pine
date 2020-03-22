@@ -3,6 +3,7 @@
 //! This module takes care of stuff like:
 //!     - determining if we will select 'table.column' or just 'column'
 //!     - figuring out how to exactly to do joins
+use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::query::*;
 use crate::sql::structure::{Column, ForeignKey, Table};
 use join_finder::JoinFinder;
@@ -87,9 +88,8 @@ impl PartialEq<QualifiedColumnIdentifier> for ExplicitColumn {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExplicitFilter<'a> {
-    Equals(ExplicitOperand<'a>, ExplicitOperand<'a>),
-    IsNull(ExplicitOperand<'a>),
-    IsNotNull(ExplicitOperand<'a>),
+    Unary(ExplicitOperand<'a>, UnaryFilterType),
+    Binary(ExplicitOperand<'a>, ExplicitOperand<'a>, BinaryFilterType),
 }
 
 #[derive(Debug)]
@@ -228,21 +228,16 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
         match filter {
-            Filter::IsNull(operand) => {
+            Filter::Unary(operand, filter_type) => {
                 let operand = self.make_operand(operand);
 
-                ExplicitFilter::IsNull(operand)
+                ExplicitFilter::Unary(operand, *filter_type)
             }
-            Filter::IsNotNull(operand) => {
-                let operand = self.make_operand(operand);
-
-                ExplicitFilter::IsNotNull(operand)
-            }
-            Filter::Equals(rhs, lhs) => {
-                let rhs = self.make_operand(rhs);
+            Filter::Binary(lhs, rhs, filter_type) => {
                 let lhs = self.make_operand(lhs);
+                let rhs = self.make_operand(rhs);
 
-                ExplicitFilter::Equals(rhs, lhs)
+                ExplicitFilter::Binary(lhs, rhs, *filter_type)
             }
         }
     }
@@ -380,8 +375,14 @@ mod tests {
         let better_selections = builder.translate_selection(&selections[..], &[]);
 
         assert_eq!(2, better_selections.len());
-        assert_eq!(ExplicitColumn::Simple("column1".to_string()), better_selections[0]);
-        assert_eq!(ExplicitColumn::Simple("column2".to_string()), better_selections[1]);
+        assert_eq!(
+            ExplicitColumn::Simple("column1".to_string()),
+            better_selections[0]
+        );
+        assert_eq!(
+            ExplicitColumn::Simple("column2".to_string()),
+            better_selections[1]
+        );
     }
 
     #[test]
@@ -417,7 +418,7 @@ mod tests {
     #[test]
     fn can_build_simple_filters() {
         let filters = vec![
-            Filter::Equals(
+            Filter::Binary(
                 Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
@@ -426,13 +427,15 @@ mod tests {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
+                BinaryFilterType::Equals,
             ),
-            Filter::Equals(
+            Filter::Binary(
                 Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column2".into(),
                 }),
                 Operand::Value("3".to_owned()),
+                BinaryFilterType::Equals,
             ),
         ];
         let builder = ExplicitQueryBuilder {
@@ -450,7 +453,7 @@ mod tests {
     #[test]
     fn can_build_complex_filters() {
         let filters = vec![
-            Filter::Equals(
+            Filter::Binary(
                 Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
@@ -459,13 +462,15 @@ mod tests {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
+                BinaryFilterType::Equals,
             ),
-            Filter::Equals(
+            Filter::Binary(
                 Operand::Column(QualifiedColumnIdentifier {
                     table: "friends".into(),
                     column: "column2".into(),
                 }),
                 Operand::Value("3".to_owned()),
+                BinaryFilterType::Equals,
             ),
         ];
         let builder = ExplicitQueryBuilder {
@@ -570,7 +575,7 @@ mod tests {
         pub fn rhs(&self) -> &ExplicitOperand {
             #[allow(unreachable_patterns)]
             match self {
-                ExplicitFilter::Equals(rhs, _) => rhs,
+                ExplicitFilter::Binary(rhs, _, _) => rhs,
                 _ => panic!("Filter doesn't have a rhs"),
             }
         }

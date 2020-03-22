@@ -291,7 +291,7 @@ mod tests {
             ("customer_settings", &[("customer_id", ("customers", "id"))]),
         ];
 
-        tables.into_iter().map(make_table).collect()
+        tables.iter().map(make_table).collect()
     }
 
     fn make_table(proto: &(&str, &[(&str, (&str, &str))])) -> Table {
