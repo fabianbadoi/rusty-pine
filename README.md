@@ -15,6 +15,24 @@ WHERE id = 3
 ... and I plan on making it more powerful.
 
 
+Setup
+=====
+
+1. You'll need to install cargo.
+2. Run `cargo build --release`
+3. Create `~/.config/rusty-pine/config.json`:
+```
+{
+    "user":"root",
+    "password":"development",
+    "host":"localhost",
+    "port":3306
+}
+```
+4. Run the analyze command from `target/release/analyze`, run this again after DB changes
+5. Run `target/release/main "users email='spam@office.com'"
+
+
 Logging
 -------
 Run with `RUST_LOG=rusty_pine_lib=info` to enable logging.
