@@ -34,6 +34,13 @@ static TEST_SPECS: &str = r#"
     SELECT name, email, age
     FROM humans
     LIMIT 10
+
+    humans | w: id > 3 id < 3 id = 3 id != 3 id <= 3 id >= 3
+    ==============================
+    SELECT *
+    FROM humans
+    WHERE id > 3 AND id < 3 AND id = 3 AND id != 3 AND id <= 3 AND id >= 3
+    LIMIT 10
 "#;
 
 #[test]

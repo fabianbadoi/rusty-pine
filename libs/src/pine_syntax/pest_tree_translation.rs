@@ -189,7 +189,12 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
     let rhs = translate_operand(parts.next().unwrap());
 
     let filter_type = match operator.as_rule() {
-        Rule::optr_eq => BinaryFilterType::Equals,
+        Rule::optr_lt  => BinaryFilterType::LesserThan,
+        Rule::optr_lte => BinaryFilterType::LesserThanOrEquals,
+        Rule::optr_eq  => BinaryFilterType::Equals,
+        Rule::optr_ne  => BinaryFilterType::NotEquals,
+        Rule::optr_gt  => BinaryFilterType::GreaterThan,
+        Rule::optr_gte => BinaryFilterType::GreaterThanOrEquals,
         _ => panic!("Unexpected rule: {:?}", operator.as_rule()),
     };
 

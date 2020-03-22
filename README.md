@@ -53,14 +53,13 @@ TODO:
 - [x] Support null checks
 - [x] Add some integration test
 - [x] Unselect specific columns
+- [x] other comparisons
 - [ ] Functions on a column
 - [ ] Group on a column
-- [ ] other comparisons
-- [ ] Complex values (`parentId = .id`?)
-- [ ] Auto deep join
-- [ ] Run without connection
-- [ ] Meta function show create
 - [ ] Meta function show neighbors
+- [ ] Meta function show create
+- [ ] Complex values (`parentId = .id`?)
+- [ ] Run without connection
 - [ ] Support multiple filters (OR)
 - [ ] Updates
 - [ ] Deletes
