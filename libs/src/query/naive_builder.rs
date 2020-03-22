@@ -2,8 +2,8 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter, Node, Operand,
-    Operation as AstOperation, Order as AstOrder, Pine, Selection as AstSelection,
+    ColumnIdentifier as AstColumnIdentifier, ColumnName as AstColumnName, Filter as AstFilter,
+    Node, Operand, Operation as AstOperation, Order as AstOrder, Pine, Selection as AstSelection,
     TableName as AstTableName, Value as AstValue,
 };
 use crate::query::{
@@ -106,7 +106,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_unselections(&mut self, unselect: &[Node<AstColumnName>]) -> InternalResult {
+    fn apply_unselections(&mut self, unselect: &[Node<AstColumnIdentifier>]) -> InternalResult {
         debug!("Found unselect: {:?}", unselect);
 
         let mut unselect = self.build_unselect_columns(unselect)?;
@@ -232,16 +232,12 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
     fn build_unselect_columns(
         &self,
-        columns: &[Node<AstColumnName>],
+        columns: &[Node<AstColumnIdentifier>],
     ) -> Result<Vec<QualifiedColumnIdentifier>, SyntaxError> {
         let table = self.require_table(columns[0].position)?;
         let qualified_columns = columns
             .iter()
-            .map(|name_node| name_node.inner.to_string())
-            .map(|column| QualifiedColumnIdentifier {
-                table: table.to_string(),
-                column,
-            })
+            .map(|column| translate_column_identifier(&column.inner, table))
             .collect();
 
         Ok(qualified_columns)
@@ -304,14 +300,14 @@ fn translate_operand(operand: &Operand, default_table: &str) -> SqlOperand {
 }
 
 fn translate_column_identifier(
-    identifier: &ColumnIdentifier,
+    identifier: &AstColumnIdentifier,
     default_table: &str,
 ) -> QualifiedColumnIdentifier {
     let (table, column) = match identifier {
-        ColumnIdentifier::Implicit(column_name) => {
+        AstColumnIdentifier::Implicit(column_name) => {
             (default_table.to_string(), column_name.to_string())
         }
-        ColumnIdentifier::Explicit(table_name, column_name) => {
+        AstColumnIdentifier::Explicit(table_name, column_name) => {
             (table_name.to_string(), column_name.to_string())
         }
     };
@@ -373,7 +369,7 @@ mod tests {
 
     #[test]
     fn build_filter_query() {
-        let rhs = Operand::Column(node(ColumnIdentifier::Implicit(node("id"))));
+        let rhs = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
         let lhs = Operand::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
@@ -391,7 +387,7 @@ mod tests {
     #[test]
     fn build_is_null_filter() {
         let mut pine = from("users");
-        let column = Operand::Column(node(ColumnIdentifier::Implicit(node("id"))));
+        let column = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
         let column = node(column);
         let filter = node(Filter::Unary(column, UnaryFilterType::IsNull));
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));
@@ -409,7 +405,10 @@ mod tests {
 
     #[test]
     fn build_filter_query_with_explicit_column() {
-        let rhs = Operand::Column(node(ColumnIdentifier::Explicit(node("users"), node("id"))));
+        let rhs = Operand::Column(node(AstColumnIdentifier::Explicit(
+            node("users"),
+            node("id"),
+        )));
         let lhs = Operand::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
@@ -437,7 +436,10 @@ mod tests {
 
     #[test]
     fn build_order() {
-        let order_1 = Operand::Column(node(ColumnIdentifier::Explicit(node("users"), node("id"))));
+        let order_1 = Operand::Column(node(AstColumnIdentifier::Explicit(
+            node("users"),
+            node("id"),
+        )));
         let order_2 = Operand::Value(node(Value::Numeric("3")));
         let order = vec![
             node(AstOrder::Ascending(node(order_1))),
@@ -500,9 +502,9 @@ mod tests {
                 columns
                     .iter()
                     .map(|c| {
-                        node(Selection::Column(node(ColumnIdentifier::Implicit(node(
-                            *c,
-                        )))))
+                        node(Selection::Column(node(AstColumnIdentifier::Implicit(
+                            node(*c),
+                        ))))
                     })
                     .collect(),
             ),

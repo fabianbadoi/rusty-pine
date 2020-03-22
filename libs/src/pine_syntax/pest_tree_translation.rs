@@ -144,7 +144,7 @@ impl Translator {
     }
 
     fn translate_unselect<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_sql_name).collect();
+        let columns: Vec<_> = node.into_inner().map(translate_identified_column).collect();
 
         vec![Operation::Unselect(columns)]
     }

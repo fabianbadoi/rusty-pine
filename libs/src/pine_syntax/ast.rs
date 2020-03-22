@@ -12,7 +12,7 @@ pub enum Operation<'a> {
     From(Node<TableName<'a>>),
     Join(Node<TableName<'a>>),
     Select(Vec<Node<Selection<'a>>>),
-    Unselect(Vec<Node<ColumnName<'a>>>),
+    Unselect(Vec<Node<ColumnIdentifier<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
