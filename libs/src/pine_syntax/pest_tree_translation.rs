@@ -192,20 +192,20 @@ impl Translator {
 }
 
 fn translate_select(node: PestNode) -> Node<Selection> {
-    expect_rule_in!([Rule::column_name, Rule::function_call], node);
+    expect_rule_in!([Rule::identified_column, Rule::function_call], node);
 
     match node.as_rule() {
-        Rule::column_name => translate_select_column(node),
+        Rule::identified_column => translate_select_column(node),
         Rule::function_call => translate_function_call(node),
         _ => panic!("Unexpected select rule: {:?}", node.as_rule()),
     }
 }
 
 fn translate_select_column(node: PestNode) -> Node<Selection> {
-    expect_rule!(Rule::column_name, node);
+    expect_rule!(Rule::identified_column, node);
 
     let position = position(&node);
-    let column = translate_sql_name(node);
+    let column = translate_identified_column(node);
     let inner = Selection::Column(column);
 
     Node { position, inner }

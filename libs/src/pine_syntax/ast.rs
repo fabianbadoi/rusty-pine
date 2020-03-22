@@ -37,7 +37,7 @@ impl<'a> Operation<'a> {
 
 #[derive(Debug)]
 pub enum Selection<'a> {
-    Column(Node<ColumnName<'a>>),
+    Column(Node<ColumnIdentifier<'a>>),
     FunctionCall(Node<FunctionName<'a>>, Node<ColumnName<'a>>),
 }
 

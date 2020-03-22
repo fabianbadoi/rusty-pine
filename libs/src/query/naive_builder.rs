@@ -250,10 +250,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
 fn translate_select(select_node: &Node<AstSelection>, default_table: &str) -> SqlSelection {
     match &select_node.inner {
-        AstSelection::Column(column) => SqlSelection::Column(QualifiedColumnIdentifier {
-            table: default_table.to_string(),
-            column: column.inner.to_string(),
-        }),
+        AstSelection::Column(column) => {
+            SqlSelection::Column(translate_column_identifier(&column.inner, default_table))
+        }
         AstSelection::FunctionCall(function_name, column) => SqlSelection::FunctionCall(
             function_name.inner.to_string(),
             QualifiedColumnIdentifier {
@@ -503,7 +502,11 @@ mod tests {
             AstOperation::Select(
                 columns
                     .iter()
-                    .map(|c| node(Selection::Column(node(*c))))
+                    .map(|c| {
+                        node(Selection::Column(node(ColumnIdentifier::Implicit(node(
+                            *c,
+                        )))))
+                    })
                     .collect(),
             ),
         );
