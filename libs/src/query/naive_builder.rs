@@ -212,8 +212,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-    fn build_columns(&self, columns: &[Node<AstColumnName>])
-        -> Result<(Vec<QualifiedColumnIdentifier>), SyntaxError> {
+    fn build_columns(
+        &self,
+        columns: &[Node<AstColumnName>],
+    ) -> Result<(Vec<QualifiedColumnIdentifier>), SyntaxError> {
         let table = self.require_table(columns[0].position)?;
         let qualified_columns = columns
             .iter()

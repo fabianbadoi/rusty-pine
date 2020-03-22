@@ -29,9 +29,9 @@ static TEST_SPECS: &str = r#"
     LEFT JOIN humans ON humans.id = friendMap.friendA
     LIMIT 10
 
-    humans | s: id name | u: id isBlue
+    humans | u: id isBlue
     ==============================
-    SELECT name
+    SELECT name, email, age
     FROM humans
     LIMIT 10
 "#;
