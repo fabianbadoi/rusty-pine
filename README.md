@@ -74,6 +74,7 @@ TODO:
 - [x] other comparisons
 - [ ] Functions on a column
 - [ ] Group on a column
+- [ ] Read from stdin
 - [ ] Meta function show neighbors
 - [ ] Meta function show create
 - [ ] Complex values (`parentId = .id`?)
