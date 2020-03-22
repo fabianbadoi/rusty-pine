@@ -255,10 +255,7 @@ fn translate_select(select_node: &Node<AstSelection>, default_table: &str) -> Sq
         }
         AstSelection::FunctionCall(function_name, column) => SqlSelection::FunctionCall(
             function_name.inner.to_string(),
-            QualifiedColumnIdentifier {
-                table: default_table.to_string(),
-                column: column.inner.to_string(),
-            },
+            translate_column_identifier(&column.inner, default_table),
         ),
     }
 }

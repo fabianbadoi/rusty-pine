@@ -217,7 +217,7 @@ fn translate_function_call(node: PestNode) -> Node<Selection> {
     let mut parts = node.into_inner();
 
     let function_name = translate_sql_name(parts.next().unwrap());
-    let column = translate_sql_name(parts.next().unwrap());
+    let column = translate_identified_column(parts.next().unwrap());
 
     let inner = Selection::FunctionCall(function_name, column);
 

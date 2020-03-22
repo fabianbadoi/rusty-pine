@@ -13,7 +13,7 @@ filters = { ("where:" | "w:") ~ filter+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
 
-function_call = { function_name ~ "(" ~ column_name ~ ")" }
+function_call = { function_name ~ "(" ~ identified_column ~ ")" }
 function_name = @{ sql_name }
 
 // identifiers
