@@ -3,8 +3,8 @@ use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
     ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node, Operand,
-    Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine,
-    ResultColumn as AstResultColumn, TableName as AstTableName, Value as AstValue,
+    Operation as AstOperation, Order as AstOrder, Pine, ResultColumn as AstResultColumn,
+    TableName as AstTableName, Value as AstValue,
 };
 use crate::query::{
     Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
@@ -134,18 +134,14 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_group_by(&mut self, operands: &[Node<AstOperand>]) -> Result<(), SyntaxError> {
-        debug!("Found group_by: {:?}", operands);
+    fn apply_group_by(&mut self, groups: &[Node<AstResultColumn>]) -> Result<(), SyntaxError> {
+        debug!("Found group_by: {:?}", groups);
 
-        if operands.is_empty() {
+        if groups.is_empty() {
             return Ok(());
         }
 
-        let table = self.require_table(operands[0].position)?;
-        let mut group_by: Vec<_> = operands
-            .iter()
-            .map(|operand| translate_operand(&operand.inner, table))
-            .collect();
+        let mut group_by = self.build_columns(groups)?;
 
         // TODO once all fields have the same type, I should add an implicit select with group by fields
 
@@ -191,12 +187,12 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-
-    fn translate_select(&self, select_node: &Node<AstResultColumn>)-> Result<SqlResultColumn, SyntaxError> {
+    fn translate_result_column(
+        &self,
+        select_node: &Node<AstResultColumn>,
+    ) -> Result<SqlResultColumn, SyntaxError> {
         let selection = match &select_node.inner {
-            AstResultColumn::Value(value) => {
-                SqlResultColumn::Value(value.inner.to_string())
-            }
+            AstResultColumn::Value(value) => SqlResultColumn::Value(value.inner.to_string()),
             AstResultColumn::Column(column) => {
                 let default_table = self.require_table(column.position)?;
                 SqlResultColumn::Column(translate_column_identifier(&column.inner, default_table))
@@ -207,7 +203,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
                     function_name.inner.to_string(),
                     translate_column_identifier(&column.inner, default_table),
                 )
-            },
+            }
         };
 
         Ok(selection)
@@ -256,7 +252,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
     ) -> Result<Vec<SqlResultColumn>, SyntaxError> {
         let qualified_columns: Result<Vec<_>, _> = columns
             .iter()
-            .map(|selection| self.translate_select(selection))
+            .map(|selection| self.translate_result_column(selection))
             .collect();
 
         Ok(qualified_columns?)
@@ -549,7 +545,7 @@ mod tests {
         fn eq(&self, other: &(&str, &str)) -> bool {
             match self {
                 QuerySelection::Column(column) => column == other,
-                _ => panic!("cannot compare (str,str) to function call")
+                _ => panic!("cannot compare (str,str) to function call"),
             }
         }
     }

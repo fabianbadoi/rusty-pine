@@ -44,7 +44,10 @@ pub fn translate<'a>(root_node: PestNode<'a>, input: &'a str) -> Node<Pine<'a>> 
 macro_rules! expect_rule {
     ($rule:expr, $node:expr) => {{
         if $node.as_rule() != $rule {
-            panic!("node be a '{:?}' expression, found '{:?}'", $rule, $node);
+            panic!(
+                "node should be a '{:?}' expression, found '{:?}'",
+                $rule, $node
+            );
         }
     }};
 }
@@ -151,9 +154,9 @@ impl Translator {
     }
 
     fn translate_group_by<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let operands: Vec<_> = node.into_inner().map(translate_operand).collect();
+        let groups: Vec<_> = node.into_inner().map(translate_result_column).collect();
 
-        vec![Operation::GroupBy(operands)]
+        vec![Operation::GroupBy(groups)]
     }
 
     fn translate_order<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
@@ -238,7 +241,7 @@ fn translate_select_value(node: PestNode) -> Node<ResultColumn> {
     expect_rule!(Rule::value, node);
 
     let position = position(&node);
-    let value  = translate_value(node);
+    let value = translate_value(node);
     let inner = ResultColumn::Value(value);
 
     Node { position, inner }

@@ -7,7 +7,7 @@ pub struct Query {
     pub from: TableName,
     pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
-    pub group_by: Vec<Operand>,
+    pub group_by: Vec<ResultColumn>,
     pub order: Vec<Order>,
     pub limit: usize,
 }

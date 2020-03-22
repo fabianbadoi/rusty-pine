@@ -10,7 +10,7 @@ join = { ("join:" | "j:") ~ table_name }
 select = { ("select:" | "s:") ~ result_column+ }
 unselect = { ("unselect:" | "u:") ~ result_column+ }
 filters = { ("where:" | "w:") ~ filter+ }
-group_by = { ("group:" | "g:") ~ operand+ }
+group_by = { ("group:" | "g:") ~ result_column+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
 

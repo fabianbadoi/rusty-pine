@@ -13,17 +13,17 @@ mod join_finder;
 
 #[derive(Debug)]
 pub struct ExplicitQuery<'a> {
-    pub selections: Vec<ExplicitSelection<'a>>,
+    pub selections: Vec<ExplicitResultColumn<'a>>,
     pub from: &'a str,
     pub joins: Vec<ExplicitJoin<'a>>,
     pub filters: Vec<ExplicitFilter<'a>>,
-    pub group_by: Vec<ExplicitOperand<'a>>,
+    pub group_by: Vec<ExplicitResultColumn<'a>>,
     pub order: Vec<ExplicitOrder<'a>>,
     pub limit: usize,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub enum ExplicitSelection<'a> {
+pub enum ExplicitResultColumn<'a> {
     Value(&'a str),
     Column(ExplicitColumn),
     FunctionCall(&'a str, ExplicitColumn),
@@ -170,10 +170,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
         &self,
         selections: &'t [ResultColumn],
         unselections: &'t [ResultColumn],
-    ) -> Vec<ExplicitSelection<'t>> {
+    ) -> Vec<ExplicitResultColumn<'t>> {
         let selections = selections
             .iter()
-            .map(|select| self.make_selection(select))
+            .map(|select| self.make_results_column(select))
             .collect::<Vec<_>>();
 
         unselections
@@ -187,9 +187,9 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn process_unselection(
         &self,
-        selections: Vec<ExplicitSelection<'t>>,
+        selections: Vec<ExplicitResultColumn<'t>>,
         unselect: &'t ResultColumn,
-    ) -> Vec<ExplicitSelection<'t>> {
+    ) -> Vec<ExplicitResultColumn<'t>> {
         let full_selections = self.expand_wildcard(selections, unselect);
 
         full_selections
@@ -200,9 +200,9 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn expand_wildcard(
         &self,
-        selections: Vec<ExplicitSelection<'t>>,
+        selections: Vec<ExplicitResultColumn<'t>>,
         unselect: &'t ResultColumn,
-    ) -> Vec<ExplicitSelection<'t>> {
+    ) -> Vec<ExplicitResultColumn<'t>> {
         let unselect_column = if let ResultColumn::Column(column) = unselect {
             column
         } else {
@@ -212,7 +212,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
         let found_wildcard = selections
             .iter()
             .filter_map(|selection| match selection {
-                ExplicitSelection::Column(column) => Some(column),
+                ExplicitResultColumn::Column(column) => Some(column),
                 _ => None,
             })
             .find(|select| select.is_wildcard_of(&unselect_column.table))
@@ -227,13 +227,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn expand_selections(
         &self,
-        selections: Vec<ExplicitSelection<'t>>,
+        selections: Vec<ExplicitResultColumn<'t>>,
         table: &'t str,
-    ) -> Vec<ExplicitSelection<'t>> {
+    ) -> Vec<ExplicitResultColumn<'t>> {
         selections
             .iter()
             .flat_map(|selection| match selection {
-                ExplicitSelection::Column(column) if column.table_is(table) => {
+                ExplicitResultColumn::Column(column) if column.table_is(table) => {
                     self.get_columns_of(table)
                 }
                 _ => vec![selection.clone()],
@@ -292,10 +292,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
         Ok(finder.find(from, to.as_ref())?)
     }
 
-    fn translate_group_by(&self, operands: &'t [Operand]) -> Vec<ExplicitOperand<'t>> {
-        operands
+    fn translate_group_by(&self, groups: &'t [ResultColumn]) -> Vec<ExplicitResultColumn<'t>> {
+        groups
             .iter()
-            .map(|operand| self.make_operand(operand))
+            .map(|group| self.make_results_column(group))
             .collect()
     }
 
@@ -324,18 +324,18 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn make_selection(&self, select: &'t ResultColumn) -> ExplicitSelection<'t> {
+    fn make_results_column(&self, select: &'t ResultColumn) -> ExplicitResultColumn<'t> {
         match select {
-            ResultColumn::Value(value) => {
-                ExplicitSelection::Value(value.as_ref())
-            }
+            ResultColumn::Value(value) => ExplicitResultColumn::Value(value.as_ref()),
             ResultColumn::Column(column) => {
-                ExplicitSelection::Column(self.make_explicit_column(column))
+                ExplicitResultColumn::Column(self.make_explicit_column(column))
             }
-            ResultColumn::FunctionCall(function_name, column) => ExplicitSelection::FunctionCall(
-                function_name.as_str(),
-                self.make_explicit_column(column),
-            ),
+            ResultColumn::FunctionCall(function_name, column) => {
+                ExplicitResultColumn::FunctionCall(
+                    function_name.as_str(),
+                    self.make_explicit_column(column),
+                )
+            }
         }
     }
 
@@ -347,7 +347,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitSelection<'t>> {
+    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitResultColumn<'t>> {
         self.tables
             .iter()
             .filter(|table| table.name == table_name)
@@ -356,8 +356,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect()
     }
 
-    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitSelection<'t> {
-        ExplicitSelection::Column(if self.working_with_single_table {
+    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitResultColumn<'t> {
+        ExplicitResultColumn::Column(if self.working_with_single_table {
             ExplicitColumn::Simple(column.name.clone())
         } else {
             ExplicitColumn::FullyQualified(table_name.to_string(), column.name.clone())
@@ -406,19 +406,19 @@ impl<'t> ExplicitQueryBuilder<'t> {
     }
 }
 
-impl PartialEq<ResultColumn> for ExplicitSelection<'_> {
+impl PartialEq<ResultColumn> for ExplicitResultColumn<'_> {
     fn eq(&self, other: &ResultColumn) -> bool {
-        use ExplicitSelection as S; // for self
+        use ExplicitResultColumn as S; // for self
         use ResultColumn as O; // for other
 
         match (self, other) {
             (S::Column(column), O::Column(other)) => column == other,
-            (S::FunctionCall(s_function, s_column), O::FunctionCall(o_function, o_column))
-                => s_function == o_function && s_column == o_column,
+            (S::FunctionCall(s_function, s_column), O::FunctionCall(o_function, o_column)) => {
+                s_function == o_function && s_column == o_column
+            }
             (S::Value(s_value), O::Value(o_value)) => s_value == o_value,
-            _ => false
+            _ => false,
         }
-
     }
 }
 
@@ -615,10 +615,10 @@ mod tests {
         }
     }
 
-    impl PartialEq<ExplicitSelection<'_>> for ExplicitColumn {
-        fn eq(&self, other: &ExplicitSelection) -> bool {
+    impl PartialEq<ExplicitResultColumn<'_>> for ExplicitColumn {
+        fn eq(&self, other: &ExplicitResultColumn) -> bool {
             match other {
-                ExplicitSelection::Column(column) => self == column,
+                ExplicitResultColumn::Column(column) => self == column,
                 _ => false,
             }
         }

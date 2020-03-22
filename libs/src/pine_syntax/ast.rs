@@ -14,7 +14,7 @@ pub enum Operation<'a> {
     Select(Vec<Node<ResultColumn<'a>>>),
     Unselect(Vec<Node<ResultColumn<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
-    GroupBy(Vec<Node<Operand<'a>>>),
+    GroupBy(Vec<Node<ResultColumn<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
 }

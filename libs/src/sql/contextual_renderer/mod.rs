@@ -3,7 +3,7 @@ use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::Query;
-use crate::sql::contextual_renderer::explicit_representation::ExplicitSelection;
+use crate::sql::contextual_renderer::explicit_representation::ExplicitResultColumn;
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
@@ -69,7 +69,7 @@ impl SmartRenderer {
 
 fn render_select(query: &ExplicitQuery) -> String {
     let columns = if query.selections.len() > 0 {
-        render_columns(&query.selections[..])
+        render_results_columns(&query.selections[..])
     } else {
         render_wildcard_select(&query)
     };
@@ -77,13 +77,13 @@ fn render_select(query: &ExplicitQuery) -> String {
     format!("SELECT {}", columns)
 }
 
-fn render_columns(columns: &[ExplicitSelection]) -> String {
+fn render_results_columns(columns: &[ExplicitResultColumn]) -> String {
     columns
         .iter()
         .map(|selection| match selection {
-            ExplicitSelection::Value(value) => render_value(value),
-            ExplicitSelection::Column(column) => render_column(column),
-            ExplicitSelection::FunctionCall(function_name, column) => {
+            ExplicitResultColumn::Value(value) => render_value(value),
+            ExplicitResultColumn::Column(column) => render_column(column),
+            ExplicitResultColumn::FunctionCall(function_name, column) => {
                 render_function_call(function_name, column)
             }
         })
@@ -180,18 +180,14 @@ fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
     )
 }
 
-fn render_group_by(operands: &[ExplicitOperand]) -> String {
-    if operands.is_empty() {
+fn render_group_by(groups: &[ExplicitResultColumn]) -> String {
+    if groups.is_empty() {
         return "".to_string();
     }
 
-    let operands = operands
-        .iter()
-        .map(render_operand)
-        .collect::<Vec<_>>()
-        .join(", ");
+    let groups = render_results_columns(groups);
 
-    format!("GROUP BY {}", operands)
+    format!("GROUP BY {}", groups)
 }
 
 fn render_orders(orders: &[ExplicitOrder]) -> String {
