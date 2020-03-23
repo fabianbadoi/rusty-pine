@@ -141,10 +141,21 @@ impl<'a> SingleUseQueryBuilder<'a> {
             return Ok(());
         }
 
+        self.add_group_by(groups)?;
+
+        // this isn't that pretty, but it's the simplest solution
+        // if we don't push this here, we have to analyze all selections in the finalize() function
+        // to know if we should add it there.
+        // if we remove this, you will only your group by column in the select
+        if self.query.selections.is_empty() {
+            self.push_implicit_select_all();
+        }
+
+        self.apply_selections(groups)
+    }
+
+    fn add_group_by(&mut self, groups: &[Node<AstResultColumn>]) -> Result<(), SyntaxError> {
         let mut group_by = self.build_columns(groups)?;
-
-        // TODO once all fields have the same type, I should add an implicit select with group by fields
-
         self.query.group_by.append(&mut group_by);
 
         Ok(())
@@ -212,6 +223,13 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn finalize(&mut self) {
         self.set_from_table();
         self.add_implicit_select_all();
+
+        self.deduplicate_selections();
+    }
+
+    fn deduplicate_selections(&mut self) {
+        // this only deduplicates *consecutive* entries, that's exactly what we want
+        self.query.selections.dedup();
     }
 
     fn set_from_table(&mut self) {
@@ -222,17 +240,21 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
     fn add_implicit_select_all(&mut self) {
         if self.implicit_select_all_from_last_table {
-            let table = self.from_table.clone().unwrap();
-
-            let magic_column = QualifiedColumnIdentifier {
-                table,
-                column: "*".to_string(),
-            };
-
-            self.query
-                .selections
-                .push(SqlResultColumn::Column(magic_column));
+            self.push_implicit_select_all();
         }
+    }
+
+    fn push_implicit_select_all(&mut self) {
+        let table = self.from_table.clone().unwrap();
+
+        let magic_column = QualifiedColumnIdentifier {
+            table,
+            column: "*".to_string(),
+        };
+
+        self.query
+            .selections
+            .push(SqlResultColumn::Column(magic_column));
     }
 
     fn require_table(&self, pine_position: Position) -> Result<&str, SyntaxError> {

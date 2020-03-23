@@ -67,7 +67,7 @@ static TEST_SPECS: &str = r#"
 
     humans | g: count(id)
     =====================
-    SELECT *
+    SELECT *, count(id)
     FROM humans
     GROUP BY count(id)
     LIMIT 10
