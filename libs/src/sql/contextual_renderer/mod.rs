@@ -2,7 +2,7 @@ use super::structure::Table;
 use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
-use crate::query::Query;
+use crate::query::{Query, Renderable};
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
@@ -16,9 +16,13 @@ pub struct SmartRenderer {
     tables: Vec<Table>,
 }
 
-impl Renderer<Query, String> for &SmartRenderer {
-    fn render(self, query: &Query) -> Result<String, PineError> {
+impl Renderer<Renderable, String> for &SmartRenderer {
+    fn render(self, query: &Renderable) -> Result<String, PineError> {
         info!("Rendering query");
+
+        let query = match query {
+            Renderable::Query(query) => query,
+        };
 
         let explicit_query = self.build_explicit_query(query)?;
 
@@ -270,7 +274,7 @@ mod tests {
         let renderer = make_renderer();
         let query = make_join_query();
 
-        let rendering = renderer.render(&query).unwrap();
+        let rendering = renderer.render(&Renderable::Query(query)).unwrap();
 
         assert_eq!(
             "SELECT users.id, users.name\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nWHERE users.id = 1 AND users.mojo = 'great'\nLIMIT 10",
@@ -284,7 +288,7 @@ mod tests {
         let mut query = make_join_query();
         query.joins[0] = "missing".to_string();
 
-        let error = renderer.render(&query).unwrap_err();
+        let error = renderer.render(&Renderable::Query(query)).unwrap_err();
 
         assert_eq!("Table missing not found.", format!("{}", error));
     }
@@ -295,7 +299,7 @@ mod tests {
         let mut query = make_join_query();
         query.limit = 2;
 
-        let rendering = renderer.render(&query).unwrap();
+        let rendering = renderer.render(&Renderable::Query(query)).unwrap();
 
         let limit_is_2 = rendering.find("LIMIT 2").is_some();
         assert!(limit_is_2);
@@ -317,7 +321,7 @@ mod tests {
             .order
             .push(Order::Ascending(Operand::Value("3".to_owned())));
 
-        let rendering = renderer.render(&query).unwrap();
+        let rendering = renderer.render(&Renderable::Query(query)).unwrap();
 
         assert_eq!(
             "SELECT *\nFROM users\nORDER BY id DESC, 3\nLIMIT 10",
@@ -339,7 +343,7 @@ mod tests {
             },
         )));
 
-        let rendering = renderer.render(&query).unwrap();
+        let rendering = renderer.render(&Renderable::Query(query)).unwrap();
 
         assert_eq!("SELECT friends.*\nFROM users\nLEFT JOIN friends ON friends.id = users.friendId\nORDER BY users.id DESC\nLIMIT 10", rendering);
     }
@@ -350,7 +354,7 @@ mod tests {
         let mut query = make_join_query();
         query.from = "rusers".to_string();
 
-        let error = renderer.render(&query).unwrap_err();
+        let error = renderer.render(&Renderable::Query(query)).unwrap_err();
 
         println!("{}", error);
         assert_eq!("Table rusers not found, try: users", format!("{}", error));

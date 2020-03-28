@@ -1,6 +1,21 @@
 use crate::common::{BinaryFilterType, UnaryFilterType};
 
 #[derive(Debug)]
+pub enum Renderable {
+    Query(Query),
+}
+
+#[cfg(test)]
+impl Renderable {
+    /// This was introduced to help pre-existing tests not change much during a rewrite
+    pub fn query(self) -> Query {
+        match self {
+            Renderable::Query(query) => query,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Query {
     pub selections: Vec<Operand>,
     pub unselections: Vec<Operand>,

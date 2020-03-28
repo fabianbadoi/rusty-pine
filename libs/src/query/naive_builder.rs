@@ -7,7 +7,8 @@ use crate::pine_syntax::ast::{
     Value as AstValue,
 };
 use crate::query::{
-    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query,
+    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
+    Query, Renderable,
 };
 use log::{debug, info};
 
@@ -59,7 +60,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
         info!("Done");
 
-        Ok(self.query)
+        Ok(Renderable::Query(self.query))
     }
 
     fn apply_operation(&mut self, operation_node: &Node<AstOperation>) -> InternalResult {
@@ -334,7 +335,7 @@ mod tests {
         let pine = from("users");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!("users", query.from);
     }
@@ -344,7 +345,7 @@ mod tests {
         let pine = with_limit("100");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(100, query.limit);
     }
@@ -355,7 +356,7 @@ mod tests {
         append_operation(&mut pine, AstOperation::Limit(node(Value::Numeric("200"))));
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(200, query.limit);
     }
@@ -365,7 +366,7 @@ mod tests {
         let pine = select(&["id", "name"], "users");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.selections[0], ("users", "id"));
         assert_eq!(query.selections[1], ("users", "name"));
@@ -378,7 +379,7 @@ mod tests {
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.filters.len(), 1);
 
@@ -397,7 +398,7 @@ mod tests {
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.filters.len(), 1);
 
@@ -417,7 +418,7 @@ mod tests {
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.filters.len(), 1);
 
@@ -432,7 +433,7 @@ mod tests {
         let pine = join("users", "friends");
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.from, "friends");
         assert_eq!(query.joins[0], "users");
@@ -453,7 +454,7 @@ mod tests {
         append_operation(&mut pine, AstOperation::Order(order));
 
         let query_builder = NaiveBuilder {};
-        let query = query_builder.build(&pine).unwrap();
+        let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.order[0], SqlOrder::Ascending(("users", "id").into()));
         assert_eq!(query.order[1], SqlOrder::Descending(("3").into()));

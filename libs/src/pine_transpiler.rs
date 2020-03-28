@@ -1,6 +1,6 @@
 use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
-use crate::query::{NaiveBuilder, Query, QueryBuilder};
+use crate::query::{NaiveBuilder, QueryBuilder, Renderable};
 use crate::sql::{Renderer, SmartRenderer};
 use crate::Analyzer;
 use crate::Config;
@@ -25,7 +25,7 @@ where
     // TODO all of these should be 'regular' traits
     &'a P: PineParser,
     &'a B: QueryBuilder,
-    &'a R: Renderer<Query, O>,
+    &'a R: Renderer<Renderable, O>,
     I: Into<&'b str>,
 {
     fn transpile(self, input: I) -> TranspileResult<O> {

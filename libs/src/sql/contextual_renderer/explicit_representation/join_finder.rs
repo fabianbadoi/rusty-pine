@@ -234,18 +234,13 @@ mod tests {
         assert!(joins_not_found
             .joins
             .contains(&("users".to_owned(), "not_found1".to_owned())));
-        assert!(
-            joins_not_found
-                .joins
-                .contains(&("not_found1".to_owned(),
-                "not_found2".to_owned()))
-        );
+        assert!(joins_not_found
+            .joins
+            .contains(&("not_found1".to_owned(), "not_found2".to_owned())));
 
-        assert!(
-            !joins_not_found
-                .joins
-                .contains(&("users".to_owned(), "friends".to_owned()))
-        );
+        assert!(!joins_not_found
+            .joins
+            .contains(&("users".to_owned(), "friends".to_owned())));
     }
 
     #[test]
