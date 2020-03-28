@@ -124,10 +124,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
 
         let table = self.require_table(filters[0].position)?;
-        let mut filters: Vec<_> = filters
+        let mut filters = filters
             .iter()
-            .map(|filter_node| translate_filter(filter_node, table))
-            .collect();
+            .map(|filter_node| self.translate_filter(filter_node, table))
+            .collect::<Result<Vec<_>, _>>()?;
 
         self.query.filters.append(&mut filters);
 
@@ -196,6 +196,28 @@ impl<'a> SingleUseQueryBuilder<'a> {
                 input: self.pine.inner.pine_string.to_string(),
             }),
         }
+    }
+
+    fn translate_filter(
+        &self,
+        filter_node: &Node<AstFilter>,
+        default_table: &str,
+    ) -> Result<SqlFilter, SyntaxError> {
+        debug!("Found filter: {:?}", filter_node);
+
+        Ok(match &filter_node.inner {
+            AstFilter::Unary(operand, filter_type) => {
+                let operand = translate_operand(&operand.inner, default_table);
+
+                SqlFilter::Unary(operand, *filter_type)
+            }
+            AstFilter::Binary(lhs, rhs, filter_type) => {
+                let lhs = self.translate_result_column(&lhs)?;
+                let rhs = self.translate_result_column(&rhs)?;
+
+                SqlFilter::Binary(lhs, rhs, *filter_type)
+            }
+        })
     }
 
     fn translate_result_column(
@@ -278,24 +300,6 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         Ok(qualified_columns?)
-    }
-}
-
-fn translate_filter(filter_node: &Node<AstFilter>, default_table: &str) -> SqlFilter {
-    debug!("Found filter: {:?}", filter_node);
-
-    match &filter_node.inner {
-        AstFilter::Unary(operand, filter_type) => {
-            let operand = translate_operand(&operand.inner, default_table);
-
-            SqlFilter::Unary(operand, *filter_type)
-        }
-        AstFilter::Binary(lhs, rhs, filter_type) => {
-            let lhs = translate_operand(&lhs.inner, default_table);
-            let rhs = translate_operand(&rhs.inner, default_table);
-
-            SqlFilter::Binary(lhs, rhs, *filter_type)
-        }
     }
 }
 
@@ -394,8 +398,8 @@ mod tests {
 
     #[test]
     fn build_filter_query() {
-        let rhs = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
-        let lhs = Operand::Value(node(Value::Numeric("3")));
+        let rhs = ResultColumn::Column(node(AstColumnIdentifier::Implicit(node("id"))));
+        let lhs = ResultColumn::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
@@ -430,11 +434,11 @@ mod tests {
 
     #[test]
     fn build_filter_query_with_explicit_column() {
-        let rhs = Operand::Column(node(AstColumnIdentifier::Explicit(
+        let rhs = ResultColumn::Column(node(AstColumnIdentifier::Explicit(
             node("users"),
             node("id"),
         )));
-        let lhs = Operand::Value(node(Value::Numeric("3")));
+        let lhs = ResultColumn::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
@@ -481,8 +485,8 @@ mod tests {
     }
 
     fn make_equals(
-        rhs: Operand<'static>,
-        lhs: Operand<'static>,
+        rhs: ResultColumn<'static>,
+        lhs: ResultColumn<'static>,
         table: &'static str,
     ) -> Node<Pine<'static>> {
         let mut pine = from(table);
@@ -584,6 +588,21 @@ mod tests {
     impl From<&str> for SqlOperand {
         fn from(other: &str) -> SqlOperand {
             SqlOperand::Value(other.to_string())
+        }
+    }
+
+    impl From<(&str, &str)> for SqlResultColumn {
+        fn from(other: (&str, &str)) -> SqlResultColumn {
+            SqlResultColumn::Column(QualifiedColumnIdentifier {
+                table: other.0.to_string(),
+                column: other.1.to_string(),
+            })
+        }
+    }
+
+    impl From<&str> for SqlResultColumn {
+        fn from(other: &str) -> SqlResultColumn {
+            SqlResultColumn::Value(other.to_string())
         }
     }
 }

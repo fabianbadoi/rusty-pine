@@ -43,7 +43,7 @@ pub struct QualifiedColumnIdentifier {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
     Unary(Operand, UnaryFilterType),
-    Binary(Operand, Operand, BinaryFilterType),
+    Binary(ResultColumn, ResultColumn, BinaryFilterType),
 }
 
 #[derive(Debug, PartialEq, Eq)]

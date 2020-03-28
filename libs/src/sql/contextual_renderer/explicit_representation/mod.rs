@@ -97,7 +97,11 @@ impl PartialEq<QualifiedColumnIdentifier> for ExplicitColumn {
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExplicitFilter<'a> {
     Unary(ExplicitOperand<'a>, UnaryFilterType),
-    Binary(ExplicitOperand<'a>, ExplicitOperand<'a>, BinaryFilterType),
+    Binary(
+        ExplicitResultColumn<'a>,
+        ExplicitResultColumn<'a>,
+        BinaryFilterType,
+    ),
 }
 
 #[derive(Debug)]
@@ -262,8 +266,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
                 ExplicitFilter::Unary(operand, *filter_type)
             }
             Filter::Binary(lhs, rhs, filter_type) => {
-                let lhs = self.make_operand(lhs);
-                let rhs = self.make_operand(rhs);
+                let lhs = self.make_results_column(lhs);
+                let rhs = self.make_results_column(rhs);
 
                 ExplicitFilter::Binary(lhs, rhs, *filter_type)
             }
@@ -490,22 +494,22 @@ mod tests {
     fn can_build_simple_filters() {
         let filters = vec![
             Filter::Binary(
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
                 BinaryFilterType::Equals,
             ),
             Filter::Binary(
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column2".into(),
                 }),
-                Operand::Value("3".to_owned()),
+                ResultColumn::Value("3".to_owned()),
                 BinaryFilterType::Equals,
             ),
         ];
@@ -525,22 +529,22 @@ mod tests {
     fn can_build_complex_filters() {
         let filters = vec![
             Filter::Binary(
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
                 BinaryFilterType::Equals,
             ),
             Filter::Binary(
-                Operand::Column(QualifiedColumnIdentifier {
+                ResultColumn::Column(QualifiedColumnIdentifier {
                     table: "friends".into(),
                     column: "column2".into(),
                 }),
-                Operand::Value("3".to_owned()),
+                ResultColumn::Value("3".to_owned()),
                 BinaryFilterType::Equals,
             ),
         ];
@@ -642,17 +646,17 @@ mod tests {
         }
     }
 
-    impl ExplicitOperand<'_> {
+    impl ExplicitResultColumn<'_> {
         pub fn as_column(&self) -> &ExplicitColumn {
             match self {
-                ExplicitOperand::Column(column) => column,
+                ExplicitResultColumn::Column(column) => column,
                 _ => panic!("Can't use operand as column"),
             }
         }
     }
 
     impl ExplicitFilter<'_> {
-        pub fn rhs(&self) -> &ExplicitOperand {
+        pub fn rhs(&self) -> &ExplicitResultColumn {
             #[allow(unreachable_patterns)]
             match self {
                 ExplicitFilter::Binary(rhs, _, _) => rhs,

@@ -1,5 +1,5 @@
 use crate::common::BinaryFilterType;
-use crate::query::{Filter as SqlFilter, Operand, QualifiedColumnIdentifier, Query, ResultColumn};
+use crate::query::{Filter as SqlFilter, QualifiedColumnIdentifier, Query, ResultColumn};
 
 pub struct QueryShorthand(pub Select, pub From, pub &'static [Filter]);
 
@@ -34,8 +34,8 @@ impl Into<Query> for QueryShorthand {
             .iter()
             .map(|filter| match filter {
                 Filter::Binary(rhs, lhs, filter_type) => {
-                    let rhs = parse_operand(rhs);
-                    let lhs = parse_operand(lhs);
+                    let rhs = parse_results_column(rhs);
+                    let lhs = parse_results_column(lhs);
 
                     SqlFilter::Binary(rhs, lhs, *filter_type)
                 }
@@ -46,15 +46,15 @@ impl Into<Query> for QueryShorthand {
     }
 }
 
-fn parse_operand(operand: &str) -> Operand {
+fn parse_results_column(operand: &str) -> ResultColumn {
     if operand.contains('.') {
         let parts: Vec<&str> = operand.split('.').collect();
 
-        Operand::Column(QualifiedColumnIdentifier {
+        ResultColumn::Column(QualifiedColumnIdentifier {
             table: parts[0].to_string(),
             column: parts[1].to_string(),
         })
     } else {
-        Operand::Value(operand.to_string())
+        ResultColumn::Value(operand.to_string())
     }
 }

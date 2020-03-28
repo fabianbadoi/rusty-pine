@@ -264,9 +264,9 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
 
     let mut parts = node.into_inner();
 
-    let lhs = translate_operand(parts.next().unwrap());
+    let lhs = translate_result_column(parts.next().unwrap());
     let operator = parts.next().unwrap();
-    let rhs = translate_operand(parts.next().unwrap());
+    let rhs = translate_result_column(parts.next().unwrap());
 
     let filter_type = match operator.as_rule() {
         Rule::optr_lt => BinaryFilterType::LesserThan,
@@ -362,7 +362,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
         position,
         inner: "id",
     });
-    let rhs = Operand::Column(Node {
+    let rhs = ResultColumn::Column(Node {
         position,
         inner: column,
     });
@@ -373,7 +373,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
 
     let lhs = Node {
         position,
-        inner: Operand::Value(translate_value(node)),
+        inner: ResultColumn::Value(translate_value(node)),
     };
 
     let filter = Filter::Binary(lhs, rhs, BinaryFilterType::Equals);

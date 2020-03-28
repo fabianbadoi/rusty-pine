@@ -47,7 +47,11 @@ pub enum ResultColumn<'a> {
 #[derive(Debug)]
 pub enum Filter<'a> {
     Unary(Node<Operand<'a>>, UnaryFilterType),
-    Binary(Node<Operand<'a>>, Node<Operand<'a>>, BinaryFilterType),
+    Binary(
+        Node<ResultColumn<'a>>,
+        Node<ResultColumn<'a>>,
+        BinaryFilterType,
+    ),
 }
 
 #[derive(Debug)]

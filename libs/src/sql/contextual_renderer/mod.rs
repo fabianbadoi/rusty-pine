@@ -91,6 +91,16 @@ fn render_results_columns(columns: &[ExplicitResultColumn]) -> String {
         .join(", ")
 }
 
+fn render_results_column(column: &ExplicitResultColumn) -> String {
+    match column {
+        ExplicitResultColumn::Value(value) => render_value(value),
+        ExplicitResultColumn::Column(column) => render_column(column),
+        ExplicitResultColumn::FunctionCall(function_name, column) => {
+            render_function_call(function_name, column)
+        }
+    }
+}
+
 fn render_wildcard_select(query: &ExplicitQuery) -> String {
     // always get data from the last table used
     match query.joins.last() {
@@ -156,16 +166,16 @@ fn render_filter(filter: &ExplicitFilter) -> String {
         }
         Binary(lhs, rhs, BinaryFilterType::Equals) => render_smart_equals(lhs, rhs),
         Binary(lhs, rhs, filter_type) => {
-            let lhs = render_operand(lhs);
-            let rhs = render_operand(rhs);
+            let lhs = render_results_column(lhs);
+            let rhs = render_results_column(rhs);
 
             format!("{} {} {}", lhs, filter_type, rhs)
         }
     }
 }
 
-fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
-    use ExplicitOperand::*;
+fn render_smart_equals(lhs: &ExplicitResultColumn, rhs: &ExplicitResultColumn) -> String {
+    use ExplicitResultColumn::*;
 
     let operator = match rhs {
         Value(value) if value.contains('%') => "LIKE",
@@ -174,9 +184,9 @@ fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
 
     format!(
         "{} {} {}",
-        render_operand(lhs),
+        render_results_column(lhs),
         operator,
-        render_operand(rhs)
+        render_results_column(rhs)
     )
 }
 

@@ -30,12 +30,12 @@ sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 // conditions
 filter = { binary_filter | unary_filter }
 unary_filter = { filter_is_null | filter_is_not_null }
-binary_filter = { operand ~ operator ~ operand }
+binary_filter = { result_column ~ operator ~ result_column }
 
 filter_is_null = { operand ~ "?" }
 filter_is_not_null = { operand ~ "!?" }
 
-operand = { identified_column | value }
+operand = { function_call | identified_column | value }
 
 operator = _{ optr_eq | optr_ne | optr_gte | optr_gt | optr_lte | optr_lt }
 optr_eq  = { "="  }
