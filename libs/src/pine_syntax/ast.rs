@@ -11,10 +11,10 @@ pub struct Pine<'a> {
 pub enum Operation<'a> {
     From(Node<TableName<'a>>),
     Join(Node<TableName<'a>>),
-    Select(Vec<Node<ResultColumn<'a>>>),
-    Unselect(Vec<Node<ResultColumn<'a>>>),
+    Select(Vec<Node<Operand<'a>>>),
+    Unselect(Vec<Node<Operand<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
-    GroupBy(Vec<Node<ResultColumn<'a>>>),
+    GroupBy(Vec<Node<Operand<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
 }
@@ -38,7 +38,7 @@ impl<'a> Operation<'a> {
 }
 
 #[derive(Debug)]
-pub enum ResultColumn<'a> {
+pub enum Operand<'a> {
     Value(Node<Value<'a>>),
     Column(Node<ColumnIdentifier<'a>>),
     FunctionCall(Node<FunctionName<'a>>, Node<ColumnIdentifier<'a>>),
@@ -46,18 +46,14 @@ pub enum ResultColumn<'a> {
 
 #[derive(Debug)]
 pub enum Filter<'a> {
-    Unary(Node<ResultColumn<'a>>, UnaryFilterType),
-    Binary(
-        Node<ResultColumn<'a>>,
-        Node<ResultColumn<'a>>,
-        BinaryFilterType,
-    ),
+    Unary(Node<Operand<'a>>, UnaryFilterType),
+    Binary(Node<Operand<'a>>, Node<Operand<'a>>, BinaryFilterType),
 }
 
 #[derive(Debug)]
 pub enum Order<'a> {
-    Ascending(Node<ResultColumn<'a>>),
-    Descending(Node<ResultColumn<'a>>),
+    Ascending(Node<Operand<'a>>),
+    Descending(Node<Operand<'a>>),
 }
 
 #[derive(Debug)]

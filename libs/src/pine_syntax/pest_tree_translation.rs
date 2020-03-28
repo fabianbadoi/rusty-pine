@@ -142,19 +142,19 @@ impl Translator {
     }
 
     fn translate_selections<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_result_column).collect();
+        let columns: Vec<_> = node.into_inner().map(translate_operand).collect();
 
         vec![Operation::Select(columns)]
     }
 
     fn translate_unselect<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let columns: Vec<_> = node.into_inner().map(translate_result_column).collect();
+        let columns: Vec<_> = node.into_inner().map(translate_operand).collect();
 
         vec![Operation::Unselect(columns)]
     }
 
     fn translate_group_by<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
-        let groups: Vec<_> = node.into_inner().map(translate_result_column).collect();
+        let groups: Vec<_> = node.into_inner().map(translate_operand).collect();
 
         vec![Operation::GroupBy(groups)]
     }
@@ -201,8 +201,8 @@ impl Translator {
     }
 }
 
-fn translate_result_column(node: PestNode) -> Node<ResultColumn> {
-    expect_rule!(Rule::result_column, node);
+fn translate_operand(node: PestNode) -> Node<Operand> {
+    expect_rule!(Rule::operand, node);
 
     let inner = node.into_inner().next().unwrap();
 
@@ -214,17 +214,17 @@ fn translate_result_column(node: PestNode) -> Node<ResultColumn> {
     }
 }
 
-fn translate_select_column(node: PestNode) -> Node<ResultColumn> {
+fn translate_select_column(node: PestNode) -> Node<Operand> {
     expect_rule!(Rule::identified_column, node);
 
     let position = position(&node);
     let column = translate_identified_column(node);
-    let inner = ResultColumn::Column(column);
+    let inner = Operand::Column(column);
 
     Node { position, inner }
 }
 
-fn translate_function_call(node: PestNode) -> Node<ResultColumn> {
+fn translate_function_call(node: PestNode) -> Node<Operand> {
     let position = position(&node);
 
     let mut parts = node.into_inner();
@@ -232,17 +232,17 @@ fn translate_function_call(node: PestNode) -> Node<ResultColumn> {
     let function_name = translate_sql_name(parts.next().unwrap());
     let column = translate_identified_column(parts.next().unwrap());
 
-    let inner = ResultColumn::FunctionCall(function_name, column);
+    let inner = Operand::FunctionCall(function_name, column);
 
     Node { position, inner }
 }
 
-fn translate_select_value(node: PestNode) -> Node<ResultColumn> {
+fn translate_select_value(node: PestNode) -> Node<Operand> {
     expect_rule!(Rule::value, node);
 
     let position = position(&node);
     let value = translate_value(node);
-    let inner = ResultColumn::Value(value);
+    let inner = Operand::Value(value);
 
     Node { position, inner }
 }
@@ -264,9 +264,9 @@ fn translate_binary_filter(node: PestNode) -> Node<Filter> {
 
     let mut parts = node.into_inner();
 
-    let lhs = translate_result_column(parts.next().unwrap());
+    let lhs = translate_operand(parts.next().unwrap());
     let operator = parts.next().unwrap();
-    let rhs = translate_result_column(parts.next().unwrap());
+    let rhs = translate_operand(parts.next().unwrap());
 
     let filter_type = match operator.as_rule() {
         Rule::optr_lt => BinaryFilterType::LesserThan,
@@ -293,7 +293,7 @@ fn translate_unary_filter(node: PestNode) -> Node<Filter> {
         Rule::filter_is_not_null => UnaryFilterType::IsNotNull,
         _ => panic!("Unexpected unary filter rule: {:?}", inner.as_rule()),
     };
-    let operand = translate_result_column(inner.into_inner().next().unwrap());
+    let operand = translate_operand(inner.into_inner().next().unwrap());
 
     let filter = Filter::Unary(operand, filter_type);
 
@@ -323,7 +323,7 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
     let ordering_type_rule = inner.as_rule();
 
     let operand = inner.into_inner().next().unwrap();
-    let operand = translate_result_column(operand);
+    let operand = translate_operand(operand);
 
     let ordering = match ordering_type_rule {
         Rule::ordering_asc => Order::Ascending(operand),
@@ -344,7 +344,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
         position,
         inner: "id",
     });
-    let rhs = ResultColumn::Column(Node {
+    let rhs = Operand::Column(Node {
         position,
         inner: column,
     });
@@ -355,7 +355,7 @@ fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
 
     let lhs = Node {
         position,
-        inner: ResultColumn::Value(translate_value(node)),
+        inner: Operand::Value(translate_value(node)),
     };
 
     let filter = Filter::Binary(lhs, rhs, BinaryFilterType::Equals);

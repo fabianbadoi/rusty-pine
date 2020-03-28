@@ -2,13 +2,12 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node,
-    Operation as AstOperation, Order as AstOrder, Pine, ResultColumn as AstResultColumn,
-    TableName as AstTableName, Value as AstValue,
+    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node, Operand as AstOperand,
+    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName,
+    Value as AstValue,
 };
 use crate::query::{
-    Filter as SqlFilter, Order as SqlOrder, QualifiedColumnIdentifier,
-    Query, ResultColumn as SqlResultColumn,
+    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query,
 };
 use log::{debug, info};
 
@@ -95,7 +94,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.apply_from(table);
     }
 
-    fn apply_selections(&mut self, selections: &[Node<AstResultColumn>]) -> InternalResult {
+    fn apply_selections(&mut self, selections: &[Node<AstOperand>]) -> InternalResult {
         debug!("Found select: {:?}", selections);
 
         let mut selections = self.build_columns(selections)?;
@@ -107,7 +106,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_unselections(&mut self, unselect: &[Node<AstResultColumn>]) -> InternalResult {
+    fn apply_unselections(&mut self, unselect: &[Node<AstOperand>]) -> InternalResult {
         debug!("Found unselect: {:?}", unselect);
 
         let mut unselect = self.build_columns(unselect)?;
@@ -133,7 +132,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(())
     }
 
-    fn apply_group_by(&mut self, groups: &[Node<AstResultColumn>]) -> Result<(), SyntaxError> {
+    fn apply_group_by(&mut self, groups: &[Node<AstOperand>]) -> Result<(), SyntaxError> {
         debug!("Found group_by: {:?}", groups);
 
         if groups.is_empty() {
@@ -153,7 +152,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         self.apply_selections(groups)
     }
 
-    fn add_group_by(&mut self, groups: &[Node<AstResultColumn>]) -> Result<(), SyntaxError> {
+    fn add_group_by(&mut self, groups: &[Node<AstOperand>]) -> Result<(), SyntaxError> {
         let mut group_by = self.build_columns(groups)?;
         self.query.group_by.append(&mut group_by);
 
@@ -196,40 +195,34 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-    fn translate_filter(
-        &self,
-        filter_node: &Node<AstFilter>,
-    ) -> Result<SqlFilter, SyntaxError> {
+    fn translate_filter(&self, filter_node: &Node<AstFilter>) -> Result<SqlFilter, SyntaxError> {
         debug!("Found filter: {:?}", filter_node);
 
         Ok(match &filter_node.inner {
             AstFilter::Unary(operand, filter_type) => {
-                let operand = self.translate_result_column(&operand)?;
+                let operand = self.translate_operand(&operand)?;
 
                 SqlFilter::Unary(operand, *filter_type)
             }
             AstFilter::Binary(lhs, rhs, filter_type) => {
-                let lhs = self.translate_result_column(&lhs)?;
-                let rhs = self.translate_result_column(&rhs)?;
+                let lhs = self.translate_operand(&lhs)?;
+                let rhs = self.translate_operand(&rhs)?;
 
                 SqlFilter::Binary(lhs, rhs, *filter_type)
             }
         })
     }
 
-    fn translate_result_column(
-        &self,
-        select_node: &Node<AstResultColumn>,
-    ) -> Result<SqlResultColumn, SyntaxError> {
-        let selection = match &select_node.inner {
-            AstResultColumn::Value(value) => SqlResultColumn::Value(value.inner.to_string()),
-            AstResultColumn::Column(column) => {
+    fn translate_operand(&self, operand: &Node<AstOperand>) -> Result<SqlOperand, SyntaxError> {
+        let selection = match &operand.inner {
+            AstOperand::Value(value) => SqlOperand::Value(value.inner.to_string()),
+            AstOperand::Column(column) => {
                 let default_table = self.require_table(column.position)?;
-                SqlResultColumn::Column(translate_column_identifier(&column.inner, default_table))
+                SqlOperand::Column(translate_column_identifier(&column.inner, default_table))
             }
-            AstResultColumn::FunctionCall(function_name, column) => {
+            AstOperand::FunctionCall(function_name, column) => {
                 let default_table = self.require_table(column.position)?;
-                SqlResultColumn::FunctionCall(
+                SqlOperand::FunctionCall(
                     function_name.inner.to_string(),
                     translate_column_identifier(&column.inner, default_table),
                 )
@@ -244,7 +237,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
 
         let operand = match &order_node.inner {
             AstOrder::Ascending(operand) | AstOrder::Descending(operand) => {
-                self.translate_result_column(&operand)?
+                self.translate_operand(&operand)?
             }
         };
 
@@ -286,9 +279,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
             column: "*".to_string(),
         };
 
-        self.query
-            .selections
-            .push(SqlResultColumn::Column(magic_column));
+        self.query.selections.push(SqlOperand::Column(magic_column));
     }
 
     fn require_table(&self, pine_position: Position) -> Result<&str, SyntaxError> {
@@ -302,13 +293,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-    fn build_columns(
-        &self,
-        columns: &[Node<AstResultColumn>],
-    ) -> Result<Vec<SqlResultColumn>, SyntaxError> {
+    fn build_columns(&self, columns: &[Node<AstOperand>]) -> Result<Vec<SqlOperand>, SyntaxError> {
         let qualified_columns: Result<Vec<_>, _> = columns
             .iter()
-            .map(|selection| self.translate_result_column(selection))
+            .map(|selection| self.translate_operand(selection))
             .collect();
 
         Ok(qualified_columns?)
@@ -385,8 +373,8 @@ mod tests {
 
     #[test]
     fn build_filter_query() {
-        let rhs = ResultColumn::Column(node(AstColumnIdentifier::Implicit(node("id"))));
-        let lhs = ResultColumn::Value(node(Value::Numeric("3")));
+        let rhs = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
+        let lhs = Operand::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
@@ -403,7 +391,7 @@ mod tests {
     #[test]
     fn build_is_null_filter() {
         let mut pine = from("users");
-        let column = ResultColumn::Column(node(AstColumnIdentifier::Implicit(node("id"))));
+        let column = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
         let column = node(column);
         let filter = node(Filter::Unary(column, UnaryFilterType::IsNull));
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));
@@ -421,11 +409,11 @@ mod tests {
 
     #[test]
     fn build_filter_query_with_explicit_column() {
-        let rhs = ResultColumn::Column(node(AstColumnIdentifier::Explicit(
+        let rhs = Operand::Column(node(AstColumnIdentifier::Explicit(
             node("users"),
             node("id"),
         )));
-        let lhs = ResultColumn::Value(node(Value::Numeric("3")));
+        let lhs = Operand::Value(node(Value::Numeric("3")));
         let pine = make_equals(rhs, lhs, "users");
 
         let query_builder = NaiveBuilder {};
@@ -452,11 +440,11 @@ mod tests {
 
     #[test]
     fn build_order() {
-        let order_1 = ResultColumn::Column(node(AstColumnIdentifier::Explicit(
+        let order_1 = Operand::Column(node(AstColumnIdentifier::Explicit(
             node("users"),
             node("id"),
         )));
-        let order_2 = ResultColumn::Value(node(Value::Numeric("3")));
+        let order_2 = Operand::Value(node(Value::Numeric("3")));
         let order = vec![
             node(AstOrder::Ascending(node(order_1))),
             node(AstOrder::Descending(node(order_2))),
@@ -472,8 +460,8 @@ mod tests {
     }
 
     fn make_equals(
-        rhs: ResultColumn<'static>,
-        lhs: ResultColumn<'static>,
+        rhs: Operand<'static>,
+        lhs: Operand<'static>,
         table: &'static str,
     ) -> Node<Pine<'static>> {
         let mut pine = from(table);
@@ -518,9 +506,9 @@ mod tests {
                 columns
                     .iter()
                     .map(|c| {
-                        node(ResultColumn::Column(node(AstColumnIdentifier::Implicit(
-                            node(*c),
-                        ))))
+                        node(Operand::Column(node(AstColumnIdentifier::Implicit(node(
+                            *c,
+                        )))))
                     })
                     .collect(),
             ),
@@ -553,7 +541,7 @@ mod tests {
         }
     }
 
-    use crate::query::structure::ResultColumn as QuerySelection;
+    use crate::query::structure::Operand as QuerySelection;
     impl PartialEq<(&str, &str)> for QuerySelection {
         fn eq(&self, other: &(&str, &str)) -> bool {
             match self {
@@ -563,18 +551,18 @@ mod tests {
         }
     }
 
-    impl From<(&str, &str)> for SqlResultColumn {
-        fn from(other: (&str, &str)) -> SqlResultColumn {
-            SqlResultColumn::Column(QualifiedColumnIdentifier {
+    impl From<(&str, &str)> for SqlOperand {
+        fn from(other: (&str, &str)) -> SqlOperand {
+            SqlOperand::Column(QualifiedColumnIdentifier {
                 table: other.0.to_string(),
                 column: other.1.to_string(),
             })
         }
     }
 
-    impl From<&str> for SqlResultColumn {
-        fn from(other: &str) -> SqlResultColumn {
-            SqlResultColumn::Value(other.to_string())
+    impl From<&str> for SqlOperand {
+        fn from(other: &str) -> SqlOperand {
+            SqlOperand::Value(other.to_string())
         }
     }
 }

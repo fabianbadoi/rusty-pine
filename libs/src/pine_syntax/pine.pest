@@ -7,14 +7,14 @@ compound_expression = { table_name ~ (value | filter)* }
 // actual pines
 from = { ("from:" | "f:") ~ table_name }
 join = { ("join:" | "j:") ~ table_name }
-select = { ("select:" | "s:") ~ result_column+ }
-unselect = { ("unselect:" | "u:") ~ result_column+ }
+select = { ("select:" | "s:") ~ operand+ }
+unselect = { ("unselect:" | "u:") ~ operand+ }
 filters = { ("where:" | "w:") ~ filter+ }
-group_by = { ("group:" | "g:") ~ result_column+ }
+group_by = { ("group:" | "g:") ~ operand+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
 
-result_column = { function_call | identified_column | value }
+operand = { function_call | identified_column | value }
 
 function_call = { function_name ~ "(" ~ identified_column ~ ")" }
 function_name = @{ sql_name }
@@ -30,12 +30,10 @@ sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 // conditions
 filter = { binary_filter | unary_filter }
 unary_filter = { filter_is_null | filter_is_not_null }
-binary_filter = { result_column ~ operator ~ result_column }
+binary_filter = { operand ~ operator ~ operand }
 
-filter_is_null = { result_column ~ "?" }
-filter_is_not_null = { result_column ~ "!?" }
-
-operand = { function_call | identified_column | value }
+filter_is_null = { operand ~ "?" }
+filter_is_not_null = { operand ~ "!?" }
 
 operator = _{ optr_eq | optr_ne | optr_gte | optr_gt | optr_lte | optr_lt }
 optr_eq  = { "="  }
@@ -48,8 +46,8 @@ optr_lte = { "<=" }
 
 // orders
 ordering = { ordering_asc | ordering_desc }
-ordering_desc = { result_column ~ direction_desc? }
-ordering_asc  = { result_column ~ direction_asc }
+ordering_desc = { operand ~ direction_desc? }
+ordering_asc  = { operand ~ direction_asc }
 direction_asc = _{ "asc" | "ASC" | "+" }
 direction_desc = _ { "desc" | "DESC" | "-" }
 

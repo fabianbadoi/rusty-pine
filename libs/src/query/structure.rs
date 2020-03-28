@@ -2,12 +2,12 @@ use crate::common::{BinaryFilterType, UnaryFilterType};
 
 #[derive(Debug)]
 pub struct Query {
-    pub selections: Vec<ResultColumn>,
-    pub unselections: Vec<ResultColumn>,
+    pub selections: Vec<Operand>,
+    pub unselections: Vec<Operand>,
     pub from: TableName,
     pub joins: Vec<TableName>,
     pub filters: Vec<Filter>,
-    pub group_by: Vec<ResultColumn>,
+    pub group_by: Vec<Operand>,
     pub order: Vec<Order>,
     pub limit: usize,
 }
@@ -28,7 +28,7 @@ impl Default for Query {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum ResultColumn {
+pub enum Operand {
     Value(Value),
     Column(QualifiedColumnIdentifier),
     FunctionCall(FunctionName, QualifiedColumnIdentifier),
@@ -42,14 +42,14 @@ pub struct QualifiedColumnIdentifier {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
-    Unary(ResultColumn, UnaryFilterType),
-    Binary(ResultColumn, ResultColumn, BinaryFilterType),
+    Unary(Operand, UnaryFilterType),
+    Binary(Operand, Operand, BinaryFilterType),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Order {
-    Ascending(ResultColumn),
-    Descending(ResultColumn),
+    Ascending(Operand),
+    Descending(Operand),
 }
 
 pub type TableName = String;

@@ -3,9 +3,8 @@ use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::Query;
-use crate::sql::contextual_renderer::explicit_representation::ExplicitResultColumn;
 use explicit_representation::{
-    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOrder, ExplicitQuery,
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
 };
 use log::info;
@@ -69,7 +68,7 @@ impl SmartRenderer {
 
 fn render_select(query: &ExplicitQuery) -> String {
     let columns = if query.selections.len() > 0 {
-        render_results_columns(&query.selections[..])
+        render_operands(&query.selections[..])
     } else {
         render_wildcard_select(&query)
     };
@@ -77,25 +76,19 @@ fn render_select(query: &ExplicitQuery) -> String {
     format!("SELECT {}", columns)
 }
 
-fn render_results_columns(columns: &[ExplicitResultColumn]) -> String {
-    columns
+fn render_operands(operands: &[ExplicitOperand]) -> String {
+    operands
         .iter()
-        .map(|selection| match selection {
-            ExplicitResultColumn::Value(value) => render_value(value),
-            ExplicitResultColumn::Column(column) => render_column(column),
-            ExplicitResultColumn::FunctionCall(function_name, column) => {
-                render_function_call(function_name, column)
-            }
-        })
+        .map(|operand| render_operand(operand))
         .collect::<Vec<_>>()
         .join(", ")
 }
 
-fn render_results_column(column: &ExplicitResultColumn) -> String {
+fn render_operand(column: &ExplicitOperand) -> String {
     match column {
-        ExplicitResultColumn::Value(value) => render_value(value),
-        ExplicitResultColumn::Column(column) => render_column(column),
-        ExplicitResultColumn::FunctionCall(function_name, column) => {
+        ExplicitOperand::Value(value) => render_value(value),
+        ExplicitOperand::Column(column) => render_column(column),
+        ExplicitOperand::FunctionCall(function_name, column) => {
             render_function_call(function_name, column)
         }
     }
@@ -160,22 +153,22 @@ fn render_filter(filter: &ExplicitFilter) -> String {
 
     match filter {
         Unary(operand, filter_type) => {
-            let operand = render_results_column(operand);
+            let operand = render_operand(operand);
 
             format!("{} {}", operand, filter_type)
         }
         Binary(lhs, rhs, BinaryFilterType::Equals) => render_smart_equals(lhs, rhs),
         Binary(lhs, rhs, filter_type) => {
-            let lhs = render_results_column(lhs);
-            let rhs = render_results_column(rhs);
+            let lhs = render_operand(lhs);
+            let rhs = render_operand(rhs);
 
             format!("{} {} {}", lhs, filter_type, rhs)
         }
     }
 }
 
-fn render_smart_equals(lhs: &ExplicitResultColumn, rhs: &ExplicitResultColumn) -> String {
-    use ExplicitResultColumn::*;
+fn render_smart_equals(lhs: &ExplicitOperand, rhs: &ExplicitOperand) -> String {
+    use ExplicitOperand::*;
 
     let operator = match rhs {
         Value(value) if value.contains('%') => "LIKE",
@@ -184,18 +177,18 @@ fn render_smart_equals(lhs: &ExplicitResultColumn, rhs: &ExplicitResultColumn) -
 
     format!(
         "{} {} {}",
-        render_results_column(lhs),
+        render_operand(lhs),
         operator,
-        render_results_column(rhs)
+        render_operand(rhs)
     )
 }
 
-fn render_group_by(groups: &[ExplicitResultColumn]) -> String {
+fn render_group_by(groups: &[ExplicitOperand]) -> String {
     if groups.is_empty() {
         return "".to_string();
     }
 
-    let groups = render_results_columns(groups);
+    let groups = render_operands(groups);
 
     format!("GROUP BY {}", groups)
 }
@@ -217,7 +210,7 @@ fn render_orders(orders: &[ExplicitOrder]) -> String {
 fn render_order(order: &ExplicitOrder) -> String {
     let operand = match order {
         ExplicitOrder::Ascending(operand) | ExplicitOrder::Descending(operand) => {
-            render_results_column(operand)
+            render_operand(operand)
         }
     };
 
@@ -268,9 +261,9 @@ impl std::fmt::Display for BinaryFilterType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::query::Operand;
     use crate::sql::shorthand::*;
     use crate::sql::structure::ForeignKey;
-    use crate::query::ResultColumn;
 
     #[test]
     fn smart_render() {
@@ -314,7 +307,7 @@ mod tests {
 
         let renderer = make_renderer();
         let mut query = make_query();
-        query.order.push(Order::Descending(ResultColumn::Column(
+        query.order.push(Order::Descending(Operand::Column(
             QualifiedColumnIdentifier {
                 table: "users".to_owned(),
                 column: "id".to_owned(),
@@ -322,7 +315,7 @@ mod tests {
         )));
         query
             .order
-            .push(Order::Ascending(ResultColumn::Value("3".to_owned())));
+            .push(Order::Ascending(Operand::Value("3".to_owned())));
 
         let rendering = renderer.render(&query).unwrap();
 
@@ -339,7 +332,7 @@ mod tests {
         let renderer = make_renderer();
         let mut query = make_query();
         query.joins.push("friends".to_owned());
-        query.order.push(Order::Descending(ResultColumn::Column(
+        query.order.push(Order::Descending(Operand::Column(
             QualifiedColumnIdentifier {
                 table: "users".to_owned(),
                 column: "id".to_owned(),

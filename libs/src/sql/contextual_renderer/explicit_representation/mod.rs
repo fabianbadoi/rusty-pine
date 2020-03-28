@@ -13,17 +13,17 @@ mod join_finder;
 
 #[derive(Debug)]
 pub struct ExplicitQuery<'a> {
-    pub selections: Vec<ExplicitResultColumn<'a>>,
+    pub selections: Vec<ExplicitOperand<'a>>,
     pub from: &'a str,
     pub joins: Vec<ExplicitJoin<'a>>,
     pub filters: Vec<ExplicitFilter<'a>>,
-    pub group_by: Vec<ExplicitResultColumn<'a>>,
+    pub group_by: Vec<ExplicitOperand<'a>>,
     pub order: Vec<ExplicitOrder<'a>>,
     pub limit: usize,
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub enum ExplicitResultColumn<'a> {
+pub enum ExplicitOperand<'a> {
     Value(&'a str),
     Column(ExplicitColumn),
     FunctionCall(&'a str, ExplicitColumn),
@@ -90,12 +90,8 @@ impl PartialEq<QualifiedColumnIdentifier> for ExplicitColumn {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExplicitFilter<'a> {
-    Unary(ExplicitResultColumn<'a>, UnaryFilterType),
-    Binary(
-        ExplicitResultColumn<'a>,
-        ExplicitResultColumn<'a>,
-        BinaryFilterType,
-    ),
+    Unary(ExplicitOperand<'a>, UnaryFilterType),
+    Binary(ExplicitOperand<'a>, ExplicitOperand<'a>, BinaryFilterType),
 }
 
 #[derive(Debug)]
@@ -128,8 +124,8 @@ impl ExplicitJoin<'_> {
 
 #[derive(Debug)]
 pub enum ExplicitOrder<'a> {
-    Ascending(ExplicitResultColumn<'a>),
-    Descending(ExplicitResultColumn<'a>),
+    Ascending(ExplicitOperand<'a>),
+    Descending(ExplicitOperand<'a>),
 }
 
 pub struct ExplicitQueryBuilder<'t> {
@@ -166,12 +162,12 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_selection(
         &self,
-        selections: &'t [ResultColumn],
-        unselections: &'t [ResultColumn],
-    ) -> Vec<ExplicitResultColumn<'t>> {
+        selections: &'t [Operand],
+        unselections: &'t [Operand],
+    ) -> Vec<ExplicitOperand<'t>> {
         let selections = selections
             .iter()
-            .map(|select| self.make_results_column(select))
+            .map(|select| self.render_operand(select))
             .collect::<Vec<_>>();
 
         unselections
@@ -185,9 +181,9 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn process_unselection(
         &self,
-        selections: Vec<ExplicitResultColumn<'t>>,
-        unselect: &'t ResultColumn,
-    ) -> Vec<ExplicitResultColumn<'t>> {
+        selections: Vec<ExplicitOperand<'t>>,
+        unselect: &'t Operand,
+    ) -> Vec<ExplicitOperand<'t>> {
         let full_selections = self.expand_wildcard(selections, unselect);
 
         full_selections
@@ -198,10 +194,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn expand_wildcard(
         &self,
-        selections: Vec<ExplicitResultColumn<'t>>,
-        unselect: &'t ResultColumn,
-    ) -> Vec<ExplicitResultColumn<'t>> {
-        let unselect_column = if let ResultColumn::Column(column) = unselect {
+        selections: Vec<ExplicitOperand<'t>>,
+        unselect: &'t Operand,
+    ) -> Vec<ExplicitOperand<'t>> {
+        let unselect_column = if let Operand::Column(column) = unselect {
             column
         } else {
             return selections;
@@ -210,7 +206,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
         let found_wildcard = selections
             .iter()
             .filter_map(|selection| match selection {
-                ExplicitResultColumn::Column(column) => Some(column),
+                ExplicitOperand::Column(column) => Some(column),
                 _ => None,
             })
             .find(|select| select.is_wildcard_of(&unselect_column.table))
@@ -225,13 +221,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn expand_selections(
         &self,
-        selections: Vec<ExplicitResultColumn<'t>>,
+        selections: Vec<ExplicitOperand<'t>>,
         table: &'t str,
-    ) -> Vec<ExplicitResultColumn<'t>> {
+    ) -> Vec<ExplicitOperand<'t>> {
         selections
             .iter()
             .flat_map(|selection| match selection {
-                ExplicitResultColumn::Column(column) if column.table_is(table) => {
+                ExplicitOperand::Column(column) if column.table_is(table) => {
                     self.get_columns_of(table)
                 }
                 _ => vec![selection.clone()],
@@ -255,13 +251,13 @@ impl<'t> ExplicitQueryBuilder<'t> {
     fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
         match filter {
             Filter::Unary(operand, filter_type) => {
-                let operand = self.make_results_column(operand);
+                let operand = self.render_operand(operand);
 
                 ExplicitFilter::Unary(operand, *filter_type)
             }
             Filter::Binary(lhs, rhs, filter_type) => {
-                let lhs = self.make_results_column(lhs);
-                let rhs = self.make_results_column(rhs);
+                let lhs = self.render_operand(lhs);
+                let rhs = self.render_operand(rhs);
 
                 ExplicitFilter::Binary(lhs, rhs, *filter_type)
             }
@@ -290,10 +286,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
         Ok(finder.find(from, to.as_ref())?)
     }
 
-    fn translate_group_by(&self, groups: &'t [ResultColumn]) -> Vec<ExplicitResultColumn<'t>> {
+    fn translate_group_by(&self, groups: &'t [Operand]) -> Vec<ExplicitOperand<'t>> {
         groups
             .iter()
-            .map(|group| self.make_results_column(group))
+            .map(|group| self.render_operand(group))
             .collect()
     }
 
@@ -306,7 +302,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_order(&self, order: &'t Order) -> ExplicitOrder<'t> {
         let operand = match order {
-            Order::Ascending(operand) | Order::Descending(operand) => self.make_results_column(operand),
+            Order::Ascending(operand) | Order::Descending(operand) => self.render_operand(operand),
         };
 
         match order {
@@ -315,18 +311,14 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn make_results_column(&self, select: &'t ResultColumn) -> ExplicitResultColumn<'t> {
-        match select {
-            ResultColumn::Value(value) => ExplicitResultColumn::Value(value.as_ref()),
-            ResultColumn::Column(column) => {
-                ExplicitResultColumn::Column(self.make_explicit_column(column))
-            }
-            ResultColumn::FunctionCall(function_name, column) => {
-                ExplicitResultColumn::FunctionCall(
-                    function_name.as_str(),
-                    self.make_explicit_column(column),
-                )
-            }
+    fn render_operand(&self, operand: &'t Operand) -> ExplicitOperand<'t> {
+        match operand {
+            Operand::Value(value) => ExplicitOperand::Value(value.as_ref()),
+            Operand::Column(column) => ExplicitOperand::Column(self.make_explicit_column(column)),
+            Operand::FunctionCall(function_name, column) => ExplicitOperand::FunctionCall(
+                function_name.as_str(),
+                self.make_explicit_column(column),
+            ),
         }
     }
 
@@ -338,7 +330,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
         }
     }
 
-    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitResultColumn<'t>> {
+    fn get_columns_of(&self, table_name: &str) -> Vec<ExplicitOperand<'t>> {
         self.tables
             .iter()
             .filter(|table| table.name == table_name)
@@ -347,8 +339,8 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .collect()
     }
 
-    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitResultColumn<'t> {
-        ExplicitResultColumn::Column(if self.working_with_single_table {
+    fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitOperand<'t> {
+        ExplicitOperand::Column(if self.working_with_single_table {
             ExplicitColumn::Simple(column.name.clone())
         } else {
             ExplicitColumn::FullyQualified(table_name.to_string(), column.name.clone())
@@ -397,10 +389,10 @@ impl<'t> ExplicitQueryBuilder<'t> {
     }
 }
 
-impl PartialEq<ResultColumn> for ExplicitResultColumn<'_> {
-    fn eq(&self, other: &ResultColumn) -> bool {
-        use ExplicitResultColumn as S; // for self
-        use ResultColumn as O; // for other
+impl PartialEq<Operand> for ExplicitOperand<'_> {
+    fn eq(&self, other: &Operand) -> bool {
+        use ExplicitOperand as S; // for self
+        use Operand as O; // for other
 
         match (self, other) {
             (S::Column(column), O::Column(other)) => column == other,
@@ -420,11 +412,11 @@ mod tests {
     #[test]
     fn can_build_simple_selections() {
         let selections = vec![
-            ResultColumn::Column(QualifiedColumnIdentifier {
+            Operand::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             }),
-            ResultColumn::Column(QualifiedColumnIdentifier {
+            Operand::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column2".into(),
             }),
@@ -450,11 +442,11 @@ mod tests {
     #[test]
     fn can_build_complex_selections() {
         let selections = vec![
-            ResultColumn::Column(QualifiedColumnIdentifier {
+            Operand::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             }),
-            ResultColumn::Column(QualifiedColumnIdentifier {
+            Operand::Column(QualifiedColumnIdentifier {
                 table: "friends".into(),
                 column: "column2".into(),
             }),
@@ -481,22 +473,22 @@ mod tests {
     fn can_build_simple_filters() {
         let filters = vec![
             Filter::Binary(
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
                 BinaryFilterType::Equals,
             ),
             Filter::Binary(
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column2".into(),
                 }),
-                ResultColumn::Value("3".to_owned()),
+                Operand::Value("3".to_owned()),
                 BinaryFilterType::Equals,
             ),
         ];
@@ -516,22 +508,22 @@ mod tests {
     fn can_build_complex_filters() {
         let filters = vec![
             Filter::Binary(
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "users".into(),
                     column: "column1".into(),
                 }),
                 BinaryFilterType::Equals,
             ),
             Filter::Binary(
-                ResultColumn::Column(QualifiedColumnIdentifier {
+                Operand::Column(QualifiedColumnIdentifier {
                     table: "friends".into(),
                     column: "column2".into(),
                 }),
-                ResultColumn::Value("3".to_owned()),
+                Operand::Value("3".to_owned()),
                 BinaryFilterType::Equals,
             ),
         ];
@@ -578,11 +570,11 @@ mod tests {
     #[test]
     fn can_build_order() {
         let orders = vec![
-            Order::Ascending(ResultColumn::Column(QualifiedColumnIdentifier {
+            Order::Ascending(Operand::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             })),
-            Order::Descending(ResultColumn::Value("3".to_owned())),
+            Order::Descending(Operand::Value("3".to_owned())),
         ];
 
         let builder = ExplicitQueryBuilder {
@@ -606,10 +598,10 @@ mod tests {
         }
     }
 
-    impl PartialEq<ExplicitResultColumn<'_>> for ExplicitColumn {
-        fn eq(&self, other: &ExplicitResultColumn) -> bool {
+    impl PartialEq<ExplicitOperand<'_>> for ExplicitColumn {
+        fn eq(&self, other: &ExplicitOperand) -> bool {
             match other {
-                ExplicitResultColumn::Column(column) => self == column,
+                ExplicitOperand::Column(column) => self == column,
                 _ => false,
             }
         }
@@ -633,17 +625,17 @@ mod tests {
         }
     }
 
-    impl ExplicitResultColumn<'_> {
+    impl ExplicitOperand<'_> {
         pub fn as_column(&self) -> &ExplicitColumn {
             match self {
-                ExplicitResultColumn::Column(column) => column,
+                ExplicitOperand::Column(column) => column,
                 _ => panic!("Can't use operand as column"),
             }
         }
     }
 
     impl ExplicitFilter<'_> {
-        pub fn rhs(&self) -> &ExplicitResultColumn {
+        pub fn rhs(&self) -> &ExplicitOperand {
             #[allow(unreachable_patterns)]
             match self {
                 ExplicitFilter::Binary(rhs, _, _) => rhs,
