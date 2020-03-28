@@ -1,8 +1,9 @@
 use crate::common::{BinaryFilterType, UnaryFilterType};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Renderable {
     Query(Query),
+    ShowNeighbours(TableName),
 }
 
 #[cfg(test)]
@@ -11,11 +12,12 @@ impl Renderable {
     pub fn query(self) -> Query {
         match self {
             Renderable::Query(query) => query,
+            Renderable::ShowNeighbours(_) => panic!("incorrect call of .query() on ShowNeighbours"),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Query {
     pub selections: Vec<Operand>,
     pub unselections: Vec<Operand>,

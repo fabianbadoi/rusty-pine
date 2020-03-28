@@ -17,6 +17,7 @@ pub enum Operation<'a> {
     GroupBy(Vec<Node<Operand<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
+    ShowNeighbours(Node<()>),
 }
 
 impl<'a> Operation<'a> {
@@ -33,6 +34,7 @@ impl<'a> Operation<'a> {
             GroupBy(_) => "group by",
             Order(_) => "order",
             Limit(_) => "limit",
+            ShowNeighbours(_) => "show neighbours",
         }
     }
 }
@@ -86,6 +88,12 @@ impl<'a> IntoIterator for &'a Node<Pine<'a>> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.inner.operations.iter()
+    }
+}
+
+impl<'a> Node<Pine<'a>> {
+    pub fn last_operation(&self) -> Option<&Node<Operation<'a>>> {
+        self.inner.operations.last()
     }
 }
 

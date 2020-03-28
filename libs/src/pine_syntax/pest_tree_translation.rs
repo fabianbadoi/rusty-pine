@@ -109,6 +109,7 @@ impl Translator {
             Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
             Rule::limit => self.translate_limit(node),
+            Rule::show_neighbours => self.translate_show_neighbours(node),
             Rule::EOI => Vec::new(),
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
         };
@@ -170,6 +171,15 @@ impl Translator {
         let limit = translate_numeric_value(value_node);
 
         vec![Operation::Limit(limit)]
+    }
+
+    fn translate_show_neighbours<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let position = position(&node);
+
+        vec![Operation::ShowNeighbours(Node {
+            inner: (),
+            position,
+        })]
     }
 
     fn translate_filters<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {

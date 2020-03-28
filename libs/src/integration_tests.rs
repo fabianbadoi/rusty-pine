@@ -78,6 +78,14 @@ static TEST_SPECS: &str = r#"
     FROM humans
     WHERE id > count(id)
     LIMIT 10
+
+    friendMap |
+    ========
+    /*
+    Foreign keys to:
+      humans.id using .friendA
+      humans.id using .friendB
+    */
 "#;
 
 #[test]

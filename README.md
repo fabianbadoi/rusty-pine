@@ -74,9 +74,11 @@ TODO:
 - [x] other comparisons
 - [x] Functions on a column
 - [x] Group on a column
+- [x] Meta function show neighbors
+- [ ] Meta function show columns
+- [ ] How to use
+- [ ] Examples
 - [ ] Read from stdin
-- [ ] Meta function show neighbors
-- [ ] Meta function show create
 - [ ] Complex values (`parentId = .id`?)
 - [ ] Run without connection
 - [ ] Support multiple filters (OR)

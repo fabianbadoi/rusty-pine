@@ -3,6 +3,7 @@ use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::{Query, Renderable};
+use crate::sql::contextual_renderer::neighbours::render_neighbours;
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
@@ -10,6 +11,7 @@ use explicit_representation::{
 use log::info;
 
 mod explicit_representation;
+mod neighbours;
 
 #[derive(Debug)]
 pub struct SmartRenderer {
@@ -20,17 +22,18 @@ impl Renderer<Renderable, String> for &SmartRenderer {
     fn render(self, query: &Renderable) -> Result<String, PineError> {
         info!("Rendering query");
 
-        let query = match query {
-            Renderable::Query(query) => query,
+        let rendering = match query {
+            Renderable::Query(query) => {
+                let explicit_query = self.build_explicit_query(query)?;
+
+                Ok(self.render_explicit_query(&explicit_query))
+            }
+            Renderable::ShowNeighbours(for_table) => render_neighbours(for_table, &self.tables),
         };
-
-        let explicit_query = self.build_explicit_query(query)?;
-
-        let query = self.render_explicit_query(&explicit_query);
 
         info!("Rendering done");
 
-        Ok(query)
+        rendering
     }
 }
 
