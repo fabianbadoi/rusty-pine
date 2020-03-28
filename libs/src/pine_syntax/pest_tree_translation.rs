@@ -323,7 +323,7 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
     let ordering_type_rule = inner.as_rule();
 
     let operand = inner.into_inner().next().unwrap();
-    let operand = translate_operand(operand);
+    let operand = translate_result_column(operand);
 
     let ordering = match ordering_type_rule {
         Rule::ordering_asc => Order::Ascending(operand),
@@ -334,24 +334,6 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
     Node {
         inner: ordering,
         position,
-    }
-}
-
-fn translate_operand(node: PestNode) -> Node<Operand> {
-    expect_rule!(Rule::operand, node);
-
-    let inner = node.into_inner().next().unwrap();
-    let position = position(&inner);
-
-    let operand = match inner.as_rule() {
-        Rule::value => Operand::Value(translate_value(inner)),
-        Rule::identified_column => Operand::Column(translate_identified_column(inner)),
-        _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
-    };
-
-    Node {
-        position,
-        inner: operand,
     }
 }
 

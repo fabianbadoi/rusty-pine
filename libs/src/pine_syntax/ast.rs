@@ -56,20 +56,14 @@ pub enum Filter<'a> {
 
 #[derive(Debug)]
 pub enum Order<'a> {
-    Ascending(Node<Operand<'a>>),
-    Descending(Node<Operand<'a>>),
+    Ascending(Node<ResultColumn<'a>>),
+    Descending(Node<ResultColumn<'a>>),
 }
 
 #[derive(Debug)]
 pub enum Value<'a> {
     Numeric(InputType<'a>),
     String(InputType<'a>),
-}
-
-#[derive(Debug)]
-pub enum Operand<'a> {
-    Value(Node<Value<'a>>),
-    Column(Node<ColumnIdentifier<'a>>),
 }
 
 #[derive(Debug)]

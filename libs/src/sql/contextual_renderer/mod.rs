@@ -5,7 +5,7 @@ use crate::error::PineError;
 use crate::query::Query;
 use crate::sql::contextual_renderer::explicit_representation::ExplicitResultColumn;
 use explicit_representation::{
-    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
+    ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
 };
 use log::info;
@@ -217,7 +217,7 @@ fn render_orders(orders: &[ExplicitOrder]) -> String {
 fn render_order(order: &ExplicitOrder) -> String {
     let operand = match order {
         ExplicitOrder::Ascending(operand) | ExplicitOrder::Descending(operand) => {
-            render_operand(operand)
+            render_results_column(operand)
         }
     };
 
@@ -227,15 +227,6 @@ fn render_order(order: &ExplicitOrder) -> String {
     };
 
     format!("{}{}", operand, direction)
-}
-
-fn render_operand(operand: &ExplicitOperand) -> String {
-    use ExplicitOperand::*;
-
-    match operand {
-        Column(column) => render_column(column),
-        Value(value) => render_value(value),
-    }
 }
 
 fn render_value(value: &str) -> String {
@@ -279,6 +270,7 @@ mod tests {
     use super::*;
     use crate::sql::shorthand::*;
     use crate::sql::structure::ForeignKey;
+    use crate::query::ResultColumn;
 
     #[test]
     fn smart_render() {
@@ -318,11 +310,11 @@ mod tests {
 
     #[test]
     fn order() {
-        use crate::query::{Operand, Order, QualifiedColumnIdentifier};
+        use crate::query::{Order, QualifiedColumnIdentifier};
 
         let renderer = make_renderer();
         let mut query = make_query();
-        query.order.push(Order::Descending(Operand::Column(
+        query.order.push(Order::Descending(ResultColumn::Column(
             QualifiedColumnIdentifier {
                 table: "users".to_owned(),
                 column: "id".to_owned(),
@@ -330,7 +322,7 @@ mod tests {
         )));
         query
             .order
-            .push(Order::Ascending(Operand::Value("3".to_owned())));
+            .push(Order::Ascending(ResultColumn::Value("3".to_owned())));
 
         let rendering = renderer.render(&query).unwrap();
 
@@ -342,12 +334,12 @@ mod tests {
 
     #[test]
     fn order_with_explict_column() {
-        use crate::query::{Operand, Order, QualifiedColumnIdentifier};
+        use crate::query::{Order, QualifiedColumnIdentifier};
 
         let renderer = make_renderer();
         let mut query = make_query();
         query.joins.push("friends".to_owned());
-        query.order.push(Order::Descending(Operand::Column(
+        query.order.push(Order::Descending(ResultColumn::Column(
             QualifiedColumnIdentifier {
                 table: "users".to_owned(),
                 column: "id".to_owned(),

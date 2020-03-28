@@ -48,14 +48,8 @@ pub enum Filter {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Order {
-    Ascending(Operand),
-    Descending(Operand),
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum Operand {
-    Value(Value),
-    Column(QualifiedColumnIdentifier),
+    Ascending(ResultColumn),
+    Descending(ResultColumn),
 }
 
 pub type TableName = String;

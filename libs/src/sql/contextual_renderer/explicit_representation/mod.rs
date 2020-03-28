@@ -35,12 +35,6 @@ pub enum ExplicitColumn {
     FullyQualified(String, String),
 }
 
-#[derive(PartialEq, Eq, Debug)]
-pub enum ExplicitOperand<'a> {
-    Column(ExplicitColumn),
-    Value(&'a str),
-}
-
 impl<'a> ExplicitColumn {
     pub fn is_wildcard_of(&self, table: &str) -> bool {
         use ExplicitColumn::*;
@@ -134,8 +128,8 @@ impl ExplicitJoin<'_> {
 
 #[derive(Debug)]
 pub enum ExplicitOrder<'a> {
-    Ascending(ExplicitOperand<'a>),
-    Descending(ExplicitOperand<'a>),
+    Ascending(ExplicitResultColumn<'a>),
+    Descending(ExplicitResultColumn<'a>),
 }
 
 pub struct ExplicitQueryBuilder<'t> {
@@ -312,19 +306,12 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     fn translate_order(&self, order: &'t Order) -> ExplicitOrder<'t> {
         let operand = match order {
-            Order::Ascending(operand) | Order::Descending(operand) => self.make_operand(operand),
+            Order::Ascending(operand) | Order::Descending(operand) => self.make_results_column(operand),
         };
 
         match order {
             Order::Ascending(_) => ExplicitOrder::Ascending(operand),
             Order::Descending(_) => ExplicitOrder::Descending(operand),
-        }
-    }
-
-    fn make_operand(&self, operand: &'t Operand) -> ExplicitOperand<'t> {
-        match operand {
-            Operand::Column(column) => ExplicitOperand::Column(self.make_explicit_column(column)),
-            Operand::Value(value) => ExplicitOperand::Value(value.as_ref()),
         }
     }
 
@@ -591,11 +578,11 @@ mod tests {
     #[test]
     fn can_build_order() {
         let orders = vec![
-            Order::Ascending(Operand::Column(QualifiedColumnIdentifier {
+            Order::Ascending(ResultColumn::Column(QualifiedColumnIdentifier {
                 table: "users".into(),
                 column: "column1".into(),
             })),
-            Order::Descending(Operand::Value("3".to_owned())),
+            Order::Descending(ResultColumn::Value("3".to_owned())),
         ];
 
         let builder = ExplicitQueryBuilder {

@@ -48,8 +48,8 @@ optr_lte = { "<=" }
 
 // orders
 ordering = { ordering_asc | ordering_desc }
-ordering_desc = { operand ~ direction_desc? }
-ordering_asc  = { operand ~ direction_asc }
+ordering_desc = { result_column ~ direction_desc? }
+ordering_asc  = { result_column ~ direction_asc }
 direction_asc = _{ "asc" | "ASC" | "+" }
 direction_desc = _ { "desc" | "DESC" | "-" }
 

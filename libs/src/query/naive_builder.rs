@@ -2,12 +2,12 @@ use super::{BuildResult, QueryBuilder};
 use crate::error::Position;
 use crate::error::SyntaxError;
 use crate::pine_syntax::ast::{
-    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node, Operand,
+    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node,
     Operation as AstOperation, Order as AstOrder, Pine, ResultColumn as AstResultColumn,
     TableName as AstTableName, Value as AstValue,
 };
 use crate::query::{
-    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
+    Filter as SqlFilter, Order as SqlOrder, QualifiedColumnIdentifier,
     Query, ResultColumn as SqlResultColumn,
 };
 use log::{debug, info};
@@ -167,11 +167,10 @@ impl<'a> SingleUseQueryBuilder<'a> {
             return Ok(());
         }
 
-        let table = self.require_table(orders[0].position)?;
-        let mut order: Vec<_> = orders
+        let mut order = orders
             .iter()
-            .map(|order_node| translate_order(order_node, table))
-            .collect();
+            .map(|order_node| self.translate_order(order_node))
+            .collect::<Result<Vec<_>, _>>()?;
 
         self.query.order.append(&mut order);
 
@@ -240,6 +239,21 @@ impl<'a> SingleUseQueryBuilder<'a> {
         Ok(selection)
     }
 
+    fn translate_order(&self, order_node: &Node<AstOrder>) -> Result<SqlOrder, SyntaxError> {
+        debug!("Found order: {:?}", order_node);
+
+        let operand = match &order_node.inner {
+            AstOrder::Ascending(operand) | AstOrder::Descending(operand) => {
+                self.translate_result_column(&operand)?
+            }
+        };
+
+        Ok(match &order_node.inner {
+            AstOrder::Ascending(_) => SqlOrder::Ascending(operand),
+            AstOrder::Descending(_) => SqlOrder::Descending(operand),
+        })
+    }
+
     fn finalize(&mut self) {
         self.set_from_table();
         self.add_implicit_select_all();
@@ -298,31 +312,6 @@ impl<'a> SingleUseQueryBuilder<'a> {
             .collect();
 
         Ok(qualified_columns?)
-    }
-}
-
-fn translate_order(order_node: &Node<AstOrder>, default_table: &str) -> SqlOrder {
-    debug!("Found order: {:?}", order_node);
-
-    let operand = match &order_node.inner {
-        AstOrder::Ascending(operand) | AstOrder::Descending(operand) => {
-            translate_operand(&operand.inner, default_table)
-        }
-    };
-
-    match &order_node.inner {
-        AstOrder::Ascending(_) => SqlOrder::Ascending(operand),
-        AstOrder::Descending(_) => SqlOrder::Descending(operand),
-    }
-}
-
-fn translate_operand(operand: &Operand, default_table: &str) -> SqlOperand {
-    match operand {
-        Operand::Column(column_identifier) => {
-            let column = translate_column_identifier(&column_identifier.inner, default_table);
-            SqlOperand::Column(column)
-        }
-        Operand::Value(value) => SqlOperand::Value(value.inner.to_string()),
     }
 }
 
@@ -463,11 +452,11 @@ mod tests {
 
     #[test]
     fn build_order() {
-        let order_1 = Operand::Column(node(AstColumnIdentifier::Explicit(
+        let order_1 = ResultColumn::Column(node(AstColumnIdentifier::Explicit(
             node("users"),
             node("id"),
         )));
-        let order_2 = Operand::Value(node(Value::Numeric("3")));
+        let order_2 = ResultColumn::Value(node(Value::Numeric("3")));
         let order = vec![
             node(AstOrder::Ascending(node(order_1))),
             node(AstOrder::Descending(node(order_2))),
@@ -571,21 +560,6 @@ mod tests {
                 QuerySelection::Column(column) => column == other,
                 _ => panic!("cannot compare (str,str) to function call"),
             }
-        }
-    }
-
-    impl From<(&str, &str)> for SqlOperand {
-        fn from(other: (&str, &str)) -> SqlOperand {
-            SqlOperand::Column(QualifiedColumnIdentifier {
-                table: other.0.to_string(),
-                column: other.1.to_string(),
-            })
-        }
-    }
-
-    impl From<&str> for SqlOperand {
-        fn from(other: &str) -> SqlOperand {
-            SqlOperand::Value(other.to_string())
         }
     }
 
