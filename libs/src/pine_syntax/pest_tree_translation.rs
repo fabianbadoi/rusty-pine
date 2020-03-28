@@ -293,7 +293,7 @@ fn translate_unary_filter(node: PestNode) -> Node<Filter> {
         Rule::filter_is_not_null => UnaryFilterType::IsNotNull,
         _ => panic!("Unexpected unary filter rule: {:?}", inner.as_rule()),
     };
-    let operand = translate_operand(inner.into_inner().next().unwrap());
+    let operand = translate_result_column(inner.into_inner().next().unwrap());
 
     let filter = Filter::Unary(operand, filter_type);
 

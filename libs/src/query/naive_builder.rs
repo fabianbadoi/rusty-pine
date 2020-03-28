@@ -123,10 +123,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
             return Ok(());
         }
 
-        let table = self.require_table(filters[0].position)?;
         let mut filters = filters
             .iter()
-            .map(|filter_node| self.translate_filter(filter_node, table))
+            .map(|filter_node| self.translate_filter(filter_node))
             .collect::<Result<Vec<_>, _>>()?;
 
         self.query.filters.append(&mut filters);
@@ -201,13 +200,12 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn translate_filter(
         &self,
         filter_node: &Node<AstFilter>,
-        default_table: &str,
     ) -> Result<SqlFilter, SyntaxError> {
         debug!("Found filter: {:?}", filter_node);
 
         Ok(match &filter_node.inner {
             AstFilter::Unary(operand, filter_type) => {
-                let operand = translate_operand(&operand.inner, default_table);
+                let operand = self.translate_result_column(&operand)?;
 
                 SqlFilter::Unary(operand, *filter_type)
             }
@@ -416,7 +414,7 @@ mod tests {
     #[test]
     fn build_is_null_filter() {
         let mut pine = from("users");
-        let column = Operand::Column(node(AstColumnIdentifier::Implicit(node("id"))));
+        let column = ResultColumn::Column(node(AstColumnIdentifier::Implicit(node("id"))));
         let column = node(column);
         let filter = node(Filter::Unary(column, UnaryFilterType::IsNull));
         append_operation(&mut pine, AstOperation::Filter(vec![filter]));

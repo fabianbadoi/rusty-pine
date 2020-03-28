@@ -32,8 +32,8 @@ filter = { binary_filter | unary_filter }
 unary_filter = { filter_is_null | filter_is_not_null }
 binary_filter = { result_column ~ operator ~ result_column }
 
-filter_is_null = { operand ~ "?" }
-filter_is_not_null = { operand ~ "!?" }
+filter_is_null = { result_column ~ "?" }
+filter_is_not_null = { result_column ~ "!?" }
 
 operand = { function_call | identified_column | value }
 

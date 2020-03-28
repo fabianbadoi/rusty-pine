@@ -96,7 +96,7 @@ impl PartialEq<QualifiedColumnIdentifier> for ExplicitColumn {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum ExplicitFilter<'a> {
-    Unary(ExplicitOperand<'a>, UnaryFilterType),
+    Unary(ExplicitResultColumn<'a>, UnaryFilterType),
     Binary(
         ExplicitResultColumn<'a>,
         ExplicitResultColumn<'a>,
@@ -261,7 +261,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
     fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
         match filter {
             Filter::Unary(operand, filter_type) => {
-                let operand = self.make_operand(operand);
+                let operand = self.make_results_column(operand);
 
                 ExplicitFilter::Unary(operand, *filter_type)
             }

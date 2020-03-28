@@ -160,7 +160,7 @@ fn render_filter(filter: &ExplicitFilter) -> String {
 
     match filter {
         Unary(operand, filter_type) => {
-            let operand = render_operand(operand);
+            let operand = render_results_column(operand);
 
             format!("{} {}", operand, filter_type)
         }
