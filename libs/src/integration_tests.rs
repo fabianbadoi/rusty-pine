@@ -85,6 +85,7 @@ static TEST_SPECS: &str = r#"
     Foreign keys to:
       humans.id using .friendA
       humans.id using .friendB
+      friendshipLog.friendshipId using .id
     */
 "#;
 
