@@ -19,7 +19,7 @@ pub fn render_neighbours(table: &str, table_specs: &[Table]) -> Result<String, P
         .collect::<Vec<_>>()
         .join("\n");
 
-    Ok(format!("/*\nForeign keys to:\n{}\n*/", all_neighbours))
+    Ok(format!("/*\nForeign keys to:\n{}\n*/--", all_neighbours))
 }
 
 fn get_incoming_neighbours(to_table: &str, table_specs: &[Table]) -> Vec<String> {

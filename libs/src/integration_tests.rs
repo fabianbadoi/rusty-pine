@@ -86,7 +86,7 @@ static TEST_SPECS: &str = r#"
       humans.id using .friendA
       humans.id using .friendB
       friendshipLog.friendshipId using .id
-    */
+    */--
 "#;
 
 #[test]
