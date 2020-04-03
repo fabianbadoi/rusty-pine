@@ -14,6 +14,8 @@ WHERE id = 3
 
 ... and I plan on making it more powerful.
 
+This project was inspired by Ahmad Nazir's [Pine], which I used a lot before writing this project.
+
 
 Setup
 =====
@@ -85,3 +87,5 @@ TODO:
 - [ ] Updates
 - [ ] Deletes
 
+
+[Pine]: https://github.com/ahmadnazir/pine
