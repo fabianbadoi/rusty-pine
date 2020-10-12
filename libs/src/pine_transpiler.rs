@@ -1,8 +1,8 @@
+use crate::analyzer::offline as analyzer_offline;
 use crate::error::PineError;
 use crate::pine_syntax::{PestPineParser, PineParser};
 use crate::query::{NaiveBuilder, QueryBuilder, Renderable};
 use crate::sql::{Renderer, SmartRenderer};
-use crate::Analyzer;
 use crate::Config;
 
 type TranspileResult<O> = Result<O, PineError>;
@@ -36,8 +36,8 @@ where
     }
 }
 
-pub fn connect_live(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
-    let analyezer = Analyzer::connect(config).unwrap();
+pub fn offline(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
+    let analyezer = analyzer_offline(config).unwrap();
     let database = analyezer.analyze(db_name)?;
 
     Ok(GenericTranspiler {

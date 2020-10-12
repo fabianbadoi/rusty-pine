@@ -21,6 +21,6 @@ mod sql;
 #[cfg(test)]
 mod integration_tests;
 
-pub use analyzer::Analyzer;
+pub use analyzer::connect;
 pub use config::{read as read_config, Config};
-pub use pine_transpiler::{connect_live as connect_transpiler, MySqlTranspiler, Transpiler};
+pub use pine_transpiler::{offline, MySqlTranspiler, Transpiler};

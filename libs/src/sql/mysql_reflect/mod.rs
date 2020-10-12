@@ -6,28 +6,15 @@ pub mod parsing;
 use crate::cache::{make_cache, Cache, DefaultCache};
 use crate::error::PineError;
 use cached_reflector::CachingReflector;
-use connection::LiveConnection;
+use connection::{LiveConnection, OfflineConnection};
 use live_analysis::{MySqlReflector, MySqlTableParser};
 use log::info;
 
 pub type CacheBuilder =
     CachingReflector<MySqlReflector<LiveConnection, MySqlTableParser>, DefaultCache>;
 
-/// Connects and uses cache where possible
-pub fn connect_live(
-    user: &str,
-    password: &str,
-    host: &str,
-    port: u16,
-) -> Result<CacheBuilder, PineError> {
-    let connection = LiveConnection::new(user, password, host, port)?;
-
-    Ok(CacheBuilder::wrap(
-        MySqlReflector::for_connection(connection),
-        make_reflector_cache(),
-        format!("{}@{}_{}", user, host, port),
-    ))
-}
+pub type OfflineReflector =
+    CachingReflector<MySqlReflector<OfflineConnection, MySqlTableParser>, DefaultCache>;
 
 /// Clear cache before connecting
 pub fn connect_fresh(
@@ -49,6 +36,19 @@ pub fn connect_fresh(
         cache,
         format!("{}@{}_{}", user, host, port),
     ))
+}
+
+/// Offline reflector
+pub fn offline(user: &str, host: &str, port: u16) -> OfflineReflector {
+    info!("Setting up offline use of {}@{}", user, host);
+
+    let cache = make_reflector_cache();
+
+    OfflineReflector::wrap(
+        MySqlReflector::for_connection(OfflineConnection),
+        cache,
+        format!("{}@{}_{}", user, host, port),
+    )
 }
 
 fn make_reflector_cache() -> DefaultCache {

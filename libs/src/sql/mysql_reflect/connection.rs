@@ -12,6 +12,8 @@ pub struct LiveConnection {
     pool: Pool,
 }
 
+pub struct OfflineConnection;
+
 impl LiveConnection {
     pub fn new(
         user: &str,
@@ -71,5 +73,19 @@ impl Connection for LiveConnection {
 
         info!("Table create query retrieved for {}.{}", db, table);
         Ok(all_tables.remove(0))
+    }
+}
+
+impl Connection for OfflineConnection {
+    fn databases(&self) -> Result<Vec<String>, PineError> {
+        panic!("Cannot call OfflineConnection::database()")
+    }
+
+    fn tables(&self, _db: &str) -> Result<Vec<String>, PineError> {
+        panic!("Cannot call OfflineConnection::tables()")
+    }
+
+    fn show_create(&self, _db: &str, _table: &str) -> Result<String, PineError> {
+        panic!("Cannot call OfflineConnection::show_create()")
     }
 }

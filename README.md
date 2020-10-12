@@ -37,7 +37,7 @@ Setup
 
 Logging
 -------
-Run with `RUST_LOG=rusty_pine_lib=info` to enable logging.
+Run with `RUST\_LOG=rusty\_pine\_lib=info` to enable logging.
 
 
 Mission Statement
@@ -77,12 +77,12 @@ TODO:
 - [x] Functions on a column
 - [x] Group on a column
 - [x] Meta function show neighbors
+- [x] Run without connection
 - [ ] Meta function show columns
 - [ ] How to use
 - [ ] Examples
 - [ ] Read from stdin
 - [ ] Complex values (`parentId = .id`?)
-- [ ] Run without connection
 - [ ] Support multiple filters (OR)
 - [ ] Updates
 - [ ] Deletes

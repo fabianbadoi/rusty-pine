@@ -1,13 +1,13 @@
 extern crate pretty_env_logger;
 extern crate rusty_pine_lib;
 
+use rusty_pine_lib::connect;
 use rusty_pine_lib::read_config;
-use rusty_pine_lib::Analyzer;
 
 fn main() {
     pretty_env_logger::init();
 
-    let analyezer = Analyzer::connect_fresh(&read_config()).unwrap();
+    let analyezer = connect(&read_config()).unwrap();
 
     println!("{:#?}", analyezer.save());
     println!("Hello, world!");
