@@ -5,13 +5,14 @@ use crate::sql::Reflector;
 use log::info;
 use std::cell::RefCell;
 
-pub struct CachedReflector<T, U> {
+/// This reflector writes to cache
+pub struct CachingReflector<T, U> {
     inner: T,
     cache: RefCell<U>,
     tag: String,
 }
 
-impl<T, U> Reflector for CachedReflector<T, U>
+impl<T, U> Reflector for CachingReflector<T, U>
 where
     T: Reflector,
     U: Cache<Vec<Database>>,
@@ -39,7 +40,7 @@ where
     }
 }
 
-impl<T, U> CachedReflector<T, U> {
+impl<T, U> CachingReflector<T, U> {
     pub fn wrap<V>(inner: T, cache: U, tag: V) -> Self
     where
         V: Into<String>,
@@ -47,7 +48,7 @@ impl<T, U> CachedReflector<T, U> {
         let tag = tag.into();
         let cache = RefCell::new(cache);
 
-        CachedReflector { inner, cache, tag }
+        CachingReflector { inner, cache, tag }
     }
 }
 
@@ -73,7 +74,7 @@ mod tests {
 
     #[test]
     fn read_from_inner_if_not_cached() {
-        let reflector = CachedReflector::wrap(
+        let reflector = CachingReflector::wrap(
             MockReflector::default(),
             MemoryCache::<Vec<Database>>::default(),
             "debug",
@@ -89,7 +90,7 @@ mod tests {
         let mut cache = MemoryCache::<Vec<Database>>::default();
         cache.set("debug", &Vec::new());
 
-        let reflector = CachedReflector::wrap(MockReflector::default(), cache, "debug");
+        let reflector = CachingReflector::wrap(MockReflector::default(), cache, "debug");
 
         let _ = reflector.analyze();
 
@@ -98,7 +99,7 @@ mod tests {
 
     #[test]
     fn values_get_cached() {
-        let reflector = CachedReflector::wrap(
+        let reflector = CachingReflector::wrap(
             MockReflector::default(),
             MemoryCache::<Vec<Database>>::default(),
             "debug",

@@ -36,7 +36,7 @@ where
     }
 }
 
-pub fn connect(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
+pub fn connect_live(config: &Config, db_name: &str) -> Result<MySqlTranspiler, PineError> {
     let analyezer = Analyzer::connect(config).unwrap();
     let database = analyezer.analyze(db_name)?;
 
