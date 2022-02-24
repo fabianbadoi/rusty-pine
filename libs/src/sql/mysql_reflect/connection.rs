@@ -1,6 +1,7 @@
 use crate::error::PineError;
 use log::info;
-use mysql::{from_row, OptsBuilder, Pool};
+use mysql::prelude::Queryable;
+use mysql::{OptsBuilder, Pool};
 
 pub trait Connection {
     fn databases(&self) -> Result<Vec<String>, PineError>;
@@ -21,8 +22,7 @@ impl LiveConnection {
         host: &str,
         port: u16,
     ) -> Result<LiveConnection, PineError> {
-        let mut opts_builder = OptsBuilder::new();
-        opts_builder
+        let opts_builder = OptsBuilder::new()
             .user(Some(user))
             .pass(Some(password))
             .ip_or_hostname(Some(host))
@@ -37,8 +37,8 @@ impl LiveConnection {
 const MYSQL_BUILTIN_DATABASES: [&str; 3] = ["mysql", "information_schema", "performance_schema"];
 impl Connection for LiveConnection {
     fn databases(&self) -> Result<Vec<String>, PineError> {
-        let query_result = self.pool.prep_exec(r"show databases;", ())?;
-        let all_databases: Vec<_> = query_result.map(|row| from_row(row.unwrap())).collect();
+        let query_result = self.pool.get_conn().unwrap().exec(r"show databases;", ())?;
+        let all_databases: Vec<_> = query_result.into_iter().collect();
 
         let user_databases = all_databases
             .into_iter()
@@ -52,8 +52,10 @@ impl Connection for LiveConnection {
     fn tables(&self, db: &str) -> Result<Vec<String>, PineError> {
         let query_result = self
             .pool
-            .prep_exec(format!("show tables from {}", db), ())?;
-        let all_tables: Vec<_> = query_result.map(|row| from_row(row.unwrap())).collect();
+            .get_conn()
+            .unwrap()
+            .exec(format!("show tables from {}", db), ())?;
+        let all_tables: Vec<_> = query_result.into_iter().collect();
 
         info!("Found tables for db '{}': {:?}", db, all_tables);
         Ok(all_tables)
@@ -62,12 +64,12 @@ impl Connection for LiveConnection {
     fn show_create(&self, db: &str, table: &str) -> Result<String, PineError> {
         let query_result = self
             .pool
-            .prep_exec(format!("show create table {}.{}", db, table), ())?;
-        let mut all_tables: Vec<String> = query_result
-            .map(|row| {
-                let row: (String, String) = from_row(row.unwrap());
-                row.1
-            })
+            .get_conn()
+            .unwrap()
+            .exec(format!("show create table {}.{}", db, table), ())?;
+        let mut all_tables: Vec<_> = query_result
+            .into_iter()
+            .map(|(_, create_table): (String, String)| create_table)
             .take(1)
             .collect();
 
