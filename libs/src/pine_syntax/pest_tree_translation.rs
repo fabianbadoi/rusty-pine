@@ -104,7 +104,7 @@ impl Translator {
             Rule::select => self.translate_selections(node),
             Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
-            Rule::compound_expression => self.translate_compound_expression(node),
+            Rule::simple_compound_expression => self.translate_simple_compound_expression(node),
             Rule::join => self.translate_join(node),
             Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
@@ -188,7 +188,7 @@ impl Translator {
         vec![Operation::Filter(filters)]
     }
 
-    fn translate_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+    fn translate_simple_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let inner = node.clone().into_inner();
 
         expect_rule!(Rule::table_name, inner.peek().unwrap());
@@ -489,7 +489,7 @@ mod tests {
     /// For example: `cargo test pine_syntax::pest_tree_translation::tests::show_tree_structures -- --nocapture`
     #[test]
     fn show_tree_structures() {
-        let pine_string = "from: users | select: id";
+        let pine_string = "users | select: id";
         let ast = AstParser::parse(Rule::pine, pine_string)
             .unwrap()
             .next()
@@ -507,7 +507,7 @@ mod tests {
     fn parsing_simple_form_statement() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("from: users | select: id name | where: id = 3 x = 4")
+            .parse("users | select: id name | where: id = 3 x = 4")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
@@ -557,7 +557,7 @@ mod tests {
     fn parse_limit_expression() {
         let parser = PestPineParser {};
         let pine_node = parser
-            .parse("from: users | select: id name | limit: 5")
+            .parse("users | select: id name | limit: 5")
             .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());

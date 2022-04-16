@@ -1,7 +1,7 @@
-pine = { SOI ~ operation ~ ("|" ~ operation)* ~ show_neighbours? ~ EOI }
-operation = _{ (from | select | unselect | filters | join | group_by | order | limit | compound_expression) }
+pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ show_neighbours? ~ EOI }
+operation = _{ (from | select | unselect | filters | join | group_by | order | limit | simple_compound_expression) }
 
-compound_expression = { table_name ~ (value | filter)* }
+simple_compound_expression = { table_name ~ (value | filter)* }
 
 // actual pines
 from = { ("from:" | "f:") ~ table_name }

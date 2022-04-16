@@ -10,14 +10,14 @@ mod tests {
 
     #[test]
     fn pest_syntax_is_ok() {
-        let result = PinePestParser::parse(Rule::pine, "from: users | from: tests | from: x");
+        let result = PinePestParser::parse(Rule::pine, "users | from: tests | from: x");
 
         assert!(result.is_ok());
     }
 
     #[test]
     fn shorthand_syntax_is_ok() {
-        let result = PinePestParser::parse(Rule::pine, "f: users | s: tests | w: x = 0");
+        let result = PinePestParser::parse(Rule::pine, "users | s: tests | w: x = 0");
 
         assert!(result.is_ok());
     }

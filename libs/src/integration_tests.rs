@@ -55,10 +55,6 @@ static TEST_SPECS: &str = r#"
     GROUP BY name
     LIMIT 10
 
-    s: 1
-    ====
-    SELECT 1
-
     humans | s: count(id) name | u: count(id)
     =========================================
     SELECT name
