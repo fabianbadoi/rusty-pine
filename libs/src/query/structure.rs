@@ -22,11 +22,24 @@ pub struct Query {
     pub selections: Vec<Operand>,
     pub unselections: Vec<Operand>,
     pub from: TableName,
-    pub joins: Vec<TableName>,
+    pub joins: Vec<Join>,
     pub filters: Vec<Filter>,
     pub group_by: Vec<Operand>,
     pub order: Vec<Order>,
     pub limit: usize,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Join {
+    Auto(TableName),
+    Explicit(JoinSpec)
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct JoinSpec {
+    pub from: TableName,
+    pub from_foreign_key: ColumnName,
+    pub to: TableName,
 }
 
 impl Default for Query {

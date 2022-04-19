@@ -268,7 +268,7 @@ impl std::fmt::Display for BinaryFilterType {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::query::Operand;
+    use crate::query::{Join, Operand};
     use crate::sql::shorthand::*;
     use crate::sql::structure::ForeignKey;
 
@@ -289,7 +289,7 @@ mod tests {
     fn join_to_unknown_table() {
         let renderer = make_renderer();
         let mut query = make_join_query();
-        query.joins[0] = "missing".to_string();
+        query.joins[0] = Join::Auto("missing".to_string());
 
         let error = renderer.render(&Renderable::Query(query)).unwrap_err();
 
@@ -338,7 +338,7 @@ mod tests {
 
         let renderer = make_renderer();
         let mut query = make_query();
-        query.joins.push("friends".to_owned());
+        query.joins.push(Join::Auto("friends".to_owned()));
         query.order.push(Order::Descending(Operand::Column(
             QualifiedColumnIdentifier {
                 table: "users".to_owned(),
@@ -373,7 +373,7 @@ mod tests {
             ],
         );
         let mut query: Query = query.into();
-        query.joins.push("friends".to_string());
+        query.joins.push(Join::Auto("friends".to_string()));
 
         query
     }

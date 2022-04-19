@@ -267,7 +267,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
     fn translate_joins(
         &self,
         from: &'t str,
-        joins: &'t [String],
+        joins: &'t [Join],
     ) -> Result<Vec<ExplicitJoin<'t>>, String> {
         // queries without a from: operation can just skip this step
         if from.is_empty() {
@@ -277,13 +277,29 @@ impl<'t> ExplicitQueryBuilder<'t> {
         self.ensure_all_join_tables_exist(from, joins)?;
 
         let finder = JoinFinder::new(&self.tables[..]);
-        let to: Vec<_> = joins
+        let unknown_joins = joins
             .iter()
-            .map(|table_name| table_name.as_ref())
-            .rev()
-            .collect();
+            .flat_map(|join| match join {
+                Join::Auto(table_name) => Some(table_name),
+                Join::Explicit(_) => None,
+            })
+            .map(|table_name| table_name.as_str())
+            .rev();
+        let auto_joins = finder.find(from, unknown_joins)?;
 
-        Ok(finder.find(from, to.as_ref())?)
+        let explicit_joins = joins
+            .iter()
+            .flat_map(|join| match join {
+                Join::Auto(_) => None,
+                Join::Explicit(join_spec) => Some(ExplicitJoin {
+                    from_table: &join_spec.from,
+                    from_column: &join_spec.from_foreign_key,
+                    to_table: &join_spec.to,
+                    to_column: "id",
+                }),
+            });
+
+        Ok(explicit_joins.chain(auto_joins).collect())
     }
 
     fn translate_group_by(&self, groups: &'t [Operand]) -> Vec<ExplicitOperand<'t>> {
@@ -349,10 +365,15 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
     /// Knowing if we can't find a table because it's misspelled or because it doesn't exist can
     /// make working with queries much simpler.
-    fn ensure_all_join_tables_exist(&self, from: &str, joins: &[String]) -> Result<(), String> {
+    fn ensure_all_join_tables_exist(&self, from: &str, joins: &[Join]) -> Result<(), String> {
         self.ensure_table_exists(from)?;
         joins
             .iter()
+            .map(|join| match join {
+                Join::Auto(table_name) => table_name,
+                // the .from table is already checked, so we only test the .to
+                Join::Explicit(join_spec) => &join_spec.to,
+            })
             .map(|join| self.ensure_table_exists(join))
             .collect::<Result<Vec<_>, _>>()?;
 
@@ -541,6 +562,8 @@ mod tests {
 
     #[test]
     fn can_build_direct_joins() {
+        use crate::query::Join;
+
         let tables = vec![
             Table {
                 name: "users".to_owned(),
@@ -553,7 +576,7 @@ mod tests {
                 foreign_keys: vec![(&("userId", ("users", "id"))).into()],
             },
         ];
-        let joins = vec!["friends".to_owned()];
+        let joins = vec![Join::Auto("friends".to_owned())];
         let builder = ExplicitQueryBuilder {
             tables: &tables[..],
             working_with_single_table: false,

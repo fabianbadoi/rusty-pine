@@ -83,6 +83,13 @@ static TEST_SPECS: &str = r#"
       humans.id using .friendB
       friendshipLog.friendshipId using .id
     */--
+
+    humans | friendMap.friendB
+    ==============================
+    SELECT friendMap.*
+    FROM friendMap
+    LEFT JOIN humans ON humans.id = friendMap.friendB
+    LIMIT 10
 "#;
 
 #[test]

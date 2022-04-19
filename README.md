@@ -3,7 +3,7 @@ Rusty Pine
 
 It turns this:
 ```
-from: users | select: id name | where: id = 3
+users | select: id name | where: id = 3
 ```
 Into this:
 ```sql

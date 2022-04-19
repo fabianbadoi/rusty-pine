@@ -11,6 +11,7 @@ pub struct Pine<'a> {
 pub enum Operation<'a> {
     From(Node<TableName<'a>>),
     Join(Node<TableName<'a>>),
+    ExplicitJoin(Node<TableName<'a>>, Node<ColumnName<'a>>),
     Select(Vec<Node<Operand<'a>>>),
     Unselect(Vec<Node<Operand<'a>>>),
     Filter(Vec<Node<Filter<'a>>>),
@@ -27,7 +28,7 @@ impl<'a> Operation<'a> {
 
         match self {
             From(_) => "from",
-            Join(_) => "join",
+            Join(_) | ExplicitJoin(_, _) => "join",
             Select(_) => "select",
             Unselect(_) => "unselect",
             Filter(_) => "filter",

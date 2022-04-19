@@ -16,9 +16,9 @@ impl<'t> JoinFinder<'t> {
     pub fn find(
         &self,
         from: &'t str,
-        to: &[&'t str],
+        to: impl IntoIterator<Item = &'t str> + Clone,
     ) -> Result<Vec<ExplicitJoin<'t>>, JoinsNotFound> {
-        info!("Finding joins between {}, {:?}", from, to);
+        info!("Finding from between {}", from);
 
         /*
          * join priority:
@@ -39,14 +39,17 @@ impl<'t> JoinFinder<'t> {
          */
         let from_as_array = [from]; // we need this to help the borrow checker;
 
-        let join_targets = to.iter();
-        let join_sources = from_as_array.iter().chain(to.iter());
+        let join_targets = to.clone().into_iter();
+        let join_sources = from_as_array.iter().cloned()
+            .chain(
+                to.into_iter()
+            );
         let join_table_pairs = join_sources.zip(join_targets);
 
         let joins = join_table_pairs.map(move |(table1, table2)| {
             self.find_join_for_tables(table1, table2)
                 // use (t1, t2) as an error type so we can construct a nice error message
-                .ok_or((*table1, *table2))
+                .ok_or((table1, table2))
         });
 
         self.potential_joins_to_result(joins)
@@ -192,7 +195,7 @@ mod tests {
         let tables = make_debug_tables();
         let join_finder = JoinFinder::new(&tables[..]);
 
-        let joins = join_finder.find(from, &to);
+        let joins = join_finder.find(from, to);
 
         assert!(joins.is_ok());
         assert!(joins.unwrap().is_empty());
@@ -205,7 +208,7 @@ mod tests {
         let tables = make_debug_tables();
         let join_finder = JoinFinder::new(&tables[..]);
 
-        let joins = join_finder.find(from, &to);
+        let joins = join_finder.find(from, to);
 
         assert!(joins.is_ok());
 
@@ -224,7 +227,7 @@ mod tests {
         let tables = make_debug_tables();
         let join_finder = JoinFinder::new(&tables[..]);
 
-        let joins = join_finder.find(from, &to);
+        let joins = join_finder.find(from, to);
 
         assert!(joins.is_err());
 
@@ -250,7 +253,7 @@ mod tests {
         let tables = make_debug_tables();
         let join_finder = JoinFinder::new(&tables[..]);
 
-        let joins = join_finder.find(from, &to);
+        let joins = join_finder.find(from, to);
 
         assert!(joins.is_ok());
 

@@ -1,15 +1,8 @@
 use super::BuildResult;
 use crate::error::Position;
 use crate::error::SyntaxError;
-use crate::pine_syntax::ast::{
-    ColumnIdentifier as AstColumnIdentifier, Filter as AstFilter, Node, Operand as AstOperand,
-    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName,
-    Value as AstValue,
-};
-use crate::query::{
-    Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier,
-    Query, Renderable,
-};
+use crate::pine_syntax::ast::{ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter, Node, Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue};
+use crate::query::{JoinSpec, Filter as SqlFilter, Join, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query, Renderable};
 use log::{debug, info};
 
 pub struct SingleUseQueryBuilder<'a> {
@@ -55,6 +48,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         match operation_node.inner {
             AstOperation::From(ref table) => self.apply_from(table),
             AstOperation::Join(ref table) => self.apply_join(table),
+            AstOperation::ExplicitJoin(ref table, ref column) => self.apply_explicit_join(table, column),
             AstOperation::Select(ref selections) => self.apply_selections(selections)?,
             AstOperation::Unselect(ref selections) => self.apply_unselections(selections)?,
             AstOperation::Filter(ref filters) => self.apply_filters(filters)?,
@@ -71,7 +65,7 @@ impl<'a> SingleUseQueryBuilder<'a> {
         debug!("Found from: {:?}", table);
 
         if let Some(table) = &self.from_table {
-            self.query.joins.push(table.clone());
+            self.query.joins.push(Join::Auto(table.clone()));
         }
 
         self.from_table = Some(table.inner.to_string());
@@ -82,6 +76,22 @@ impl<'a> SingleUseQueryBuilder<'a> {
         debug!("Found join: {:?}", table);
 
         self.apply_from(table);
+    }
+
+    fn apply_explicit_join(&mut self, new_from_table: &Node<TableName>, column: &Node<ColumnName>) {
+        debug!("Found explicit join: {:?}.{:?}", new_from_table, column);
+
+        let to_table = self.from_table
+            .replace(new_from_table.inner.to_string())
+            .expect("Pines with explicit joins but no from should not be possible");
+
+        self.query.joins.push(Join::Explicit(JoinSpec {
+            from: new_from_table.inner.to_string(),
+            from_foreign_key: column.inner.to_string(),
+            to: to_table,
+        }));
+
+        self.implicit_select_all_from_last_table = true;
     }
 
     fn apply_selections(&mut self, selections: &[Node<AstOperand>]) -> InternalResult {

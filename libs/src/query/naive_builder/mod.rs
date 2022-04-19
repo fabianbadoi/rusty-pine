@@ -36,7 +36,7 @@ mod tests {
         ColumnIdentifier as AstColumnIdentifier, Node, Operation as AstOperation,
         Order as AstOrder, Pine,
     };
-    use crate::query::{Filter as SqlFilter, Operand as SqlOperand, Order as SqlOrder};
+    use crate::query::{Filter as SqlFilter, Join, Operand as SqlOperand, Order as SqlOrder};
 
     #[test]
     fn build_from_query() {
@@ -144,7 +144,7 @@ mod tests {
         let query = query_builder.build(&pine).unwrap().query();
 
         assert_eq!(query.from, "friends");
-        assert_eq!(query.joins[0], "users");
+        assert_eq!(query.joins[0], Join::Auto("users".to_string()));
     }
 
     #[test]

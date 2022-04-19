@@ -105,6 +105,7 @@ impl Translator {
             Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
             Rule::simple_compound_expression => self.translate_simple_compound_expression(node),
+            Rule::explicit_join_compound_expression => self.translate_explicit_join_compound_expression(node),
             Rule::join => self.translate_join(node),
             Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
@@ -140,6 +141,19 @@ impl Translator {
         );
 
         vec![Operation::Join(table_name)]
+    }
+
+    fn translate_explicit_join<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let mut tokens = node.into_inner();
+
+        let table_name = translate_sql_name(
+            tokens
+                .next()
+                .expect("Found from without table name"),
+        );
+        let column_name= translate_sql_name(tokens.next().unwrap());
+
+        vec![Operation::ExplicitJoin(table_name, column_name)]
     }
 
     fn translate_selections<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
@@ -208,6 +222,25 @@ impl Translator {
         }
 
         operations
+    }
+
+    fn translate_explicit_join_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let mut tokens = node.into_inner();
+
+        expect_rule!(Rule::explicit_join_reference, tokens.peek().unwrap());
+
+        let vec_with_from = self.translate_explicit_join(tokens.next().unwrap());
+
+        let mut operations = vec_with_from;
+
+        let filters: Vec<_> = tokens.map(translate_filter_or_implicit_id).collect();
+
+        if !filters.is_empty() {
+            operations.push(Operation::Filter(filters));
+        }
+
+        operations
+
     }
 }
 
@@ -542,6 +575,21 @@ mod tests {
     fn parse_complex_compound_statement() {
         let parser = PestPineParser {};
         let pine_node = parser.parse("users 1 parent=33 | friends id = 1").unwrap();
+
+        assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
+        assert_eq!("join", pine_node.inner.operations[2].inner.get_name());
+        assert_eq!("filter", pine_node.inner.operations[3].inner.get_name());
+
+        if let Operation::Filter(ref filters) = pine_node.inner.operations[1].inner {
+            assert_eq!(2, filters.len());
+        }
+    }
+
+    #[test]
+    fn parse_explicit_join_compound_statement() {
+        let parser = PestPineParser {};
+        let pine_node = parser.parse("users 1 parent=33 | friends.parentId id = 1").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
