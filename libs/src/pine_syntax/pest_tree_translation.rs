@@ -105,7 +105,9 @@ impl Translator {
             Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
             Rule::simple_compound_expression => self.translate_simple_compound_expression(node),
-            Rule::explicit_join_compound_expression => self.translate_explicit_join_compound_expression(node),
+            Rule::explicit_join_compound_expression => {
+                self.translate_explicit_join_compound_expression(node)
+            }
             Rule::join => self.translate_join(node),
             Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
@@ -146,12 +148,8 @@ impl Translator {
     fn translate_explicit_join<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let mut tokens = node.into_inner();
 
-        let table_name = translate_sql_name(
-            tokens
-                .next()
-                .expect("Found from without table name"),
-        );
-        let column_name= translate_sql_name(tokens.next().unwrap());
+        let table_name = translate_sql_name(tokens.next().expect("Found from without table name"));
+        let column_name = translate_sql_name(tokens.next().unwrap());
 
         vec![Operation::ExplicitJoin(table_name, column_name)]
     }
@@ -202,7 +200,10 @@ impl Translator {
         vec![Operation::Filter(filters)]
     }
 
-    fn translate_simple_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+    fn translate_simple_compound_expression<'a>(
+        &mut self,
+        node: PestNode<'a>,
+    ) -> Vec<Operation<'a>> {
         let inner = node.clone().into_inner();
 
         expect_rule!(Rule::table_name, inner.peek().unwrap());
@@ -224,7 +225,10 @@ impl Translator {
         operations
     }
 
-    fn translate_explicit_join_compound_expression<'a>(&mut self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+    fn translate_explicit_join_compound_expression<'a>(
+        &mut self,
+        node: PestNode<'a>,
+    ) -> Vec<Operation<'a>> {
         let mut tokens = node.into_inner();
 
         expect_rule!(Rule::explicit_join_reference, tokens.peek().unwrap());
@@ -240,7 +244,6 @@ impl Translator {
         }
 
         operations
-
     }
 }
 
@@ -273,9 +276,9 @@ fn translate_function_call(node: PestNode) -> Node<Operand> {
     let mut parts = node.into_inner();
 
     let function_name = translate_sql_name(parts.next().unwrap());
-    let column = translate_identified_column(parts.next().unwrap());
+    let operand = translate_function_operand(parts.next().unwrap());
 
-    let inner = Operand::FunctionCall(function_name, column);
+    let inner = Operand::FunctionCall(function_name, operand);
 
     Node { position, inner }
 }
@@ -357,6 +360,27 @@ fn translate_identified_column(node: PestNode) -> Node<ColumnIdentifier> {
     }
 }
 
+fn translate_function_operand(node: PestNode) -> Node<FunctionOperand> {
+    expect_rule!(Rule::function_operand, node);
+
+    let position = position(&node);
+    let inner = node.into_inner().next().unwrap();
+
+    let node = match inner.as_rule() {
+        Rule::identified_column => {
+            let column = translate_implicit_column(inner.into_inner().next().unwrap());
+            FunctionOperand::Identifier(column)
+        }
+        Rule::constant => FunctionOperand::Constant(translate_constant(inner)),
+        _ => panic!("Unexpected rule: {:?}", inner.as_rule()),
+    };
+
+    Node {
+        inner: node,
+        position,
+    }
+}
+
 fn translate_ordering(node: PestNode) -> Node<Order> {
     expect_rule!(Rule::ordering, node);
 
@@ -414,6 +438,15 @@ fn translate_implicit_column(node: PestNode) -> Node<ColumnIdentifier> {
 
     let position = position(&node);
     let inner = ColumnIdentifier::Implicit(translate_sql_name(node));
+
+    Node { position, inner }
+}
+
+fn translate_constant(node: PestNode) -> Node<crate::pine_syntax::ast::Constant> {
+    expect_rule!(Rule::constant, node);
+
+    let position = position(&node);
+    let inner = node.as_str();
 
     Node { position, inner }
 }
@@ -589,7 +622,9 @@ mod tests {
     #[test]
     fn parse_explicit_join_compound_statement() {
         let parser = PestPineParser {};
-        let pine_node = parser.parse("users 1 parent=33 | friends.parentId id = 1").unwrap();
+        let pine_node = parser
+            .parse("users 1 parent=33 | friends.parentId id = 1")
+            .unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("filter", pine_node.inner.operations[1].inner.get_name());
@@ -604,9 +639,7 @@ mod tests {
     #[test]
     fn parse_limit_expression() {
         let parser = PestPineParser {};
-        let pine_node = parser
-            .parse("users | select: id name | limit: 5")
-            .unwrap();
+        let pine_node = parser.parse("users | select: id name | limit: 5").unwrap();
 
         assert_eq!("from", pine_node.inner.operations[0].inner.get_name());
         assert_eq!("select", pine_node.inner.operations[1].inner.get_name());

@@ -3,6 +3,7 @@ use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
 use crate::query::{Query, Renderable};
+use crate::sql::contextual_renderer::explicit_representation::ExplicitFunctionOperand;
 use crate::sql::contextual_renderer::neighbours::render_neighbours;
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
@@ -118,8 +119,13 @@ fn render_column(column: &ExplicitColumn) -> String {
     }
 }
 
-fn render_function_call(function_name: &str, column: &ExplicitColumn) -> String {
-    format!("{}({})", function_name, render_column(column))
+fn render_function_call(function_name: &str, function_operand: &ExplicitFunctionOperand) -> String {
+    let rendered_operand = match function_operand {
+        ExplicitFunctionOperand::Column(column) => render_column(column),
+        ExplicitFunctionOperand::Constant(constant) => constant.to_string(),
+    };
+
+    format!("{}({})", function_name, rendered_operand)
 }
 
 fn render_from(table: &str) -> String {

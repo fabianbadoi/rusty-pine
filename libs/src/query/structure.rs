@@ -32,7 +32,7 @@ pub struct Query {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Join {
     Auto(TableName),
-    Explicit(JoinSpec)
+    Explicit(JoinSpec),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -61,7 +61,13 @@ impl Default for Query {
 pub enum Operand {
     Value(Value),
     Column(QualifiedColumnIdentifier),
-    FunctionCall(FunctionName, QualifiedColumnIdentifier),
+    FunctionCall(FunctionName, FunctionOperand),
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum FunctionOperand {
+    Column(QualifiedColumnIdentifier),
+    Constant(Value),
 }
 
 #[derive(Debug, PartialEq, Eq)]

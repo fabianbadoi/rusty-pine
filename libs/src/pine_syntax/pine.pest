@@ -19,8 +19,12 @@ show_neighbours = { "|" } // ending a query in a pipe shows connected tables
 
 operand = { function_call | identified_column | value }
 
-function_call = { function_name ~ "(" ~ identified_column ~ ")" }
+function_call = { function_name ~ "(" ~ function_operand ~ ")" }
 function_name = @{ sql_name }
+function_operand = { identified_column | constant }
+
+constant = { number }
+number = { ("+"|"-")? ~ ASCII_DIGIT+ }
 
 // identifiers
 table_name = { sql_name }

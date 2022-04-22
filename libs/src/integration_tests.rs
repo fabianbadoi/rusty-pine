@@ -90,6 +90,12 @@ static TEST_SPECS: &str = r#"
     FROM friendMap
     LEFT JOIN humans ON humans.id = friendMap.friendB
     LIMIT 10
+
+    humans | s: count(1)
+    ==============================
+    SELECT count(1)
+    FROM humans
+    LIMIT 10
 "#;
 
 #[test]

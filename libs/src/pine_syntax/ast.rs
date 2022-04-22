@@ -44,7 +44,7 @@ impl<'a> Operation<'a> {
 pub enum Operand<'a> {
     Value(Node<Value<'a>>),
     Column(Node<ColumnIdentifier<'a>>),
-    FunctionCall(Node<FunctionName<'a>>, Node<ColumnIdentifier<'a>>),
+    FunctionCall(Node<FunctionName<'a>>, Node<FunctionOperand<'a>>),
 }
 
 #[derive(Debug)]
@@ -71,10 +71,17 @@ pub enum ColumnIdentifier<'a> {
     Explicit(Node<TableName<'a>>, Node<ColumnName<'a>>),
 }
 
+#[derive(Debug)]
+pub enum FunctionOperand<'a> {
+    Identifier(Node<ColumnIdentifier<'a>>),
+    Constant(Node<Constant<'a>>),
+}
+
 pub type Identifier<'a> = InputType<'a>;
 pub type TableName<'a> = Identifier<'a>;
 pub type ColumnName<'a> = Identifier<'a>;
 pub type FunctionName<'a> = Identifier<'a>;
+pub type Constant<'a> = InputType<'a>;
 pub type InputType<'a> = &'a str;
 
 #[derive(Debug, Default)]

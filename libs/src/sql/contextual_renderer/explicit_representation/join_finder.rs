@@ -40,10 +40,7 @@ impl<'t> JoinFinder<'t> {
         let from_as_array = [from]; // we need this to help the borrow checker;
 
         let join_targets = to.clone().into_iter();
-        let join_sources = from_as_array.iter().cloned()
-            .chain(
-                to.into_iter()
-            );
+        let join_sources = from_as_array.iter().cloned().chain(to.into_iter());
         let join_table_pairs = join_sources.zip(join_targets);
 
         let joins = join_table_pairs.map(move |(table1, table2)| {

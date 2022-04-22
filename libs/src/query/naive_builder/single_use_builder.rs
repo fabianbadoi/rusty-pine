@@ -1,8 +1,15 @@
 use super::BuildResult;
 use crate::error::Position;
 use crate::error::SyntaxError;
-use crate::pine_syntax::ast::{ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter, Node, Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue};
-use crate::query::{JoinSpec, Filter as SqlFilter, Join, Operand as SqlOperand, Order as SqlOrder, QualifiedColumnIdentifier, Query, Renderable};
+use crate::pine_syntax::ast::{
+    ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter,
+    FunctionOperand as AstFunctionOperand, Node, Operand as AstOperand, Operation as AstOperation,
+    Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue,
+};
+use crate::query::{
+    Filter as SqlFilter, FunctionOperand, Join, JoinSpec, Operand as SqlOperand, Order as SqlOrder,
+    QualifiedColumnIdentifier, Query, Renderable,
+};
 use log::{debug, info};
 
 pub struct SingleUseQueryBuilder<'a> {
@@ -48,7 +55,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
         match operation_node.inner {
             AstOperation::From(ref table) => self.apply_from(table),
             AstOperation::Join(ref table) => self.apply_join(table),
-            AstOperation::ExplicitJoin(ref table, ref column) => self.apply_explicit_join(table, column),
+            AstOperation::ExplicitJoin(ref table, ref column) => {
+                self.apply_explicit_join(table, column)
+            }
             AstOperation::Select(ref selections) => self.apply_selections(selections)?,
             AstOperation::Unselect(ref selections) => self.apply_unselections(selections)?,
             AstOperation::Filter(ref filters) => self.apply_filters(filters)?,
@@ -81,7 +90,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
     fn apply_explicit_join(&mut self, new_from_table: &Node<TableName>, column: &Node<ColumnName>) {
         debug!("Found explicit join: {:?}.{:?}", new_from_table, column);
 
-        let to_table = self.from_table
+        let to_table = self
+            .from_table
             .replace(new_from_table.inner.to_string())
             .expect("Pines with explicit joins but no from should not be possible");
 
@@ -226,9 +236,11 @@ impl<'a> SingleUseQueryBuilder<'a> {
             }
             AstOperand::FunctionCall(function_name, column) => {
                 let default_table = self.require_table(column.position)?;
+                let function_operand = translate_function_operand(&column.inner, default_table);
+
                 SqlOperand::FunctionCall(
                     function_name.inner.to_string(),
-                    translate_column_identifier(&column.inner, default_table),
+                    function_operand, // translate_column_identifier(&column.inner, default_table),
                 )
             }
         };
@@ -321,6 +333,20 @@ fn translate_column_identifier(
     };
 
     QualifiedColumnIdentifier { table, column }
+}
+
+fn translate_function_operand(
+    operand: &AstFunctionOperand,
+    default_table: &str,
+) -> FunctionOperand {
+    match operand {
+        AstFunctionOperand::Identifier(identifier) => FunctionOperand::Column(
+            translate_column_identifier(&identifier.inner, default_table),
+        ),
+        AstFunctionOperand::Constant(constant) => {
+            FunctionOperand::Constant(constant.inner.to_string())
+        }
+    }
 }
 
 type InternalResult = Result<(), SyntaxError>;

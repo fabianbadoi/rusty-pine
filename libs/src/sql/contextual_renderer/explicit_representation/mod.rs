@@ -4,6 +4,7 @@
 //!     - determining if we will select 'table.column' or just 'column'
 //!     - figuring out how to exactly to do joins
 use crate::common::{BinaryFilterType, UnaryFilterType};
+use crate::query::FunctionOperand as QueryFunctionOperand;
 use crate::query::*;
 use crate::sql::structure::{Column, ForeignKey, Table};
 use join_finder::JoinFinder;
@@ -26,7 +27,13 @@ pub struct ExplicitQuery<'a> {
 pub enum ExplicitOperand<'a> {
     Value(&'a str),
     Column(ExplicitColumn),
-    FunctionCall(&'a str, ExplicitColumn),
+    FunctionCall(&'a str, ExplicitFunctionOperand<'a>),
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub enum ExplicitFunctionOperand<'a> {
+    Column(ExplicitColumn),
+    Constant(&'a str),
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
@@ -287,17 +294,15 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .rev();
         let auto_joins = finder.find(from, unknown_joins)?;
 
-        let explicit_joins = joins
-            .iter()
-            .flat_map(|join| match join {
-                Join::Auto(_) => None,
-                Join::Explicit(join_spec) => Some(ExplicitJoin {
-                    from_table: &join_spec.from,
-                    from_column: &join_spec.from_foreign_key,
-                    to_table: &join_spec.to,
-                    to_column: "id",
-                }),
-            });
+        let explicit_joins = joins.iter().flat_map(|join| match join {
+            Join::Auto(_) => None,
+            Join::Explicit(join_spec) => Some(ExplicitJoin {
+                from_table: &join_spec.from,
+                from_column: &join_spec.from_foreign_key,
+                to_table: &join_spec.to,
+                to_column: "id",
+            }),
+        });
 
         Ok(explicit_joins.chain(auto_joins).collect())
     }
@@ -331,10 +336,26 @@ impl<'t> ExplicitQueryBuilder<'t> {
         match operand {
             Operand::Value(value) => ExplicitOperand::Value(value.as_ref()),
             Operand::Column(column) => ExplicitOperand::Column(self.make_explicit_column(column)),
-            Operand::FunctionCall(function_name, column) => ExplicitOperand::FunctionCall(
-                function_name.as_str(),
-                self.make_explicit_column(column),
-            ),
+            Operand::FunctionCall(function_name, function_operand) => {
+                ExplicitOperand::FunctionCall(
+                    function_name.as_str(),
+                    self.make_function_operand(function_operand),
+                )
+            }
+        }
+    }
+
+    fn make_function_operand(
+        &self,
+        function_operand: &'t QueryFunctionOperand,
+    ) -> ExplicitFunctionOperand<'t> {
+        match function_operand {
+            QueryFunctionOperand::Column(column) => {
+                ExplicitFunctionOperand::Column(self.make_explicit_column(column))
+            }
+            QueryFunctionOperand::Constant(constant) => {
+                ExplicitFunctionOperand::Constant(constant.as_str())
+            }
         }
     }
 
@@ -379,7 +400,6 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
         Ok(())
     }
-
     fn ensure_table_exists(&self, table_name: &str) -> Result<(), String> {
         let exists = self.tables.iter().any(|table| table.name == table_name);
 
@@ -422,6 +442,19 @@ impl PartialEq<Operand> for ExplicitOperand<'_> {
             }
             (S::Value(s_value), O::Value(o_value)) => s_value == o_value,
             _ => false,
+        }
+    }
+}
+
+impl PartialEq<QueryFunctionOperand> for ExplicitFunctionOperand<'_> {
+    fn eq(&self, other: &QueryFunctionOperand) -> bool {
+        use ExplicitFunctionOperand as EFO;
+        use QueryFunctionOperand as QFO;
+
+        match (self, other) {
+            (EFO::Column(self_column), QFO::Column(other_column)) => self_column == other_column,
+            (EFO::Constant(self_const), QFO::Constant(other_const)) => self_const == other_const,
+            (_, _) => false,
         }
     }
 }
