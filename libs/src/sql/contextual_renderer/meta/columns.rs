@@ -10,12 +10,15 @@ pub fn render_columns(table: &str, table_specs: &[Table]) -> Result<String, Pine
 
     let table_spec = table_spec.unwrap();
 
-    let column_list = table_spec.columns
+    let column_list = table_spec
+        .columns
         .iter()
         .map(|c| c.name.as_str())
         .collect::<Vec<_>>()
         .join("\n  ");
 
-
-    Ok(format!("/*\nColumns for `{}`:\n  {}\n*/--", table, column_list))
+    Ok(format!(
+        "/*\nColumns for `{}`:\n  {}\n*/--",
+        table, column_list
+    ))
 }

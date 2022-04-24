@@ -2,7 +2,11 @@ use crate::pine_syntax::ast::{MetaOperation, Node, Operation, Pine};
 use crate::query::{Renderable, RenderableMetaOperation, TableName};
 
 pub fn build_meta_query(pine: &Node<Pine>) -> Renderable {
-    if let Some(Node { inner: Operation::Meta(meta_op), ..}) = pine.last_operation() {
+    if let Some(Node {
+        inner: Operation::Meta(meta_op),
+        ..
+    }) = pine.last_operation()
+    {
         let meta_op = match meta_op {
             MetaOperation::ShowNeighbours(_) => build_neighbours_query(pine),
             MetaOperation::ShowColumns(_) => build_columns_query(pine),
@@ -24,9 +28,8 @@ fn build_neighbours_query(pine: &Node<Pine>) -> RenderableMetaOperation {
 
 fn last_table(pine: &Pine) -> TableName {
     for operation in pine.operations.iter().rev() {
-        if let Operation::Join(table_node) | Operation::From(table_node)
-            = &operation.inner {
-            return table_node.inner.to_string()
+        if let Operation::Join(table_node) | Operation::From(table_node) = &operation.inner {
+            return table_node.inner.to_string();
         }
     }
 
@@ -37,7 +40,7 @@ fn last_table(pine: &Pine) -> TableName {
 mod test {
     use crate::pine_syntax::ast::{MetaOperation, Node, Operation, Pine};
     use crate::query::naive_builder::neighbour_builder::build_neighbours_query;
-    use crate::query::{RenderableMetaOperation};
+    use crate::query::RenderableMetaOperation;
 
     #[test]
     fn test_builds_neighbour_query() {

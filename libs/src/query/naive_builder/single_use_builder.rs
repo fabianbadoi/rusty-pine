@@ -1,7 +1,12 @@
 use super::BuildResult;
 use crate::error::Position;
 use crate::error::SyntaxError;
-use crate::pine_syntax::ast::{ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter, FunctionOperand as AstFunctionOperand, MetaOperation, Node, Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue};
+use crate::pine_syntax::ast::{
+    ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter,
+    FunctionOperand as AstFunctionOperand, MetaOperation, Node, Operand as AstOperand,
+    Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, TableName,
+    Value as AstValue,
+};
 use crate::query::{
     Filter as SqlFilter, FunctionOperand, Join, JoinSpec, Operand as SqlOperand, Order as SqlOrder,
     QualifiedColumnIdentifier, Query, Renderable,
