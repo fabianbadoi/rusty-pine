@@ -100,19 +100,25 @@ impl Translator {
     fn translate_operation<'a>(&mut self, node: PestNode<'a>) -> Vec<Node<Operation<'a>>> {
         let position = position(&node);
         let operations = match node.as_rule() {
+            // simple operations
             Rule::from => self.translate_from(node),
             Rule::select => self.translate_selections(node),
             Rule::unselect => self.translate_unselect(node),
             Rule::filters => self.translate_filters(node),
-            Rule::simple_compound_expression => self.translate_simple_compound_expression(node),
-            Rule::explicit_join_compound_expression => {
-                self.translate_explicit_join_compound_expression(node)
-            }
             Rule::join => self.translate_join(node),
             Rule::group_by => self.translate_group_by(node),
             Rule::order => self.translate_order(node),
             Rule::limit => self.translate_limit(node),
+
+            // compound operations
+            Rule::simple_compound_expression => self.translate_simple_compound_expression(node),
+            Rule::explicit_join_compound_expression => {
+                self.translate_explicit_join_compound_expression(node)
+            }
+
+            // meta operations
             Rule::show_neighbours => self.translate_show_neighbours(node),
+
             Rule::EOI => Vec::new(),
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
         };
