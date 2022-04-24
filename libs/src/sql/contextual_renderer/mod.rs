@@ -2,18 +2,15 @@ use super::structure::Table;
 use super::Renderer;
 use crate::common::{BinaryFilterType, UnaryFilterType};
 use crate::error::PineError;
-use crate::query::{Query, Renderable, RenderableMetaOperation};
+use crate::query::{Query, Renderable};
 use crate::sql::contextual_renderer::explicit_representation::ExplicitFunctionOperand;
-use crate::sql::contextual_renderer::neighbours::render_neighbours;
 use explicit_representation::{
     ExplicitColumn, ExplicitFilter, ExplicitJoin, ExplicitOperand, ExplicitOrder, ExplicitQuery,
     ExplicitQueryBuilder,
 };
 use log::info;
-use crate::sql::contextual_renderer::meta::render_columns;
 
 mod explicit_representation;
-mod neighbours;
 mod meta;
 
 #[derive(Debug)]
@@ -31,19 +28,12 @@ impl Renderer<Renderable, String> for &SmartRenderer {
 
                 Ok(self.render_explicit_query(&explicit_query))
             }
-            Renderable::Meta(meta_op) => render_meta_operation(meta_op, &self.tables),
+            Renderable::Meta(meta_op) => meta::render_meta_operation(meta_op, &self.tables),
         };
 
         info!("Rendering done");
 
         rendering
-    }
-}
-
-pub fn render_meta_operation(meta_op: &RenderableMetaOperation, table_specs: &[Table]) -> Result<String, PineError> {
-    match meta_op {
-        RenderableMetaOperation::ShowNeighbours(table) => render_neighbours(table, table_specs),
-        RenderableMetaOperation::ShowColumns(table) => render_columns(table, table_specs),
     }
 }
 
