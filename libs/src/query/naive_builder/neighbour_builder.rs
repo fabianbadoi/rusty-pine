@@ -1,30 +1,43 @@
-use crate::error::SyntaxError;
-use crate::pine_syntax::ast::{Node, Operation, Pine};
-use crate::query::{BuildResult, Renderable};
+use crate::pine_syntax::ast::{MetaOperation, Node, Operation, Pine};
+use crate::query::{Renderable, RenderableMetaOperation, TableName};
 
-pub fn build_neighbours_query(pine: &Node<Pine>) -> BuildResult {
-    let mut reverse = pine.inner.operations.iter().rev();
-    let marker = reverse.next().unwrap();
+pub fn build_meta_query(pine: &Node<Pine>) -> Renderable {
+    if let Some(Node { inner: Operation::Meta(meta_op), ..}) = pine.last_operation() {
+        let meta_op = match meta_op {
+            MetaOperation::ShowNeighbours(_) => build_neighbours_query(pine),
+            MetaOperation::ShowColumns(_) => build_columns_query(pine),
+        };
 
-    for operation in reverse {
-        if let Operation::Join(table_node) | Operation::From(table_node) = &operation.inner {
-            return Ok(Renderable::ShowNeighbours(table_node.inner.to_owned()));
+        Renderable::Meta(meta_op)
+    } else {
+        panic!("found non-meta operation in build_meta_query")
+    }
+}
+
+fn build_columns_query(pine: &Node<Pine>) -> RenderableMetaOperation {
+    RenderableMetaOperation::ShowColumns(last_table(&pine.inner))
+}
+
+fn build_neighbours_query(pine: &Node<Pine>) -> RenderableMetaOperation {
+    RenderableMetaOperation::ShowNeighbours(last_table(&pine.inner))
+}
+
+fn last_table(pine: &Pine) -> TableName {
+    for operation in pine.operations.iter().rev() {
+        if let Operation::Join(table_node) | Operation::From(table_node)
+            = &operation.inner {
+            return table_node.inner.to_string()
         }
     }
 
-    Err(SyntaxError::Positioned {
-        message: "Must specify a table with from:".to_string(),
-        position: marker.position,
-        input: pine.inner.pine_string.to_string(),
-    }
-    .into())
+    panic!("All pines must have at least one table")
 }
 
 #[cfg(test)]
 mod test {
-    use crate::pine_syntax::ast::{Node, Operation, Pine};
+    use crate::pine_syntax::ast::{MetaOperation, Node, Operation, Pine};
     use crate::query::naive_builder::neighbour_builder::build_neighbours_query;
-    use crate::query::Renderable;
+    use crate::query::{RenderableMetaOperation};
 
     #[test]
     fn test_builds_neighbour_query() {
@@ -39,7 +52,7 @@ mod test {
                         position: Default::default(),
                     },
                     Node {
-                        inner: Operation::ShowNeighbours(Default::default()),
+                        inner: Operation::Meta(MetaOperation::ShowNeighbours(Default::default())),
                         position: Default::default(),
                     },
                 ],
@@ -51,8 +64,8 @@ mod test {
         let result = build_neighbours_query(&pine);
 
         assert_eq!(
-            result.unwrap(),
-            Renderable::ShowNeighbours("table_name".to_string())
+            result,
+            RenderableMetaOperation::ShowNeighbours("table_name".to_string())
         );
     }
 }

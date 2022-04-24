@@ -118,6 +118,7 @@ impl Translator {
 
             // meta operations
             Rule::show_neighbours => self.translate_show_neighbours(node),
+            Rule::show_columns => self.translate_show_columns(node),
 
             Rule::EOI => Vec::new(),
             _ => panic!("Expected a operation variant, got '{:?}'", node.as_rule()),
@@ -194,10 +195,13 @@ impl Translator {
     fn translate_show_neighbours<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
         let position = position(&node);
 
-        vec![Operation::ShowNeighbours(Node {
-            inner: (),
-            position,
-        })]
+        vec![Operation::Meta(MetaOperation::ShowNeighbours(position))]
+    }
+
+    fn translate_show_columns<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {
+        let position = position(&node);
+
+        vec![Operation::Meta(MetaOperation::ShowColumns(position))]
     }
 
     fn translate_filters<'a>(&self, node: PestNode<'a>) -> Vec<Operation<'a>> {

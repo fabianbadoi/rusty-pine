@@ -96,6 +96,24 @@ static TEST_SPECS: &str = r#"
     SELECT count(1)
     FROM humans
     LIMIT 10
+
+    humans | c?
+    ==============================
+    /*
+    Columns for `humans`:
+      id
+      name
+      email
+      isBlue
+      age
+    */--
+
+    humans | c? | preferences
+    ====================
+    SELECT preferences.*
+    FROM preferences
+    LEFT JOIN humans ON humans.id = preferences.humanId
+    LIMIT 10
 "#;
 
 #[test]

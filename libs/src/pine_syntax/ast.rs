@@ -18,7 +18,7 @@ pub enum Operation<'a> {
     GroupBy(Vec<Node<Operand<'a>>>),
     Order(Vec<Node<Order<'a>>>),
     Limit(Node<Value<'a>>),
-    ShowNeighbours(Node<()>),
+    Meta(MetaOperation),
 }
 
 impl<'a> Operation<'a> {
@@ -35,7 +35,23 @@ impl<'a> Operation<'a> {
             GroupBy(_) => "group by",
             Order(_) => "order",
             Limit(_) => "limit",
-            ShowNeighbours(_) => "show neighbours",
+            Meta(meta_operation) => meta_operation.get_name(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum MetaOperation {
+    ShowNeighbours(Position),
+    ShowColumns(Position),
+}
+
+impl MetaOperation {
+    #[cfg(test)]
+    pub fn get_name(&self) -> &'static str {
+        match self {
+            MetaOperation::ShowNeighbours(_) => "show neighbours",
+            MetaOperation::ShowColumns(_) => "show columns",
         }
     }
 }

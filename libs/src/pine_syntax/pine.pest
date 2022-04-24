@@ -1,9 +1,10 @@
-pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ meta_operation? ~ EOI }
+pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
 
-operation = _{ simple_operation | compound_operation }
+operation = _{ meta_operation | simple_operation | compound_operation }
 simple_operation = _{ from | select | unselect | filters | join | group_by | order | limit }
 compound_operation = _{ explicit_join_compound_expression | simple_compound_expression }
-meta_operation = _{ show_neighbours }
+meta_operation = _{ show_columns }
+terminal_meta_operation = _{ show_neighbours }
 
 simple_compound_expression = { table_name ~ (value | filter)* }
 explicit_join_compound_expression = { explicit_join_reference  ~ (value | filter)* }
@@ -18,7 +19,9 @@ filters = { ("where:" | "w:") ~ filter+ }
 group_by = { ("group:" | "g:") ~ operand+ }
 order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
 limit = { ("limit:" | "l:") ~ numeric_value }
+
 show_neighbours = { "|" } // ending a query in a pipe shows connected tables
+show_columns = { "columns?:" | "c?" }
 
 operand = { function_call | identified_column | value }
 

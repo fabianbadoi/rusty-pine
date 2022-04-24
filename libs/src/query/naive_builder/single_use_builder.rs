@@ -1,11 +1,7 @@
 use super::BuildResult;
 use crate::error::Position;
 use crate::error::SyntaxError;
-use crate::pine_syntax::ast::{
-    ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter,
-    FunctionOperand as AstFunctionOperand, Node, Operand as AstOperand, Operation as AstOperation,
-    Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue,
-};
+use crate::pine_syntax::ast::{ColumnIdentifier as AstColumnIdentifier, ColumnName, Filter as AstFilter, FunctionOperand as AstFunctionOperand, MetaOperation, Node, Operand as AstOperand, Operation as AstOperation, Order as AstOrder, Pine, TableName as AstTableName, TableName, Value as AstValue};
 use crate::query::{
     Filter as SqlFilter, FunctionOperand, Join, JoinSpec, Operand as SqlOperand, Order as SqlOrder,
     QualifiedColumnIdentifier, Query, Renderable,
@@ -64,7 +60,8 @@ impl<'a> SingleUseQueryBuilder<'a> {
             AstOperation::GroupBy(ref group_by) => self.apply_group_by(group_by)?,
             AstOperation::Order(ref orders) => self.apply_orders(orders)?,
             AstOperation::Limit(ref limit) => self.apply_limit(limit)?,
-            AstOperation::ShowNeighbours(ref marker) => self.apply_show_neighbours(marker)?,
+
+            AstOperation::Meta(ref meta) => self.apply_meta_operation(meta),
         };
 
         Ok(())
@@ -205,8 +202,9 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
     }
 
-    fn apply_show_neighbours(&mut self, _: &Node<()>) -> Result<(), SyntaxError> {
-        panic!("This class does not handle show_neighbours statements.")
+    fn apply_meta_operation(&self, _: &MetaOperation) {
+        // we ignore meta operations here
+        // they only have effects as the last part of the Pine
     }
 
     fn translate_filter(&self, filter_node: &Node<AstFilter>) -> Result<SqlFilter, SyntaxError> {

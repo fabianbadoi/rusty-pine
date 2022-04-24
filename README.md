@@ -78,7 +78,7 @@ TODO:
 - [x] Group on a column
 - [x] Meta function show neighbors
 - [x] Run without connection
-- [ ] Meta function show columns
+- [x] Meta function show columns
 - [ ] How to use
 - [ ] Examples
 - [ ] Read from stdin

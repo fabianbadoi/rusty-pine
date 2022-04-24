@@ -3,7 +3,13 @@ use crate::common::{BinaryFilterType, UnaryFilterType};
 #[derive(Debug, Eq, PartialEq)]
 pub enum Renderable {
     Query(Query),
+    Meta(RenderableMetaOperation),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum RenderableMetaOperation {
     ShowNeighbours(TableName),
+    ShowColumns(TableName),
 }
 
 #[cfg(test)]
@@ -12,7 +18,7 @@ impl Renderable {
     pub fn query(self) -> Query {
         match self {
             Renderable::Query(query) => query,
-            Renderable::ShowNeighbours(_) => panic!("incorrect call of .query() on ShowNeighbours"),
+            Renderable::Meta(_) => panic!("incorrect call of .query() on meta operation"),
         }
     }
 }

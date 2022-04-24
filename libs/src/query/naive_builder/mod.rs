@@ -3,7 +3,7 @@ mod single_use_builder;
 
 use super::{BuildResult, QueryBuilder};
 use crate::pine_syntax::ast::{Node, Operation, Pine};
-use crate::query::naive_builder::neighbour_builder::build_neighbours_query;
+use crate::query::naive_builder::neighbour_builder::build_meta_query;
 use single_use_builder::SingleUseQueryBuilder;
 
 /// Has no concept of context, more complex queries will fail to build
@@ -14,9 +14,9 @@ impl QueryBuilder for &NaiveBuilder {
     fn build(self, pine: &Node<Pine>) -> BuildResult {
         match pine.last_operation() {
             Some(Node {
-                inner: Operation::ShowNeighbours(_),
+                inner: Operation::Meta(_),
                 ..
-            }) => build_neighbours_query(pine),
+            }) => Ok(build_meta_query(pine)),
             _ => {
                 let builder = SingleUseQueryBuilder::new(pine);
 
