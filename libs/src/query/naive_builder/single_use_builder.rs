@@ -17,7 +17,7 @@ pub struct SingleUseQueryBuilder<'a> {
     /// The pine we're going through
     pine: &'a Node<Pine<'a>>,
 
-    /// This is the query currenly being built.
+    /// This is the query currently being built.
     query: Query,
 
     /// Holds the initial table, pines that don't have one are invalid
@@ -152,14 +152,6 @@ impl<'a> SingleUseQueryBuilder<'a> {
         }
 
         self.add_group_by(groups)?;
-
-        // this isn't that pretty, but it's the simplest solution
-        // if we don't push this here, we have to analyze all selections in the finalize() function
-        // to know if we should add it there.
-        // if we remove this, you will only your group by column in the select
-        if self.query.selections.is_empty() {
-            self.push_implicit_select_all();
-        }
 
         self.apply_selections(groups)
     }

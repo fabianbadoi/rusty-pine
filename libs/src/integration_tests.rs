@@ -55,6 +55,13 @@ static TEST_SPECS: &str = r#"
     GROUP BY name
     LIMIT 10
 
+    humans | g: name | s: count(id)
+    ===============================
+    SELECT name, count(id)
+    FROM humans
+    GROUP BY name
+    LIMIT 10
+
     humans | s: count(id) name | u: count(id)
     =========================================
     SELECT name
@@ -63,7 +70,7 @@ static TEST_SPECS: &str = r#"
 
     humans | g: count(id)
     =====================
-    SELECT *, count(id)
+    SELECT count(id)
     FROM humans
     GROUP BY count(id)
     LIMIT 10
