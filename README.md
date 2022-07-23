@@ -32,7 +32,7 @@ Setup
 }
 ```
 4. Run the analyze command from `target/release/analyze`, run this again after DB changes
-5. Run `target/release/main "users email='spam@office.com'"
+5. Run `target/release/main "users db-name email='spam@office.com'"
 
 
 Logging

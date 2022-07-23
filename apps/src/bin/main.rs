@@ -7,9 +7,14 @@ use rusty_pine_lib::{offline, Transpiler};
 fn main() {
     pretty_env_logger::init();
 
-    let transpiler = offline(&read_config(), "penneo").unwrap();
+    let database = match get_database() {
+        Some(string) => string,
+        None => return,
+    };
 
-    let input = match get_input() {
+    let transpiler = offline(&read_config(), database.as_str()).unwrap();
+
+    let input = match get_input_pine() {
         Some(string) => string,
         None => return,
     };
@@ -20,6 +25,10 @@ fn main() {
     }
 }
 
-fn get_input() -> Option<String> {
+fn get_database() -> Option<String> {
     std::env::args().nth(1)
+}
+
+fn get_input_pine() -> Option<String> {
+    std::env::args().nth(2)
 }
