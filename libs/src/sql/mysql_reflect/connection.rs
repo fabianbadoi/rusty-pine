@@ -34,7 +34,7 @@ impl LiveConnection {
     }
 }
 
-const MYSQL_BUILTIN_DATABASES: [&str; 3] = ["mysql", "information_schema", "performance_schema"];
+const MYSQL_BUILTIN_DATABASES: [&str; 4] = ["mysql", "information_schema", "performance_schema", "sys"];
 impl Connection for LiveConnection {
     fn databases(&self) -> Result<Vec<String>, PineError> {
         let query_result = self.pool.get_conn().unwrap().exec(r"show databases;", ())?;
