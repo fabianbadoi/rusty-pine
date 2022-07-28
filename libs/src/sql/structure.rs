@@ -13,6 +13,7 @@ pub struct Column {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: String, // TODO: TableName?
+    pub primary_key: Column,
     pub columns: Vec<Column>,
     pub foreign_keys: Vec<ForeignKey>,
 }

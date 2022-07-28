@@ -65,6 +65,7 @@ pub enum Operand<'a> {
 
 #[derive(Debug)]
 pub enum Filter<'a> {
+    PrimaryKey(Node<Operand<'a>>),
     Unary(Node<Operand<'a>>, UnaryFilterType),
     Binary(Node<Operand<'a>>, Node<Operand<'a>>, BinaryFilterType),
 }

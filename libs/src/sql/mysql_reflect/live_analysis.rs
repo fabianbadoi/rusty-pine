@@ -152,6 +152,7 @@ mod tests {
         fn parse(&self, create_statement: &str) -> Result<Table, PineError> {
             Ok(Table {
                 name: create_statement.to_string(),
+                primary_key: "id".into(),
                 columns: vec![Column {
                     name: "column name".to_string(),
                 }],

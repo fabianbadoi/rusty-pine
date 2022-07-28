@@ -393,11 +393,13 @@ mod tests {
         let tables = vec![
             Table {
                 name: "users".into(),
+                primary_key: "id".into(),
                 columns: Vec::new(),
                 foreign_keys: vec![ForeignKey::from(&("friendId", ("friends", "id")))],
             },
             Table {
                 name: "friends".into(),
+                primary_key: "id".into(),
                 columns: Vec::new(),
                 foreign_keys: Vec::new(),
             },

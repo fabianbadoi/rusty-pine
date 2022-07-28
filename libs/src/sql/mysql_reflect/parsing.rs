@@ -1,3 +1,4 @@
+use std::iter::Peekable;
 use crate::sql::structure::{Column, ForeignKey, Table};
 use regex::Regex;
 
@@ -43,14 +44,16 @@ impl ForeignKey {
 
 impl Table {
     pub fn from_sql_string(input: &str) -> Result<Table, String> {
-        let mut lines = input.trim_start().split('\n');
+        let mut lines = input.trim_start().split('\n').peekable();
 
         let name = Self::parse_table_name_line(&mut lines)?;
         let columns = Self::parse_columns(&mut lines);
+        let primary_key = Self::parse_primary_key(&mut lines)?;
         let foreign_keys = Self::parse_foreign_keys(&mut lines);
 
         Ok(Table {
             name,
+            primary_key,
             columns,
             foreign_keys,
         })
@@ -76,21 +79,44 @@ impl Table {
         }
     }
 
-    fn parse_columns(lines: &mut dyn Iterator<Item = &str>) -> Vec<Column> {
+    fn parse_columns(lines: &mut Peekable<std::str::Split<'_, char>>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::new();
 
-        for line in lines {
-            if let Ok(column) = Column::from_sql_string(line) {
+        while let Some(next_line) = lines.peek() {
+            if let Ok(column) = Column::from_sql_string(next_line) {
                 columns.push(column);
+                lines.next();
             } else {
                 // MySQL puts all of the columns at the beginning of 'show create table'
                 // statements. Therefore, the first line that fails to parse as a column
-                // is the start of the indexes section.
+                // is the start of the indexes section
                 break;
             }
         }
 
         columns
+    }
+
+    fn parse_primary_key(lines: &mut dyn Iterator<Item = &str>) -> Result<Column, String> {
+        if let Some(table_name_line) = lines.next() {
+            let regex = Regex::new("(?i)^\\s*PRIMARY KEY \\(`([a-z0-9_]+)`\\)").unwrap();
+            let matches = regex.captures(table_name_line);
+
+            if let Some(captures) = matches {
+                let table_name = captures.get(1).unwrap();
+
+                Ok(Column{
+                    name: table_name.as_str().to_string()
+                })
+            } else {
+                Err(format!(
+                    "Only primary keys with single columns are supported:\n{}",
+                    table_name_line
+                ))
+            }
+        } else {
+            Err("Primary Key line not found".to_string())
+        }
     }
 
     /// Consumes the rest of the iterator

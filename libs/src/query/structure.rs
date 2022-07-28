@@ -84,6 +84,7 @@ pub struct QualifiedColumnIdentifier {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Filter {
+    PrimaryKey{table: TableName, value: Operand},
     Unary(Operand, UnaryFilterType),
     Binary(Operand, Operand, BinaryFilterType),
 }

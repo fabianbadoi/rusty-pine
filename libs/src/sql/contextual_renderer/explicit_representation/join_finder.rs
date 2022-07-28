@@ -292,6 +292,7 @@ mod tests {
     fn make_table(proto: &(&str, &[(&str, (&str, &str))])) -> Table {
         Table {
             name: proto.0.into(),
+            primary_key: "id".into(),
             columns: Vec::new(),
             foreign_keys: proto.1.iter().map(From::from).collect(),
         }

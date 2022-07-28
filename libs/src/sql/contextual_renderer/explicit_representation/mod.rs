@@ -160,7 +160,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
             selections,
             from: query.from.as_ref(),
             joins,
-            filters: self.translate_filters(&query.filters[..]),
+            filters: self.translate_filters(&query.filters[..])?,
             group_by: self.translate_group_by(&query.group_by[..]),
             order: self.translate_orders(&query.order[..]),
             limit: query.limit,
@@ -248,15 +248,24 @@ impl<'t> ExplicitQueryBuilder<'t> {
             })
     }
 
-    fn translate_filters(&self, filters: &'t [Filter]) -> Vec<ExplicitFilter<'t>> {
+    fn translate_filters(&self, filters: &'t [Filter]) -> Result<Vec<ExplicitFilter<'t>>, String> {
         filters
             .iter()
             .map(|filter| self.translate_filter(filter))
             .collect()
     }
 
-    fn translate_filter(&self, filter: &'t Filter) -> ExplicitFilter<'t> {
-        match filter {
+    fn translate_filter(&self, filter: &'t Filter) -> Result<ExplicitFilter<'t>, String> {
+        Ok(match filter {
+            Filter::PrimaryKey {table, value } => {
+                let primary_key = self.primary_key_of(table)?;
+
+                ExplicitFilter::Binary(
+                    primary_key,
+                    self.render_operand(value),
+                    BinaryFilterType::Equals
+                )
+            }
             Filter::Unary(operand, filter_type) => {
                 let operand = self.render_operand(operand);
 
@@ -268,7 +277,7 @@ impl<'t> ExplicitQueryBuilder<'t> {
 
                 ExplicitFilter::Binary(lhs, rhs, *filter_type)
             }
-        }
+        })
     }
 
     fn translate_joins(
@@ -374,6 +383,17 @@ impl<'t> ExplicitQueryBuilder<'t> {
             .flat_map(|table| &table.columns)
             .map(|column| self.make_selection_column(table_name, column))
             .collect()
+    }
+
+    fn primary_key_of(&self, table_name: &str) -> Result<ExplicitOperand<'t>, String> {
+        self.ensure_table_exists(table_name)?;
+
+        let table = self.tables
+            .iter()
+            .find(|table| table.name == table_name)
+            .expect(format!("Table missing {}", table_name).as_str()); // we validated it exists earlier
+
+        Ok(self.make_selection_column(table.name.as_str(), &table.primary_key))
     }
 
     fn make_selection_column(&self, table_name: &str, column: &Column) -> ExplicitOperand<'t> {
@@ -551,7 +571,7 @@ mod tests {
             working_with_single_table: true,
         };
 
-        let better_filters = builder.translate_filters(&filters[..]);
+        let better_filters = builder.translate_filters(&filters[..]).unwrap();
 
         assert_eq!(2, better_filters.len());
         assert!(better_filters[0].rhs().as_column().is_simple());
@@ -586,7 +606,7 @@ mod tests {
             working_with_single_table: false,
         };
 
-        let better_filters = builder.translate_filters(&filters[..]);
+        let better_filters = builder.translate_filters(&filters[..]).unwrap();
 
         assert_eq!(2, better_filters.len());
         assert!(better_filters[0].rhs().as_column().is_explicit());
@@ -600,11 +620,13 @@ mod tests {
         let tables = vec![
             Table {
                 name: "users".to_owned(),
+                primary_key: "id".into(),
                 columns: vec!["id".into(), "name".into()],
                 foreign_keys: Vec::new(),
             },
             Table {
                 name: "friends".to_owned(),
+                primary_key: "id".into(),
                 columns: vec!["id".into(), "userId".into(), "name".into()],
                 foreign_keys: vec![(&("userId", ("users", "id"))).into()],
             },

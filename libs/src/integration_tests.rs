@@ -166,6 +166,7 @@ mod aux {
         let tables = vec![
             Table {
                 name: "humans".to_string(),
+                primary_key: "id".into(),
                 columns: vec![
                     "id".into(),
                     "name".into(),
@@ -177,6 +178,7 @@ mod aux {
             },
             Table {
                 name: "preferences".to_string(),
+                primary_key: "id".into(),
                 columns: vec![
                     "id".into(),
                     "humanId".into(),
@@ -189,6 +191,7 @@ mod aux {
             },
             Table {
                 name: "friendMap".to_string(),
+                primary_key: "id".into(),
                 columns: vec![
                     "id".into(),
                     "friendA".into(),
@@ -204,6 +207,7 @@ mod aux {
             },
             Table {
                 name: "friendshipLog".to_string(),
+                primary_key: "id".into(),
                 columns: vec![
                     "id".into(),
                     "friendshipId".into(),

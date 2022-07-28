@@ -417,25 +417,12 @@ fn translate_ordering(node: PestNode) -> Node<Order> {
 fn translate_implicit_id_equals(node: PestNode) -> Node<Filter> {
     let position = position(&node);
 
-    let column = ColumnIdentifier::Implicit(Node {
-        position,
-        inner: "id",
-    });
-    let rhs = Operand::Column(Node {
-        position,
-        inner: column,
-    });
-    let rhs = Node {
-        position,
-        inner: rhs,
-    };
-
     let lhs = Node {
         position,
         inner: Operand::Value(translate_value(node)),
     };
 
-    let filter = Filter::Binary(lhs, rhs, BinaryFilterType::Equals);
+    let filter = Filter::PrimaryKey(lhs);
 
     Node {
         position,

@@ -208,6 +208,14 @@ impl<'a> SingleUseQueryBuilder<'a> {
         debug!("Found filter: {:?}", filter_node);
 
         Ok(match &filter_node.inner {
+            AstFilter::PrimaryKey(operand) => {
+                let table = self.require_table(filter_node.position)?;
+
+                SqlFilter::PrimaryKey {
+                    table: table.to_string(),
+                    value: self.translate_operand(&operand)?
+                }
+            }
             AstFilter::Unary(operand, filter_type) => {
                 let operand = self.translate_operand(&operand)?;
 
