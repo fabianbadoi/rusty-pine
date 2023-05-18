@@ -6,7 +6,7 @@
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
 use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
-use crate::syntax::{Positioned, SqlIdentifierInput};
+use crate::syntax::{Positioned, TableInput};
 
 pub struct Stage3Rep<'a> {
     pub input: &'a str,
@@ -14,7 +14,7 @@ pub struct Stage3Rep<'a> {
 }
 
 pub enum Stage3Pine<'a> {
-    From { table: SqlIdentifierInput<'a> },
+    From { table: TableInput<'a> },
 }
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
@@ -58,7 +58,7 @@ mod test {
     use crate::syntax::stage1::parse_stage1;
     use crate::syntax::stage2::Stage2Rep;
     use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
-    use crate::syntax::{Position, SqlIdentifierInput};
+    use crate::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
 
     #[test]
     fn test_simple_convert() {
@@ -72,10 +72,14 @@ mod test {
         assert!(matches!(
             stage3.pines[0].node,
             Stage3Pine::From {
-                table: SqlIdentifierInput {
-                    name: "table",
+                table: TableInput {
+                    database: OptionalInput::Implicit,
+                    table: SqlIdentifierInput {
+                        name: "table",
+                        position: Position { start: 0, end: 5 },
+                    },
                     position: Position { start: 0, end: 5 },
-                }
+                },
             }
         ))
     }

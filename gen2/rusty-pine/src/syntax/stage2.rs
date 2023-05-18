@@ -15,8 +15,9 @@
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
-use crate::syntax::{Position, Positioned, SqlIdentifierInput};
-use pest::iterators::Pairs;
+use crate::syntax::OptionalInput::Specified;
+use crate::syntax::{OptionalInput, Position, Positioned, SqlIdentifierInput, TableInput};
+use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
 /// ```rust
@@ -31,12 +32,13 @@ pub struct Stage2Rep<'a> {
 }
 
 pub enum Stage2Pine<'a> {
-    Base { table: SqlIdentifierInput<'a> },
+    Base { table: TableInput<'a> },
 }
 
 impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
     fn from(stage1: Stage1Rep<'a>) -> Self {
         let root_node = stage1.pest;
+        // println!("{:#?}", root_node);
         let pines = translate_root(root_node);
 
         return Stage2Rep {
@@ -65,14 +67,61 @@ fn translate_base(mut pairs: Pairs<Rule>) -> Positioned<Stage2Pine> {
     position.holding(Stage2Pine::Base { table: table_name })
 }
 
-fn translate_table(mut pairs: Pairs<Rule>) -> SqlIdentifierInput {
+fn translate_table(mut pairs: Pairs<Rule>) -> TableInput {
     let name_pair = pairs.next().expect("Expected sql_name");
-    assert_eq!(Rule::sql_name, name_pair.as_rule());
+
     assert!(pairs.next().is_none());
 
+    let mut inners = name_pair.into_inner();
+    let inner = inners.next().expect("No pairs should be invalid syntax");
+    assert!(
+        inners.next().is_none(),
+        "Multiple pairs should be invalid syntax"
+    );
+
+    match inner.as_rule() {
+        Rule::sql_name => translate_table_sql_name(inner),
+        Rule::db_and_table_names => translate_db_and_table_names(inner),
+        _ => panic!("Unsupported rule: {:?}", inner.as_rule()),
+    }
+}
+
+fn translate_table_sql_name(pair: Pair<Rule>) -> TableInput {
+    assert_eq!(Rule::sql_name, pair.as_rule());
+
+    let position = pair.as_span().into();
+
+    TableInput {
+        database: OptionalInput::Implicit,
+        table: translate_sql_name(pair),
+        position,
+    }
+}
+
+fn translate_sql_name(pair: Pair<Rule>) -> SqlIdentifierInput {
+    assert_eq!(Rule::sql_name, pair.as_rule());
+
+    let position = pair.as_span().into();
+
     SqlIdentifierInput {
-        name: name_pair.as_str(),
-        position: name_pair.as_span().into(),
+        name: pair.as_str(),
+        position,
+    }
+}
+
+fn translate_db_and_table_names(pair: Pair<Rule>) -> TableInput {
+    assert_eq!(Rule::db_and_table_names, pair.as_rule());
+
+    let position = pair.as_span().into();
+
+    let mut inners = pair.into_inner();
+    let db_name_pair = inners.next().expect("No db should be invalid syntax");
+    let table_name_pair = inners.next().expect("No table should be invalid syntax");
+
+    TableInput {
+        database: Specified(translate_sql_name(db_name_pair)),
+        table: translate_sql_name(table_name_pair),
+        position,
     }
 }
 
@@ -89,7 +138,7 @@ impl From<pest::Span<'_>> for Position {
 mod test {
     use crate::syntax::stage1::parse_stage1;
     use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
-    use crate::syntax::{Position, SqlIdentifierInput};
+    use crate::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
 
     #[test]
     fn test_simple_parse() {
@@ -104,9 +153,13 @@ mod test {
         assert!(matches!(
             base.node,
             Stage2Pine::Base {
-                table: SqlIdentifierInput {
-                    name: "name",
-                    position: Position { start: 0, end: 4 }
+                table: TableInput {
+                    database: OptionalInput::Implicit,
+                    table: SqlIdentifierInput {
+                        name: "name",
+                        position: Position { start: 0, end: 4 }
+                    },
+                    position: Position { start: 0, end: 4 },
                 }
             }
         ));

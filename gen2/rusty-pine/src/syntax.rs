@@ -3,7 +3,20 @@ mod stage2;
 mod stage3;
 mod stage4;
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub enum OptionalInput<T> {
+    Implicit,
+    Specified(T),
+}
+
 #[derive(Clone, Copy)]
+pub struct TableInput<'a> {
+    pub database: OptionalInput<SqlIdentifierInput<'a>>,
+    pub table: SqlIdentifierInput<'a>,
+    pub position: Position,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct SqlIdentifierInput<'a> {
     pub name: &'a str,
     pub position: Position,
