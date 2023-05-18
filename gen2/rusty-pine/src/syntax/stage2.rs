@@ -16,7 +16,9 @@
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
 use crate::syntax::OptionalInput::Specified;
-use crate::syntax::{OptionalInput, Position, Positioned, SqlIdentifierInput, TableInput};
+use crate::syntax::{
+    ColumnInput, OptionalInput, Position, Positioned, SqlIdentifierInput, TableInput,
+};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -31,14 +33,15 @@ pub struct Stage2Rep<'a> {
     pub pines: Vec<Positioned<Stage2Pine<'a>>>,
 }
 
+#[derive(Debug)]
 pub enum Stage2Pine<'a> {
     Base { table: TableInput<'a> },
+    Select(ColumnInput<'a>),
 }
 
 impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
     fn from(stage1: Stage1Rep<'a>) -> Self {
         let root_node = stage1.pest;
-        // println!("{:#?}", root_node);
         let pines = translate_root(root_node);
 
         return Stage2Rep {
@@ -49,29 +52,76 @@ impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
 }
 
 fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Positioned<Stage2Pine>> {
-    let first_pair = pairs.next().expect("Impossible due to pest parsing");
-    assert_eq!(Rule::root, first_pair.as_rule());
+    let root_pair = pairs.next().expect("Impossible due to pest parsing");
+    assert_eq!(Rule::root, root_pair.as_rule());
     assert!(pairs.next().is_none());
 
-    vec![translate_base(first_pair.into_inner())]
+    let mut inners = root_pair.into_inner();
+    let mut pines = Vec::new();
+
+    pines.push(translate_base(inners.next().expect("Guaranteed by syntax")));
+
+    for pair in inners {
+        if pair.as_rule() == Rule::EOI {
+            continue;
+        }
+
+        pines.push(translate_pine(pair));
+    }
+
+    pines
 }
 
-fn translate_base(mut pairs: Pairs<Rule>) -> Positioned<Stage2Pine> {
-    let base_pair = pairs.next().expect("Impossible due to pest parsing");
+fn translate_base(mut base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
     assert_eq!(Rule::base, base_pair.as_rule());
-    assert_eq!(Rule::EOI, pairs.next().expect("Expect EOI").as_rule());
 
     let position: Position = base_pair.as_span().into();
-    let table_name = translate_table(base_pair.into_inner());
+    let table_name = translate_table(base_pair.into_inner().next().unwrap());
 
     position.holding(Stage2Pine::Base { table: table_name })
 }
 
-fn translate_table(mut pairs: Pairs<Rule>) -> TableInput {
-    let name_pair = pairs.next().expect("Expected sql_name");
+fn translate_pine(pair: Pair<Rule>) -> Positioned<Stage2Pine> {
+    match pair.as_rule() {
+        Rule::select_pine => translate_select(pair),
+        _ => panic!("Unknown pine {:#?}", pair),
+    }
+}
 
-    assert!(pairs.next().is_none());
+fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
+    assert_eq!(Rule::select_pine, select.as_rule());
 
+    let position: Position = select.as_span().into();
+    let column_pair = select.into_inner().next().expect("Has to be valid syntax");
+
+    position.holding(Stage2Pine::Select(translate_column(column_pair)))
+}
+
+fn translate_column(column: Pair<Rule>) -> ColumnInput {
+    assert_eq!(Rule::db_table_column_name, column.as_rule());
+
+    let position: Position = column.as_span().into();
+
+    let (table, column) = match column.as_rule() {
+        Rule::db_table_column_name => {
+            let mut inners = column.into_inner();
+
+            let table = translate_table(inners.next().unwrap());
+            let column = translate_sql_name(inners.next().unwrap());
+
+            (Specified(table), column)
+        }
+        _ => panic!("Unknown column type {:#?}", column),
+    };
+
+    ColumnInput {
+        table,
+        column,
+        position,
+    }
+}
+
+fn translate_table(name_pair: Pair<Rule>) -> TableInput {
     let mut inners = name_pair.into_inner();
     let inner = inners.next().expect("No pairs should be invalid syntax");
     assert!(
@@ -143,7 +193,6 @@ mod test {
     #[test]
     fn test_simple_parse() {
         let stage1 = parse_stage1("name").unwrap();
-        // println!("{:#?}", stage1);
         let stage2: Stage2Rep = stage1.into();
 
         assert_eq!("name", stage2.input);
@@ -163,6 +212,6 @@ mod test {
                 }
             }
         ));
-        assert_eq!(base.position, Position { start: 0, end: 4 });
+        assert_eq!(0..4, base.position);
     }
 }

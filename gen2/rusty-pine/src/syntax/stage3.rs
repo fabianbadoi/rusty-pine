@@ -6,7 +6,7 @@
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
 use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
-use crate::syntax::{Positioned, TableInput};
+use crate::syntax::{ColumnInput, Positioned, TableInput};
 
 pub struct Stage3Rep<'a> {
     pub input: &'a str,
@@ -15,6 +15,7 @@ pub struct Stage3Rep<'a> {
 
 pub enum Stage3Pine<'a> {
     From { table: TableInput<'a> },
+    Select(ColumnInput<'a>),
 }
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
@@ -48,6 +49,10 @@ fn transform_stage_2_pine<'a>(
         Stage2Pine::Base { table } => {
             stage3_pines.push(position.holding(Stage3Pine::From { table: *table }))
         }
+        Stage2Pine::Select(column) => {
+            stage3_pines.push(position.holding(Stage3Pine::Select(*column)))
+        }
+        _ => panic!("Unknown stage 2 pine type\n{:#?}", stage2_pine.node),
     };
 
     (stage3_pines, context)
@@ -67,7 +72,7 @@ mod test {
 
         assert_eq!("table", stage3.input);
         assert_eq!(1, stage3.pines.len());
-        assert_eq!(stage3.pines[0].position, Position { start: 0, end: 5 });
+        assert_eq!(0..5, stage3.pines[0].position);
 
         assert!(matches!(
             stage3.pines[0].node,

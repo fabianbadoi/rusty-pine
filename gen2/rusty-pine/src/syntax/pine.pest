@@ -1,6 +1,14 @@
 // pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
-root = { SOI ~ base ~ EOI }
+root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
+
+pine = _{ select_pine }
+select_pine = { ("s:" | "select:") ~ column }
+// todo multiple columns
+
+column = _{ db_table_column_name }
+// todo simpler version
+db_table_column_name = { table ~ "." ~ sql_name }
 
 table = { db_table_name | sql_name }
 db_table_name = { sql_name ~ "." ~ sql_name }

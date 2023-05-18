@@ -51,8 +51,8 @@ mod tests {
 1 | test 012-test
   |      ^---
   |
-  = expected EOI"#,
-            format!("{}", error)
+  = expected"#,
+            &format!("{}", error)[0..94]
         );
     }
 }

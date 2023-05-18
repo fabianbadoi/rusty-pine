@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 mod stage1;
 mod stage2;
 mod stage3;
@@ -9,10 +11,27 @@ pub enum OptionalInput<T> {
     Specified(T),
 }
 
-#[derive(Clone, Copy)]
+impl<T> OptionalInput<T> {
+    #[cfg(test)]
+    pub fn unwrap(&self) -> &T {
+        match self {
+            OptionalInput::Implicit => panic!("You done fucked up!"),
+            OptionalInput::Specified(value) => value,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct TableInput<'a> {
     pub database: OptionalInput<SqlIdentifierInput<'a>>,
     pub table: SqlIdentifierInput<'a>,
+    pub position: Position,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ColumnInput<'a> {
+    pub table: OptionalInput<TableInput<'a>>, // we always know it because of SYNTAX
+    pub column: SqlIdentifierInput<'a>,
     pub position: Position,
 }
 
@@ -28,6 +47,13 @@ pub struct Position {
     // pub input: &'a str,
     pub start: usize,
     pub end: usize,
+}
+
+#[cfg(test)]
+impl PartialEq<Position> for Range<usize> {
+    fn eq(&self, other: &Position) -> bool {
+        self.start == other.start && self.end == other.end
+    }
 }
 
 impl Position {
