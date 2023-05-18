@@ -39,7 +39,7 @@ fn collector<'a>() -> (Stage3Pines<'a>, Context) {
 type Stage2PineParam<'a> = Positioned<Stage2Pine<'a>>;
 
 fn transform_stage_2_pine<'a>(
-    (mut stage3_pines, mut context): (Stage3Pines<'a>, Context),
+    (mut stage3_pines, context): (Stage3Pines<'a>, Context),
     stage2_pine: Stage2PineParam<'a>,
 ) -> (Vec<Positioned<Stage3Pine<'a>>>, ()) {
     let position = &stage2_pine.position;

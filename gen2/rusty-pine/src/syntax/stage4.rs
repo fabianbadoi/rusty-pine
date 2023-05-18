@@ -57,4 +57,22 @@ mod test {
         assert_eq!(Position { start: 0, end: 5 }, stage4.from.node.position);
         assert_eq!("table", stage4.from.node.name);
     }
+
+    #[test]
+    fn test_examples_for_from() {
+        let examples = vec![("f: table", "table"), ("from: table", "table")];
+
+        for (input, expected) in examples {
+            let output = parse(input);
+
+            assert_eq!(expected, output.from.node.name, "Parsing: {}", input);
+        }
+    }
+
+    fn parse(input: &str) -> Stage4Rep {
+        let stage2: Stage2Rep = parse_stage1(input).unwrap().into();
+        let stage3: Stage3Rep = stage2.into();
+
+        stage3.into()
+    }
 }

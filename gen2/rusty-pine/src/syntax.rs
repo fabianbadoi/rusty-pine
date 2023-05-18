@@ -4,7 +4,7 @@ mod stage3;
 mod stage4;
 
 #[derive(Clone, Copy)]
-struct SqlIdentifierInput<'a> {
+pub struct SqlIdentifierInput<'a> {
     pub name: &'a str,
     pub position: Position,
 }

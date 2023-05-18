@@ -16,7 +16,7 @@
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
 use crate::syntax::{Position, Positioned, SqlIdentifierInput};
-use pest::iterators::{Pair, Pairs};
+use pest::iterators::Pairs;
 use pest::Span;
 
 /// ```rust
@@ -35,7 +35,7 @@ pub enum Stage2Pine<'a> {
 }
 
 impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
-    fn from(mut stage1: Stage1Rep<'a>) -> Self {
+    fn from(stage1: Stage1Rep<'a>) -> Self {
         let root_node = stage1.pest;
         let pines = translate_root(root_node);
 
@@ -87,7 +87,7 @@ impl From<pest::Span<'_>> for Position {
 
 #[cfg(test)]
 mod test {
-    use crate::syntax::stage1::{parse_stage1, Stage1Rep};
+    use crate::syntax::stage1::parse_stage1;
     use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
     use crate::syntax::{Position, SqlIdentifierInput};
 
