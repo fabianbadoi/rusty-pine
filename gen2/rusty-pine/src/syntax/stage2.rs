@@ -1,34 +1,37 @@
 //! Stage 2 representation has a list of one node per "Pine"
 //! For example "users 1 | s: id" would be represented by:
 //!
+//! # Examples
 //! ```rust
 //! # let (pine1, pine2) = (0,0); // ignore this
 //! vec![
 //!     pine1,
 //!     pine2,
 //! ]
+//! ```
 //!
 //! The data is not yet hierarchical.
 //!
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
-use crate::syntax::{Position, SqlIdentifier};
+use crate::syntax::{Position, Positioned, SqlIdentifierInput};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
+/// ```rust
+/// # use crate::syntax::stage1::parse_stage1;
+/// # let stage1_rep = parse_stage1("name").unwrap();
+/// let stage2_rep = stage2_rep.into();
+/// ```
+///
 pub struct Stage2Rep<'a> {
     pub input: &'a str,
-    pub pines: Vec<Stage2Pine<'a>>,
+    pub pines: Vec<Positioned<Stage2Pine<'a>>>,
 }
 
-pub struct Stage2Pine<'a> {
-    pub pine: Stage2PineNode<'a>,
-    pub position: Position,
-}
-
-pub enum Stage2PineNode<'a> {
-    Base { table: SqlIdentifier<'a> },
+pub enum Stage2Pine<'a> {
+    Base { table: SqlIdentifierInput<'a> },
 }
 
 impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
@@ -43,7 +46,7 @@ impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
     }
 }
 
-fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Stage2Pine> {
+fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Positioned<Stage2Pine>> {
     let first_pair = pairs.next().expect("Impossible due to pest parsing");
     assert_eq!(Rule::root, first_pair.as_rule());
     assert!(pairs.next().is_none());
@@ -51,26 +54,23 @@ fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Stage2Pine> {
     vec![translate_base(first_pair.into_inner())]
 }
 
-fn translate_base(mut pairs: Pairs<Rule>) -> Stage2Pine {
+fn translate_base(mut pairs: Pairs<Rule>) -> Positioned<Stage2Pine> {
     let base_pair = pairs.next().expect("Impossible due to pest parsing");
     assert_eq!(Rule::base, base_pair.as_rule());
     assert_eq!(Rule::EOI, pairs.next().expect("Expect EOI").as_rule());
 
-    let position = base_pair.as_span().into();
+    let position: Position = base_pair.as_span().into();
     let table_name = translate_table(base_pair.into_inner());
 
-    Stage2Pine {
-        pine: Stage2PineNode::Base { table: table_name },
-        position,
-    }
+    position.holding(Stage2Pine::Base { table: table_name })
 }
 
-fn translate_table(mut pairs: Pairs<Rule>) -> SqlIdentifier {
+fn translate_table(mut pairs: Pairs<Rule>) -> SqlIdentifierInput {
     let name_pair = pairs.next().expect("Expected sql_name");
     assert_eq!(Rule::sql_name, name_pair.as_rule());
     assert!(pairs.next().is_none());
 
-    SqlIdentifier {
+    SqlIdentifierInput {
         name: name_pair.as_str(),
         position: name_pair.as_span().into(),
     }
@@ -88,8 +88,8 @@ impl From<pest::Span<'_>> for Position {
 #[cfg(test)]
 mod test {
     use crate::syntax::stage1::{parse_stage1, Stage1Rep};
-    use crate::syntax::stage2::{Stage2PineNode, Stage2Rep};
-    use crate::syntax::{Position, SqlIdentifier};
+    use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
+    use crate::syntax::{Position, SqlIdentifierInput};
 
     #[test]
     fn test_simple_parse() {
@@ -102,9 +102,9 @@ mod test {
 
         let base = &stage2.pines[0];
         assert!(matches!(
-            base.pine,
-            Stage2PineNode::Base {
-                table: SqlIdentifier {
+            base.node,
+            Stage2Pine::Base {
+                table: SqlIdentifierInput {
                     name: "name",
                     position: Position { start: 0, end: 4 }
                 }
