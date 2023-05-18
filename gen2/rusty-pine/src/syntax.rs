@@ -1,6 +1,7 @@
 mod stage1;
 mod stage2;
 mod stage3;
+mod stage4;
 
 #[derive(Clone, Copy)]
 struct SqlIdentifierInput<'a> {
