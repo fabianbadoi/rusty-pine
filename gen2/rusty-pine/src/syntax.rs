@@ -2,13 +2,14 @@ mod stage1;
 mod stage2;
 mod stage3;
 
+#[derive(Clone, Copy)]
 struct SqlIdentifierInput<'a> {
     pub name: &'a str,
     pub position: Position,
 }
 
 // TODO impl display and debug
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Position {
     // pub input: &'a str,
     pub start: usize,
