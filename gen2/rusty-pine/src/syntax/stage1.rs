@@ -5,6 +5,10 @@ use pest_derive::Parser;
 #[grammar = "syntax/pine.pest"]
 struct Stage1Parser;
 
+pub fn parse_stage1(input: &str) -> Stage1Rep {
+    
+}
+
 pub struct Stage1Rep<'a> {
     pub input: &'a str,
     pub pest: Pairs<'a, Rule>,
