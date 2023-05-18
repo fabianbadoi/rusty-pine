@@ -2,8 +2,8 @@
 root = { SOI ~ base ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
-table = { db_and_table_names | sql_name }
-db_and_table_names = { sql_name ~ "." ~ sql_name }
+table = { db_table_name | sql_name }
+db_table_name = { sql_name ~ "." ~ sql_name }
 sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 WHITESPACE = _{ " " | "\t" }

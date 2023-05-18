@@ -81,7 +81,7 @@ fn translate_table(mut pairs: Pairs<Rule>) -> TableInput {
 
     match inner.as_rule() {
         Rule::sql_name => translate_table_sql_name(inner),
-        Rule::db_and_table_names => translate_db_and_table_names(inner),
+        Rule::db_table_name => translate_db_table_name(inner),
         _ => panic!("Unsupported rule: {:?}", inner.as_rule()),
     }
 }
@@ -109,8 +109,8 @@ fn translate_sql_name(pair: Pair<Rule>) -> SqlIdentifierInput {
     }
 }
 
-fn translate_db_and_table_names(pair: Pair<Rule>) -> TableInput {
-    assert_eq!(Rule::db_and_table_names, pair.as_rule());
+fn translate_db_table_name(pair: Pair<Rule>) -> TableInput {
+    assert_eq!(Rule::db_table_name, pair.as_rule());
 
     let position = pair.as_span().into();
 
