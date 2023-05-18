@@ -1,0 +1,7 @@
+// pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
+root = { SOI ~ base ~ EOI }
+base = { sql_name }
+sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+
+WHITESPACE = _{ " " | "\t" }
