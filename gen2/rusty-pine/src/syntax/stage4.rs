@@ -5,12 +5,18 @@
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
-use crate::syntax::{ColumnInput, Position, Positioned, TableInput};
+use crate::syntax::{ColumnInput, Position, Positioned, SqlIdentifierInput, TableInput};
 
 struct Stage4Rep<'a> {
     input: &'a str,
-    from: Positioned<TableInput<'a>>,
-    selected_columns: Vec<ColumnInput<'a>>, // TODO stage 4 columns always have tables, unlike the input
+    from: TableInput<'a>,
+    selected_columns: Vec<Stage4ColumnInput<'a>>, // TODO stage 4 columns always have tables, unlike the input
+}
+
+struct Stage4ColumnInput<'a> {
+    pub table: TableInput<'a>, // we always know it because of SYNTAX
+    pub column: SqlIdentifierInput<'a>,
+    pub position: Position,
 }
 
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
@@ -20,18 +26,16 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
         let mut select = Vec::new();
 
         for pine in stage3.pines {
-            let position = pine.position;
-
             match pine.node {
                 Stage3Pine::From { table } => {
                     assert!(
                         from.is_none(),
                         "Our pest syntax forbids multiple from statements"
                     );
-                    from = Some(position.holding(table));
+                    from = Some(table);
                 }
                 Stage3Pine::Select(column) => {
-                    select.push(column);
+                    select.push(translate_column(column, from.unwrap()));
                 }
             }
         }
@@ -41,6 +45,17 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
             selected_columns: select,
         }
+    }
+}
+
+fn translate_column<'a>(
+    stage3_col: ColumnInput<'a>,
+    previous_table: TableInput<'a>,
+) -> Stage4ColumnInput<'a> {
+    Stage4ColumnInput {
+        column: stage3_col.column,
+        table: stage3_col.table.or(previous_table),
+        position: stage3_col.position,
     }
 }
 
@@ -62,9 +77,9 @@ mod test {
 
         assert_eq!("table", stage4.input);
         assert_eq!(0..5, stage4.from.position);
-        assert_eq!(0..5, stage4.from.node.position);
-        assert_eq!("table", stage4.from.node.table.name);
-        assert!(matches!(stage4.from.node.database, OptionalInput::Implicit));
+        assert_eq!(0..5, stage4.from.position);
+        assert_eq!("table", stage4.from.table.name);
+        assert!(matches!(stage4.from.database, OptionalInput::Implicit));
     }
 
     #[test]
@@ -75,14 +90,11 @@ mod test {
 
         assert_eq!("database.table", stage4.input);
         assert_eq!(0..14, stage4.from.position);
-        assert_eq!(0..14, stage4.from.node.position);
-        assert_eq!("table", stage4.from.node.table.name);
-        assert_eq!(
-            Position { start: 9, end: 14 },
-            stage4.from.node.table.position
-        );
-        assert_eq!(Specified("database"), stage4.from.node.database);
-        assert_eq!(0..8, stage4.from.node.database);
+        assert_eq!(0..14, stage4.from.position);
+        assert_eq!("table", stage4.from.table.name);
+        assert_eq!(Position { start: 9, end: 14 }, stage4.from.table.position);
+        assert_eq!(Specified("database"), stage4.from.database);
+        assert_eq!(0..8, stage4.from.database);
     }
 
     #[test]
@@ -90,7 +102,7 @@ mod test {
         struct Example<'a> {
             input: &'a str,
             expected_column: SqlIdentifierInput<'a>,
-            expected_table: OptionalInput<TableInput<'a>>,
+            expected_table: TableInput<'a>,
         }
 
         let examples = vec![
@@ -100,7 +112,14 @@ mod test {
                     name: "id",
                     position: (11..13).into(),
                 },
-                expected_table: Implicit,
+                expected_table: TableInput {
+                    database: Implicit,
+                    table: SqlIdentifierInput {
+                        name: "table",
+                        position: (0..5).into(),
+                    },
+                    position: (0..5).into(),
+                },
             },
             Example {
                 input: "table | s: table.id",
@@ -108,14 +127,14 @@ mod test {
                     name: "id",
                     position: (17..19).into(),
                 },
-                expected_table: Specified(TableInput {
+                expected_table: TableInput {
                     table: SqlIdentifierInput {
                         name: "table",
                         position: (11..16).into(),
                     },
                     database: Implicit,
                     position: (11..16).into(),
-                }),
+                },
             },
             Example {
                 input: "table | s: db.table.id",
@@ -123,7 +142,7 @@ mod test {
                     name: "id",
                     position: (20..22).into(),
                 },
-                expected_table: Specified(TableInput {
+                expected_table: TableInput {
                     table: SqlIdentifierInput {
                         name: "table",
                         position: (14..19).into(),
@@ -133,7 +152,7 @@ mod test {
                         position: (11..13).into(),
                     }),
                     position: (11..19).into(),
-                }),
+                },
             },
         ];
 
@@ -167,7 +186,7 @@ mod test {
 
         for (input, expected_table, expected_db) in examples {
             let output = parse(input).unwrap();
-            let from = output.from.node;
+            let from = output.from;
 
             assert_eq!(expected_table, from.table.name, "Parsing: {}", input);
             assert_eq!(expected_db, from.database, "Parsing: {}", input);

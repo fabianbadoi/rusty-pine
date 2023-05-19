@@ -12,6 +12,16 @@ pub enum OptionalInput<T> {
 }
 
 impl<T> OptionalInput<T> {
+    pub fn or<Alt>(self, alternative: Alt) -> T
+    where
+        Alt: Into<T>,
+    {
+        match self {
+            OptionalInput::Implicit => alternative.into(),
+            OptionalInput::Specified(inner) => inner,
+        }
+    }
+
     #[cfg(test)]
     pub fn unwrap(&self) -> &T {
         match self {
