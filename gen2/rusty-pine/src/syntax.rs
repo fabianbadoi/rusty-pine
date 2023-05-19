@@ -21,7 +21,13 @@ impl<T> OptionalInput<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+impl<T> Default for OptionalInput<T> {
+    fn default() -> Self {
+        return OptionalInput::Implicit;
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TableInput<'a> {
     pub database: OptionalInput<SqlIdentifierInput<'a>>,
     pub table: SqlIdentifierInput<'a>,
@@ -35,7 +41,7 @@ pub struct ColumnInput<'a> {
     pub position: Position,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SqlIdentifierInput<'a> {
     pub name: &'a str,
     pub position: Position,
@@ -53,6 +59,15 @@ pub struct Position {
 impl PartialEq<Position> for Range<usize> {
     fn eq(&self, other: &Position) -> bool {
         self.start == other.start && self.end == other.end
+    }
+}
+
+impl From<Range<usize>> for Position {
+    fn from(range: Range<usize>) -> Self {
+        Position {
+            start: range.start,
+            end: range.end,
+        }
     }
 }
 

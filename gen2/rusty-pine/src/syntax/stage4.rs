@@ -87,28 +87,62 @@ mod test {
 
     #[test]
     fn test_examples_for_select() {
-        let examples = vec![("table | s: db.table.id", "id")];
+        struct Example<'a> {
+            input: &'a str,
+            expected_column: SqlIdentifierInput<'a>,
+            expected_table: OptionalInput<TableInput<'a>>,
+        }
 
-        for (input, expected_select) in examples {
+        let examples = vec![
+            Example {
+                input: "table | s: table.id",
+                expected_column: SqlIdentifierInput {
+                    name: "id",
+                    position: (17..19).into(),
+                },
+                expected_table: Specified(TableInput {
+                    table: SqlIdentifierInput {
+                        name: "table",
+                        position: (11..16).into(),
+                    },
+                    database: Implicit,
+                    position: (11..16).into(),
+                }),
+            },
+            Example {
+                input: "table | s: db.table.id",
+                expected_column: SqlIdentifierInput {
+                    name: "id",
+                    position: (20..22).into(),
+                },
+                expected_table: Specified(TableInput {
+                    table: SqlIdentifierInput {
+                        name: "table",
+                        position: (14..19).into(),
+                    },
+                    database: Specified(SqlIdentifierInput {
+                        name: "db",
+                        position: (11..13).into(),
+                    }),
+                    position: (11..19).into(),
+                }),
+            },
+        ];
+
+        for example in examples {
+            let Example {
+                input,
+                expected_column,
+                expected_table,
+            } = example;
             let output = parse(input).unwrap();
 
             assert_eq!(1, output.selected_columns.len());
-            assert_eq!("id", output.selected_columns[0].column.name);
-            assert_eq!(20..22, output.selected_columns[0].column.position);
+            assert_eq!(expected_column, output.selected_columns[0].column);
+            assert_eq!(expected_column, output.selected_columns[0].column);
 
-            let table = &output.selected_columns[0].table;
-            assert!(!matches!(table, &OptionalInput::<TableInput>::Implicit));
-
-            let table = table.unwrap().table;
-            assert_eq!("table", table.name);
-            assert_eq!(14..19, table.position);
-
-            let db = &output.selected_columns[0].table.unwrap().database;
-            assert!(!matches!(db, OptionalInput::<SqlIdentifierInput>::Implicit));
-
-            let db = db.unwrap();
-            assert_eq!("db", db.name);
-            assert_eq!(11..13, db.position);
+            let table = output.selected_columns[0].table;
+            assert_eq!(expected_table, table);
         }
     }
 

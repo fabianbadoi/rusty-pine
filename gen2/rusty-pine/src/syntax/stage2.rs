@@ -15,7 +15,7 @@
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
-use crate::syntax::OptionalInput::Specified;
+use crate::syntax::OptionalInput::{Implicit, Specified};
 use crate::syntax::{
     ColumnInput, OptionalInput, Position, Positioned, SqlIdentifierInput, TableInput,
 };
@@ -98,21 +98,56 @@ fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
 }
 
 fn translate_column(column: Pair<Rule>) -> ColumnInput {
-    assert_eq!(Rule::db_table_column_name, column.as_rule());
+    assert_eq!(Rule::column, column.as_rule());
 
-    let position: Position = column.as_span().into();
+    let mut inners = column.into_inner();
+    let inner = inners.next().expect("Has to be valid syntax");
+    assert!(inners.next().is_none());
 
-    let (table, column) = match column.as_rule() {
-        Rule::db_table_column_name => {
-            let mut inners = column.into_inner();
+    match inner.as_rule() {
+        Rule::db_table_column_name => translate_db_table_column_name(inner),
+        Rule::table_column_name => translate_table_column_name(inner),
+        _ => panic!("Unknown column type {:#?}", inner.as_rule()),
+    }
+    //
+    // ColumnInput {
+    //     table,
+    //     column,
+    //     position,
+    // }
+}
 
-            let table = translate_table(inners.next().unwrap());
-            let column = translate_sql_name(inners.next().unwrap());
+fn translate_table_column_name(pair: Pair<Rule>) -> ColumnInput {
+    assert_eq!(Rule::table_column_name, pair.as_rule());
 
-            (Specified(table), column)
-        }
-        _ => panic!("Unknown column type {:#?}", column),
-    };
+    let position: Position = pair.as_span().into();
+
+    let mut inners = pair.into_inner();
+
+    let table_name = translate_sql_name(inners.next().unwrap());
+    let table = Specified(TableInput {
+        table: table_name,
+        position: table_name.position,
+        database: Implicit,
+    });
+    let column = translate_sql_name(inners.next().unwrap());
+
+    ColumnInput {
+        table,
+        column,
+        position,
+    }
+}
+
+fn translate_db_table_column_name(pair: Pair<Rule>) -> ColumnInput {
+    assert_eq!(Rule::db_table_column_name, pair.as_rule());
+
+    let position: Position = pair.as_span().into();
+
+    let mut inners = pair.into_inner();
+
+    let table = Specified(translate_table(inners.next().unwrap()));
+    let column = translate_sql_name(inners.next().unwrap());
 
     ColumnInput {
         table,
