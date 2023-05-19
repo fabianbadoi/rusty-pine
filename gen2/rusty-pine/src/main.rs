@@ -1,3 +1,4 @@
+mod query_builder;
 mod syntax;
 
 fn main() {

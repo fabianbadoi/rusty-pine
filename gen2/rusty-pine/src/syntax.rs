@@ -5,6 +5,20 @@ mod stage2;
 mod stage3;
 mod stage4;
 
+use crate::syntax::stage1::{parse_stage1, Stage1Error};
+use crate::syntax::stage2::Stage2Rep;
+use crate::syntax::stage3::Stage3Rep;
+pub use stage4::{Stage4ColumnInput, Stage4Rep};
+
+pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, Stage1Error> {
+    parse_stage1(input).map(|stage1| {
+        let stage2: Stage2Rep = stage1.into();
+        let stage3: Stage3Rep = stage2.into();
+
+        stage3.into()
+    })
+}
+
 #[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum OptionalInput<T> {
     Implicit,
@@ -55,6 +69,18 @@ pub struct ColumnInput<'a> {
 pub struct SqlIdentifierInput<'a> {
     pub name: &'a str,
     pub position: Position,
+}
+
+impl Into<String> for &SqlIdentifierInput<'_> {
+    fn into(self) -> String {
+        self.name.to_owned()
+    }
+}
+
+impl Into<Position> for &SqlIdentifierInput<'_> {
+    fn into(self) -> Position {
+        self.position
+    }
 }
 
 // TODO impl display and debug

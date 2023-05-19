@@ -7,13 +7,13 @@
 use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
 use crate::syntax::{ColumnInput, Position, Positioned, SqlIdentifierInput, TableInput};
 
-struct Stage4Rep<'a> {
-    input: &'a str,
-    from: TableInput<'a>,
-    selected_columns: Vec<Stage4ColumnInput<'a>>, // TODO stage 4 columns always have tables, unlike the input
+pub struct Stage4Rep<'a> {
+    pub input: &'a str,
+    pub from: TableInput<'a>,
+    pub selected_columns: Vec<Stage4ColumnInput<'a>>,
 }
 
-struct Stage4ColumnInput<'a> {
+pub struct Stage4ColumnInput<'a> {
     pub table: TableInput<'a>, // we always know it because of SYNTAX
     pub column: SqlIdentifierInput<'a>,
     pub position: Position,
@@ -66,7 +66,7 @@ mod test {
     use crate::syntax::stage3::Stage3Rep;
     use crate::syntax::stage4::Stage4Rep;
     use crate::syntax::OptionalInput::{Implicit, Specified};
-    use crate::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::syntax::{parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, TableInput};
     use std::ops::Range;
 
     #[test]
@@ -162,7 +162,7 @@ mod test {
                 expected_column,
                 expected_table,
             } = example;
-            let output = parse(input).unwrap();
+            let output = parse_to_stage4(input).unwrap();
 
             assert_eq!(1, output.selected_columns.len());
             assert_eq!(expected_column, output.selected_columns[0].column);
@@ -185,21 +185,12 @@ mod test {
         ];
 
         for (input, expected_table, expected_db) in examples {
-            let output = parse(input).unwrap();
+            let output = parse_to_stage4(input).unwrap();
             let from = output.from;
 
             assert_eq!(expected_table, from.table.name, "Parsing: {}", input);
             assert_eq!(expected_db, from.database, "Parsing: {}", input);
         }
-    }
-
-    fn parse(input: &str) -> Result<Stage4Rep, Stage1Error> {
-        parse_stage1(input).map(|stage1| {
-            let stage2: Stage2Rep = stage1.into();
-            let stage3: Stage3Rep = stage2.into();
-
-            stage3.into()
-        })
     }
 
     impl PartialEq<OptionalInput<SqlIdentifierInput<'_>>> for OptionalInput<&str> {
