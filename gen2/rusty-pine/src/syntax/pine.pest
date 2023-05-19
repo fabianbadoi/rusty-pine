@@ -6,8 +6,8 @@ pine = _{ select_pine }
 select_pine = { ("s:" | "select:") ~ column }
 // todo multiple columns
 
-column = { db_table_column_name | table_column_name }
-// todo simpler version
+column = { db_table_column_name | table_column_name | column_name }
+column_name = { sql_name }
 table_column_name = { sql_name ~ "." ~ sql_name }
 db_table_column_name = { table ~ "." ~ sql_name }
 

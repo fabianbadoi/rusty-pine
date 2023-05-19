@@ -95,6 +95,14 @@ mod test {
 
         let examples = vec![
             Example {
+                input: "table | s: id",
+                expected_column: SqlIdentifierInput {
+                    name: "id",
+                    position: (11..13).into(),
+                },
+                expected_table: Implicit,
+            },
+            Example {
                 input: "table | s: table.id",
                 expected_column: SqlIdentifierInput {
                     name: "id",

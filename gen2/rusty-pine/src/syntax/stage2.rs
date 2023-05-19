@@ -107,14 +107,28 @@ fn translate_column(column: Pair<Rule>) -> ColumnInput {
     match inner.as_rule() {
         Rule::db_table_column_name => translate_db_table_column_name(inner),
         Rule::table_column_name => translate_table_column_name(inner),
+        Rule::column_name => translate_column_name(inner),
         _ => panic!("Unknown column type {:#?}", inner.as_rule()),
     }
-    //
-    // ColumnInput {
-    //     table,
-    //     column,
-    //     position,
-    // }
+}
+
+fn translate_column_name(pair: Pair<Rule>) -> ColumnInput {
+    assert_eq!(Rule::column_name, pair.as_rule());
+
+    let position: Position = pair.as_span().into();
+
+    let mut inners = pair.into_inner();
+
+    let table = Implicit;
+    let column = translate_sql_name(inners.next().unwrap());
+
+    assert!(inners.next().is_none());
+
+    ColumnInput {
+        table,
+        column,
+        position,
+    }
 }
 
 fn translate_table_column_name(pair: Pair<Rule>) -> ColumnInput {
@@ -210,7 +224,7 @@ fn translate_db_table_name(pair: Pair<Rule>) -> TableInput {
     }
 }
 
-impl From<pest::Span<'_>> for Position {
+impl From<Span<'_>> for Position {
     fn from(span: Span) -> Self {
         Position {
             start: span.start(),
