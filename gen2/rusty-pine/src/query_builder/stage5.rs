@@ -1,5 +1,5 @@
-use crate::query_builder::{DatabaseName, Query, Source, Sourced, Table, TableName, ToSource};
-use crate::syntax::{OptionalInput, SqlIdentifierInput, Stage4Rep, TableInput};
+use crate::query_builder::{Query, Source, Sourced, Table, ToSource};
+use crate::syntax::{OptionalInput, Stage4Rep, TableInput};
 
 #[derive(Debug)]
 pub enum Stage5Error {}

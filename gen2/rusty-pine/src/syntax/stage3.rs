@@ -52,7 +52,6 @@ fn transform_stage_2_pine<'a>(
         Stage2Pine::Select(column) => {
             stage3_pines.push(position.holding(Stage3Pine::Select(*column)))
         }
-        _ => panic!("Unknown stage 2 pine type\n{:#?}", stage2_pine.node),
     };
 
     (stage3_pines, context)

@@ -5,7 +5,7 @@
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
-use crate::syntax::{ColumnInput, Position, Positioned, SqlIdentifierInput, TableInput};
+use crate::syntax::{ColumnInput, Position, SqlIdentifierInput, TableInput};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,

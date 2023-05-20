@@ -1,6 +1,10 @@
-use crate::syntax::{Position, Positioned, SqlIdentifierInput};
+use crate::syntax::{Position, Stage4Rep};
 
 mod stage5;
+
+pub fn build_query(input: Stage4Rep<'_>) -> Query {
+    stage5::Stage5Builder {}.try_build(input).unwrap()
+}
 
 #[derive(Debug)]
 pub struct Query {

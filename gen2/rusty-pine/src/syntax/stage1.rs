@@ -4,11 +4,16 @@ use pest::Parser;
 use pest_derive::Parser;
 use thiserror::Error;
 
+#[derive(Error, Debug)]
+pub enum Stage1Error {
+    #[error("Invalid syntax, failed to parse:\n{0}")]
+    InvalidSyntax(#[from] pest::error::Error<Rule>),
+}
 #[derive(Parser)]
 #[grammar = "syntax/pine.pest"]
 struct Stage1Parser;
 
-pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, Stage1Error> {
+pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, crate::Error> {
     let pest = Stage1Parser::parse(Rule::root, input)?;
 
     Ok(Stage1Rep { input, pest })
@@ -18,12 +23,6 @@ pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, Stage1Error> {
 pub struct Stage1Rep<'a> {
     pub input: &'a str,
     pub pest: Pairs<'a, Rule>,
-}
-
-#[derive(Error, Debug)]
-pub enum Stage1Error {
-    #[error("Invalid syntax, failed to parse:\n{0}")]
-    InvalidSyntax(#[from] pest::error::Error<Rule>),
 }
 
 #[cfg(test)]

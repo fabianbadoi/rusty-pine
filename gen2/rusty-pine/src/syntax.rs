@@ -5,22 +5,23 @@ mod stage2;
 mod stage3;
 mod stage4;
 
-use crate::syntax::stage1::{parse_stage1, Stage1Error};
+use crate::syntax::stage1::parse_stage1;
 use crate::syntax::stage2::Stage2Rep;
 use crate::syntax::stage3::Stage3Rep;
+pub use stage1::Rule;
 pub use stage4::{Stage4ColumnInput, Stage4Rep};
 
-pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, Stage1Error> {
-    parse_stage1(input).map(|stage1| {
-        let stage2: Stage2Rep = stage1.into();
-        let stage3: Stage3Rep = stage2.into();
+pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::Error> {
+    let stage1 = parse_stage1(input)?;
+    let stage2: Stage2Rep = stage1.into();
+    let stage3: Stage3Rep = stage2.into();
 
-        stage3.into()
-    })
+    Ok(stage3.into())
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug, Default)]
 pub enum OptionalInput<T> {
+    #[default]
     Implicit,
     Specified(T),
 }
@@ -45,12 +46,6 @@ impl<T> OptionalInput<T> {
     }
 }
 
-impl<T> Default for OptionalInput<T> {
-    fn default() -> Self {
-        return OptionalInput::Implicit;
-    }
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TableInput<'a> {
     pub database: OptionalInput<SqlIdentifierInput<'a>>,
@@ -71,15 +66,15 @@ pub struct SqlIdentifierInput<'a> {
     pub position: Position,
 }
 
-impl Into<String> for &SqlIdentifierInput<'_> {
-    fn into(self) -> String {
-        self.name.to_owned()
+impl From<&SqlIdentifierInput<'_>> for String {
+    fn from(value: &SqlIdentifierInput<'_>) -> Self {
+        value.name.to_owned()
     }
 }
 
-impl Into<Position> for &SqlIdentifierInput<'_> {
-    fn into(self) -> Position {
-        self.position
+impl From<&SqlIdentifierInput<'_>> for Position {
+    fn from(value: &SqlIdentifierInput<'_>) -> Self {
+        value.position
     }
 }
 

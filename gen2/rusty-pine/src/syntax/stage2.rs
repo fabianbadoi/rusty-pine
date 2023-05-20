@@ -15,10 +15,7 @@
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
 use crate::syntax::stage1::{Rule, Stage1Rep};
-use crate::syntax::OptionalInput::{Implicit, Specified};
-use crate::syntax::{
-    ColumnInput, OptionalInput, Position, Positioned, SqlIdentifierInput, TableInput,
-};
+use crate::syntax::{ColumnInput, Position, Positioned, TableInput};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -46,10 +43,10 @@ impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
         let root_node = stage1.pest;
         let pines = translate_root(root_node);
 
-        return Stage2Rep {
+        Stage2Rep {
             input: stage1.input,
             pines,
-        };
+        }
     }
 }
 
@@ -74,7 +71,7 @@ fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Positioned<Stage2Pine>> {
     pines
 }
 
-fn translate_base(mut base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
+fn translate_base(base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
     assert_eq!(Rule::base, base_pair.as_rule());
 
     let position: Position = base_pair.as_span().into();
