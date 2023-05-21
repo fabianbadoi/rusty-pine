@@ -4,8 +4,8 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
-use crate::syntax::{ColumnInput, Position, SqlIdentifierInput, TableInput};
+use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
+use crate::syntax::{Position, SqlIdentifierInput, TableInput};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
@@ -35,7 +35,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     from = Some(table);
                 }
                 Stage3Pine::Select(column) => {
-                    select.push(translate_column(column, from.unwrap()));
+                    select.push(translate_column(column));
                 }
             }
         }
@@ -48,15 +48,8 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     }
 }
 
-fn translate_column<'a>(
-    stage3_col: ColumnInput<'a>,
-    previous_table: TableInput<'a>,
-) -> Stage4ColumnInput<'a> {
-    Stage4ColumnInput {
-        column: stage3_col.column,
-        table: stage3_col.table.or(previous_table),
-        position: stage3_col.position,
-    }
+fn translate_column(stage3_col: Stage3ColumnInput) -> Stage4ColumnInput {
+    stage3_col
 }
 
 #[cfg(test)]

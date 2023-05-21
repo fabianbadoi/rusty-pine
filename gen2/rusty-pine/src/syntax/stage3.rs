@@ -6,7 +6,7 @@
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
 use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
-use crate::syntax::{ColumnInput, Positioned, TableInput};
+use crate::syntax::{Positioned, Stage4ColumnInput, TableInput};
 
 pub struct Stage3Rep<'a> {
     pub input: &'a str,
@@ -15,8 +15,10 @@ pub struct Stage3Rep<'a> {
 
 pub enum Stage3Pine<'a> {
     From { table: TableInput<'a> },
-    Select(ColumnInput<'a>),
+    Select(Stage3ColumnInput<'a>),
 }
+
+pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>; // shh!
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
     fn from(stage2: Stage2Rep<'a>) -> Self {
@@ -33,25 +35,36 @@ impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
 }
 
 type Stage3Pines<'a> = Vec<Positioned<Stage3Pine<'a>>>;
-type Context = ();
-fn collector<'a>() -> (Stage3Pines<'a>, Context) {
-    (Vec::new(), ())
+
+#[derive(Default)]
+struct Context<'a> {
+    last_table: Option<TableInput<'a>>,
+}
+fn collector<'a>() -> (Stage3Pines<'a>, Context<'a>) {
+    (Vec::new(), Default::default())
 }
 type Stage2PineParam<'a> = Positioned<Stage2Pine<'a>>;
 
 fn transform_stage_2_pine<'a>(
-    (mut stage3_pines, context): (Stage3Pines<'a>, Context),
+    (mut stage3_pines, mut context): (Stage3Pines<'a>, Context<'a>),
     stage2_pine: Stage2PineParam<'a>,
-) -> (Vec<Positioned<Stage3Pine<'a>>>, ()) {
+) -> (Vec<Positioned<Stage3Pine<'a>>>, Context<'a>) {
     let position = &stage2_pine.position;
 
     match &stage2_pine.node {
         Stage2Pine::Base { table } => {
+            context.last_table.replace(*table);
             stage3_pines.push(position.holding(Stage3Pine::From { table: *table }))
         }
-        Stage2Pine::Select(column) => {
-            stage3_pines.push(position.holding(Stage3Pine::Select(*column)))
-        }
+        Stage2Pine::Select(column) => stage3_pines.push(
+            position.holding(Stage3Pine::Select(Stage3ColumnInput {
+                column: column.column,
+                position: column.position,
+                table: column.table.or(context
+                    .last_table
+                    .expect("The base pine always has a table")),
+            })),
+        ),
     };
 
     (stage3_pines, context)

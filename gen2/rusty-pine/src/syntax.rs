@@ -1,8 +1,32 @@
-use std::ops::Range;
+//! Pine language input parsing
+//!
+//! The pine language looks like this:
+//! ```
+//!     some_table | another_table_to_be_joined | s: column_name count(1) | g: column_name
+//! ```
+//! `s:` is shorthand for `select:` and `g:` is shorthand for `group:`.
+//!
+//!
+//! Why are there so many stages?
+//! -----------------------------
+//!
+//! There are exactly as many stages as needed.
+//! Jokes aside, if you don't split this parsing operation into these multiple stages, then you end
+//! up with over-complicated code.
+//!
+//! Each stage is slightly different, and the nature of the processing varies. Some stages just deal
+//! with the straight input, other's have internal history.
 
+/// Uses Pest to parse input strings.
 mod stage1;
+
+/// Takes Pest's output and transforms it into something a bit nicer.
 mod stage2;
+
+/// Each "pine" has implicit data from the previous ones. This steps injects that data.
 mod stage3;
+
+/// Produces a structure that is a little bit easier to use in the future.
 mod stage4;
 
 use crate::syntax::stage1::parse_stage1;
@@ -10,6 +34,7 @@ use crate::syntax::stage2::Stage2Rep;
 use crate::syntax::stage3::Stage3Rep;
 pub use stage1::Rule;
 pub use stage4::{Stage4ColumnInput, Stage4Rep};
+use std::ops::Range;
 
 pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::Error> {
     let stage1 = parse_stage1(input)?;
@@ -78,7 +103,6 @@ impl From<&SqlIdentifierInput<'_>> for Position {
     }
 }
 
-// TODO impl display and debug
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Position {
     // pub input: &'a str,
