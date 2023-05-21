@@ -5,7 +5,7 @@
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
-use crate::syntax::{Position, SqlIdentifierInput, TableInput};
+use crate::syntax::{Position, Positioned, SqlIdentifierInput, TableInput};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
@@ -19,8 +19,11 @@ pub struct Stage4ColumnInput<'a> {
     pub position: Position,
 }
 
-impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
-    fn from(stage3: Stage3Rep<'a>) -> Self {
+impl<'a, T> From<Stage3Rep<'a, T>> for Stage4Rep<'a>
+where
+    T: Iterator<Item = Positioned<Stage3Pine<'a>>>,
+{
+    fn from(stage3: Stage3Rep<'a, T>) -> Self {
         let input = stage3.input;
         let mut from = None;
         let mut select = Vec::new();
@@ -54,7 +57,7 @@ fn translate_column(stage3_col: Stage3ColumnInput) -> Stage4ColumnInput {
 
 #[cfg(test)]
 mod test {
-    use crate::syntax::stage1::{parse_stage1, Stage1Error};
+    use crate::syntax::stage1::parse_stage1;
     use crate::syntax::stage2::Stage2Rep;
     use crate::syntax::stage3::Stage3Rep;
     use crate::syntax::stage4::Stage4Rep;
@@ -65,7 +68,7 @@ mod test {
     #[test]
     fn test_simple_transform() {
         let stage2: Stage2Rep = parse_stage1("table").unwrap().into();
-        let stage3: Stage3Rep = stage2.into();
+        let stage3: Stage3Rep<_> = stage2.into();
         let stage4: Stage4Rep = stage3.into();
 
         assert_eq!("table", stage4.input);
@@ -78,7 +81,7 @@ mod test {
     #[test]
     fn test_transform_with_database() {
         let stage2: Stage2Rep = parse_stage1("database.table").unwrap().into();
-        let stage3: Stage3Rep = stage2.into();
+        let stage3: Stage3Rep<_> = stage2.into();
         let stage4: Stage4Rep = stage3.into();
 
         assert_eq!("database.table", stage4.input);

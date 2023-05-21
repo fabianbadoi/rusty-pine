@@ -6,11 +6,12 @@
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
 use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
+use crate::syntax::stage3::iterator::Stage3OutputQueue;
 use crate::syntax::{Positioned, Stage4ColumnInput, TableInput};
 
-pub struct Stage3Rep<'a> {
+pub struct Stage3Rep<'a, T> {
     pub input: &'a str,
-    pub pines: Vec<Positioned<Stage3Pine<'a>>>,
+    pub pines: T,
 }
 
 pub enum Stage3Pine<'a> {
@@ -20,54 +21,24 @@ pub enum Stage3Pine<'a> {
 
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>; // shh!
 
-impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
+impl<'a> From<Stage2Rep<'a>>
+    for Stage3Rep<
+        'a,
+        iterator::Stage3Iterator<
+            'a,
+            std::vec::IntoIter<Positioned<Stage2Pine<'a>>>,
+            Stage3OutputQueue<'a>,
+        >,
+    >
+{
     fn from(stage2: Stage2Rep<'a>) -> Self {
-        let (pines, _) = stage2
-            .pines
-            .into_iter()
-            .fold(collector(), transform_stage_2_pine);
+        let context = iterator::Stage3Iterator::new(stage2.pines.into_iter());
 
         Stage3Rep {
             input: stage2.input,
-            pines,
+            pines: context,
         }
     }
-}
-
-type Stage3Pines<'a> = Vec<Positioned<Stage3Pine<'a>>>;
-
-#[derive(Default)]
-struct Context<'a> {
-    last_table: Option<TableInput<'a>>,
-}
-fn collector<'a>() -> (Stage3Pines<'a>, Context<'a>) {
-    (Vec::new(), Default::default())
-}
-type Stage2PineParam<'a> = Positioned<Stage2Pine<'a>>;
-
-fn transform_stage_2_pine<'a>(
-    (mut stage3_pines, mut context): (Stage3Pines<'a>, Context<'a>),
-    stage2_pine: Stage2PineParam<'a>,
-) -> (Vec<Positioned<Stage3Pine<'a>>>, Context<'a>) {
-    let position = &stage2_pine.position;
-
-    match &stage2_pine.node {
-        Stage2Pine::Base { table } => {
-            context.last_table.replace(*table);
-            stage3_pines.push(position.holding(Stage3Pine::From { table: *table }))
-        }
-        Stage2Pine::Select(column) => stage3_pines.push(
-            position.holding(Stage3Pine::Select(Stage3ColumnInput {
-                column: column.column,
-                position: column.position,
-                table: column.table.or(context
-                    .last_table
-                    .expect("The base pine always has a table")),
-            })),
-        ),
-    };
-
-    (stage3_pines, context)
 }
 
 #[cfg(test)]
@@ -80,14 +51,15 @@ mod test {
     #[test]
     fn test_simple_convert() {
         let stage2: Stage2Rep = parse_stage1("table").unwrap().into();
-        let stage3: Stage3Rep = stage2.into();
+        let mut stage3: Stage3Rep<_> = stage2.into();
 
         assert_eq!("table", stage3.input);
-        assert_eq!(1, stage3.pines.len());
-        assert_eq!(0..5, stage3.pines[0].position);
+
+        let first = stage3.pines.next().unwrap();
+        assert_eq!(0..5, first.position);
 
         assert!(matches!(
-            stage3.pines[0].node,
+            first.node,
             Stage3Pine::From {
                 table: TableInput {
                     database: OptionalInput::Implicit,
@@ -99,5 +71,94 @@ mod test {
                 },
             }
         ))
+    }
+}
+
+mod iterator {
+    use crate::syntax::stage2::Stage2Pine;
+    use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine};
+    use crate::syntax::{Positioned, TableInput};
+    use std::collections::VecDeque;
+
+    pub type Stage3OutputQueue<'a> = VecDeque<Positioned<Stage3Pine<'a>>>;
+
+    pub struct Stage3Iterator<'a, Source, OutputQueue> {
+        source: Source,
+        output_queue: OutputQueue,
+        context: Context<'a>,
+    }
+
+    struct Context<'a> {
+        previous_table: TableInput<'a>,
+    }
+
+    impl<'a, T> Iterator for Stage3Iterator<'a, T, Stage3OutputQueue<'a>>
+    where
+        T: Iterator<Item = Positioned<Stage2Pine<'a>>>,
+    {
+        type Item = Positioned<Stage3Pine<'a>>;
+
+        fn next(&mut self) -> Option<Self::Item> {
+            if self.output_queue.is_empty() {
+                self.consume_from_stage2();
+            }
+
+            self.output_queue.pop_front()
+        }
+    }
+
+    impl<'a, T> Stage3Iterator<'a, T, Stage3OutputQueue<'a>>
+    where
+        T: Iterator<Item = Positioned<Stage2Pine<'a>>>,
+    {
+        pub fn new(mut source: T) -> Self {
+            let base = source.next().expect("things must always have a base");
+            let position = base.position;
+
+            let base_table = match base.node {
+                Stage2Pine::Base { table } => table,
+                _ => panic!("Unknown starting pine, expected base"),
+            };
+
+            Self {
+                source,
+                context: Context {
+                    previous_table: base_table,
+                },
+                output_queue: VecDeque::from([
+                    position.holding(Stage3Pine::From { table: base_table })
+                ]),
+            }
+        }
+
+        fn consume_from_stage2(&mut self) {
+            if let Some(next_stage2) = self.source.next() {
+                let mut more_stage3_pines = self.process_stage_2_pine(next_stage2);
+                self.output_queue.append(&mut more_stage3_pines);
+            }
+        }
+    }
+
+    impl<'a, T, O> Stage3Iterator<'a, T, O> {
+        fn process_stage_2_pine(
+            &mut self,
+            stage2_pine: Positioned<Stage2Pine<'a>>,
+        ) -> Stage3OutputQueue<'a> {
+            // Replace?
+            let position = stage2_pine.position;
+
+            let stage3_pines = match stage2_pine.node {
+                Stage2Pine::Base { .. } => panic!("This was covered in the constructor"),
+                Stage2Pine::Select(column) => {
+                    vec![position.holding(Stage3Pine::Select(Stage3ColumnInput {
+                        column: column.column,
+                        position: column.position,
+                        table: column.table.or(self.context.previous_table),
+                    }))]
+                }
+            };
+
+            VecDeque::from(stage3_pines)
+        }
     }
 }
