@@ -135,6 +135,7 @@ impl Position {
     }
 }
 
+#[derive(Debug)]
 pub struct Positioned<T> {
     node: T,
     position: Position,

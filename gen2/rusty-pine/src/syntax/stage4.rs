@@ -37,8 +37,8 @@ where
                     );
                     from = Some(table);
                 }
-                Stage3Pine::Select(column) => {
-                    select.push(translate_column(column));
+                Stage3Pine::Select(columns) => {
+                    select.append(&mut translate_columns(columns));
                 }
             }
         }
@@ -49,6 +49,10 @@ where
             selected_columns: select,
         }
     }
+}
+
+fn translate_columns(columns: Vec<Stage3ColumnInput>) -> Vec<Stage4ColumnInput> {
+    columns.into_iter().map(translate_column).collect()
 }
 
 fn translate_column(stage3_col: Stage3ColumnInput) -> Stage4ColumnInput {
@@ -187,6 +191,20 @@ mod test {
             assert_eq!(expected_table, from.table.name, "Parsing: {}", input);
             assert_eq!(expected_db, from.database, "Parsing: {}", input);
         }
+    }
+
+    #[test]
+    fn test_multiple_selects() {
+        let output = parse_to_stage4("table | s: id | s: id2").unwrap();
+
+        assert_eq!(2, output.selected_columns.len());
+    }
+
+    #[test]
+    fn test_selecting_multiple_columns() {
+        let output = parse_to_stage4("table | s: id id2").unwrap();
+
+        assert_eq!(2, output.selected_columns.len());
     }
 
     impl PartialEq<OptionalInput<SqlIdentifierInput<'_>>> for OptionalInput<&str> {

@@ -3,7 +3,7 @@ root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
 pine = _{ select_pine }
-select_pine = { ("s:" | "select:") ~ column }
+select_pine = { ("s:" | "select:") ~ column+ }
 // todo multiple columns
 
 column = { db_table_column_name | table_column_name | column_name }

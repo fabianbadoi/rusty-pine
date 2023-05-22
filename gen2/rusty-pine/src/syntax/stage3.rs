@@ -16,7 +16,7 @@ pub struct Stage3Rep<'a, T> {
 
 pub enum Stage3Pine<'a> {
     From { table: TableInput<'a> },
-    Select(Stage3ColumnInput<'a>),
+    Select(Vec<Stage3ColumnInput<'a>>),
 }
 
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>; // shh!
@@ -70,7 +70,7 @@ mod test {
 mod iterator {
     use crate::syntax::stage2::Stage2Pine;
     use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine};
-    use crate::syntax::{Positioned, TableInput};
+    use crate::syntax::{ColumnInput, Position, Positioned, TableInput};
     use std::collections::VecDeque;
 
     pub type Stage3OutputQueue<'a> = VecDeque<Positioned<Stage3Pine<'a>>>;
@@ -137,21 +137,31 @@ mod iterator {
             &mut self,
             stage2_pine: Positioned<Stage2Pine<'a>>,
         ) -> Stage3OutputQueue<'a> {
-            // Replace?
             let position = stage2_pine.position;
 
             let stage3_pines = match stage2_pine.node {
                 Stage2Pine::Base { .. } => panic!("This was covered in the constructor"),
-                Stage2Pine::Select(column) => {
-                    vec![position.holding(Stage3Pine::Select(Stage3ColumnInput {
-                        column: column.column,
-                        position: column.position,
-                        table: column.table.or(self.context.previous_table),
-                    }))]
-                }
+                Stage2Pine::Select(columns) => self.translate_select(position, columns),
             };
 
             VecDeque::from(stage3_pines)
+        }
+
+        fn translate_select(
+            &mut self,
+            position: Position,
+            columns: Vec<ColumnInput<'a>>,
+        ) -> Vec<Positioned<Stage3Pine<'a>>> {
+            let columns = columns
+                .iter()
+                .map(|column| Stage3ColumnInput {
+                    column: column.column,
+                    position: column.position,
+                    table: column.table.or(self.context.previous_table),
+                })
+                .collect();
+
+            vec![position.holding(Stage3Pine::Select(columns))]
         }
     }
 }

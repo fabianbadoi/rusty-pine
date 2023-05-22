@@ -35,7 +35,7 @@ pub struct Stage2Rep<'a> {
 #[derive(Debug)]
 pub enum Stage2Pine<'a> {
     Base { table: TableInput<'a> },
-    Select(ColumnInput<'a>),
+    Select(Vec<ColumnInput<'a>>),
 }
 
 impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
@@ -113,11 +113,14 @@ fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
     assert_eq!(Rule::select_pine, select.as_rule());
 
     let position: Position = select.as_span().into();
-    let column_pair = select.into_inner().next().expect("Has to be valid syntax");
+    let mut columns = Vec::new();
 
-    position.holding(Stage2Pine::Select(identifiers::translate_column(
-        column_pair,
-    )))
+    for column_pair in select.into_inner() {
+        let column = identifiers::translate_column(column_pair);
+        columns.push(column);
+    }
+
+    position.holding(Stage2Pine::Select(columns))
 }
 
 impl From<Span<'_>> for Position {
