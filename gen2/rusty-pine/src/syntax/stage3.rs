@@ -5,9 +5,9 @@
 //!
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
-use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
+use crate::syntax::stage2::{PestIterator, Stage2Rep};
 use crate::syntax::stage3::iterator::Stage3OutputQueue;
-use crate::syntax::{Positioned, Stage4ColumnInput, TableInput};
+use crate::syntax::{Stage4ColumnInput, TableInput};
 
 pub struct Stage3Rep<'a, T> {
     pub input: &'a str,
@@ -22,17 +22,10 @@ pub enum Stage3Pine<'a> {
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>; // shh!
 
 impl<'a> From<Stage2Rep<'a>>
-    for Stage3Rep<
-        'a,
-        iterator::Stage3Iterator<
-            'a,
-            std::vec::IntoIter<Positioned<Stage2Pine<'a>>>,
-            Stage3OutputQueue<'a>,
-        >,
-    >
+    for Stage3Rep<'a, iterator::Stage3Iterator<'a, PestIterator<'a>, Stage3OutputQueue<'a>>>
 {
     fn from(stage2: Stage2Rep<'a>) -> Self {
-        let context = iterator::Stage3Iterator::new(stage2.pines.into_iter());
+        let context = iterator::Stage3Iterator::new(stage2.pines);
 
         Stage3Rep {
             input: stage2.input,

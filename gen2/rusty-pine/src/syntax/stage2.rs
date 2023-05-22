@@ -29,7 +29,7 @@ mod identifiers;
 ///
 pub struct Stage2Rep<'a> {
     pub input: &'a str,
-    pub pines: Vec<Positioned<Stage2Pine<'a>>>,
+    pub pines: PestIterator<'a>,
 }
 
 #[derive(Debug)]
@@ -50,25 +50,46 @@ impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
     }
 }
 
-fn translate_root(mut pairs: Pairs<Rule>) -> Vec<Positioned<Stage2Pine>> {
+pub struct PestIterator<'a> {
+    inners: Pairs<'a, Rule>,
+    base_done: bool,
+}
+
+impl<'a> PestIterator<'a> {
+    fn new(base: Pairs<'a, Rule>) -> PestIterator {
+        Self {
+            base_done: false,
+            inners: base,
+        }
+    }
+}
+
+impl<'a> Iterator for PestIterator<'a> {
+    type Item = Positioned<Stage2Pine<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.inners.next();
+
+        if !self.base_done {
+            self.base_done = true;
+
+            return Some(translate_base(next.expect("Guaranteed by syntax")));
+        }
+
+        match next {
+            None => None,
+            Some(pair) => translate_pine(pair),
+        }
+    }
+}
+
+fn translate_root(mut pairs: Pairs<Rule>) -> PestIterator {
     let root_pair = pairs.next().expect("Impossible due to pest parsing");
+
     assert_eq!(Rule::root, root_pair.as_rule());
     assert!(pairs.next().is_none());
 
-    let mut inners = root_pair.into_inner();
-    let mut pines = Vec::new();
-
-    pines.push(translate_base(inners.next().expect("Guaranteed by syntax")));
-
-    for pair in inners {
-        if pair.as_rule() == Rule::EOI {
-            continue;
-        }
-
-        pines.push(translate_pine(pair));
-    }
-
-    pines
+    PestIterator::new(root_pair.into_inner())
 }
 
 fn translate_base(base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
@@ -80,9 +101,10 @@ fn translate_base(base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
     position.holding(Stage2Pine::Base { table: table_name })
 }
 
-fn translate_pine(pair: Pair<Rule>) -> Positioned<Stage2Pine> {
+fn translate_pine(pair: Pair<Rule>) -> Option<Positioned<Stage2Pine>> {
     match pair.as_rule() {
-        Rule::select_pine => translate_select(pair),
+        Rule::select_pine => Some(translate_select(pair)),
+        Rule::EOI => None,
         _ => panic!("Unknown pine {:#?}", pair),
     }
 }
@@ -116,12 +138,11 @@ mod test {
     #[test]
     fn test_simple_parse() {
         let stage1 = parse_stage1("name").unwrap();
-        let stage2: Stage2Rep = stage1.into();
+        let mut stage2: Stage2Rep = stage1.into();
 
         assert_eq!("name", stage2.input);
-        assert_eq!(1, stage2.pines.len());
 
-        let base = &stage2.pines[0];
+        let base = &stage2.pines.next().unwrap();
         assert!(matches!(
             base.node,
             Stage2Pine::Base {
