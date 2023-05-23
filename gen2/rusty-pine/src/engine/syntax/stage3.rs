@@ -11,6 +11,9 @@ use crate::engine::syntax::{Stage4ColumnInput, TableInput};
 
 pub struct Stage3Rep<'a, T> {
     pub input: &'a str,
+    /// Normally I would use the real type here, not a generic one. In this case, the type signature
+    /// is really long, so this simplifies our lives a bit.
+    /// In the end, both approaches should compile to the same code.
     pub pines: T,
 }
 
@@ -23,6 +26,7 @@ pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>; // shh!
 
 impl<'a> From<Stage2Rep<'a>>
     for Stage3Rep<'a, iterator::Stage3Iterator<'a, PestIterator<'a>, Stage3OutputQueue<'a>>>
+//      👆 this is a really ugly type, it's about here that I start to get sick of looking at <'a>
 {
     fn from(stage2: Stage2Rep<'a>) -> Self {
         let context = iterator::Stage3Iterator::new(stage2.pines);
