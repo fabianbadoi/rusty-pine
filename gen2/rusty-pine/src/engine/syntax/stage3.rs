@@ -5,9 +5,9 @@
 //!
 //! Each pine should have all of the info from the input contained in itself, so future processing
 //! does not have to look-backs.
-use crate::syntax::stage2::{PestIterator, Stage2Rep};
-use crate::syntax::stage3::iterator::Stage3OutputQueue;
-use crate::syntax::{Stage4ColumnInput, TableInput};
+use crate::engine::syntax::stage2::{PestIterator, Stage2Rep};
+use crate::engine::syntax::stage3::iterator::Stage3OutputQueue;
+use crate::engine::syntax::{Stage4ColumnInput, TableInput};
 
 pub struct Stage3Rep<'a, T> {
     pub input: &'a str,
@@ -36,10 +36,10 @@ impl<'a> From<Stage2Rep<'a>>
 
 #[cfg(test)]
 mod test {
-    use crate::syntax::stage1::parse_stage1;
-    use crate::syntax::stage2::Stage2Rep;
-    use crate::syntax::stage3::{Stage3Pine, Stage3Rep};
-    use crate::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::engine::syntax::stage1::parse_stage1;
+    use crate::engine::syntax::stage2::Stage2Rep;
+    use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep};
+    use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
 
     #[test]
     fn test_simple_convert() {
@@ -68,9 +68,9 @@ mod test {
 }
 
 mod iterator {
-    use crate::syntax::stage2::Stage2Pine;
-    use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine};
-    use crate::syntax::{ColumnInput, Position, Positioned, TableInput};
+    use crate::engine::syntax::stage2::Stage2Pine;
+    use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3Pine};
+    use crate::engine::syntax::{ColumnInput, Position, Positioned, TableInput};
     use std::collections::VecDeque;
 
     pub type Stage3OutputQueue<'a> = VecDeque<Positioned<Stage3Pine<'a>>>;

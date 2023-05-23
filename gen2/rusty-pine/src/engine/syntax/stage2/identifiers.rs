@@ -1,6 +1,6 @@
-use crate::syntax::stage1::Rule;
-use crate::syntax::OptionalInput::{Implicit, Specified};
-use crate::syntax::{ColumnInput, OptionalInput, Position, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::stage1::Rule;
+use crate::engine::syntax::OptionalInput::{Implicit, Specified};
+use crate::engine::syntax::{ColumnInput, OptionalInput, Position, SqlIdentifierInput, TableInput};
 use pest::iterators::Pair;
 
 pub fn translate_column(column: Pair<Rule>) -> ColumnInput {

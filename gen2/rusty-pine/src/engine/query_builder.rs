@@ -1,4 +1,4 @@
-use crate::syntax::{Position, Stage4Rep};
+use crate::engine::syntax::{Position, Stage4Rep};
 
 mod stage5;
 

@@ -19,4 +19,4 @@ pub enum ErrorKind {
     SyntaxError(#[from] PestError),
 }
 
-pub type PestError = pest::error::Error<crate::syntax::Rule>;
+pub type PestError = pest::error::Error<crate::engine::Rule>;

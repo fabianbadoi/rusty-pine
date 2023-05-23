@@ -4,8 +4,8 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
-use crate::syntax::{Position, Positioned, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
+use crate::engine::syntax::{Position, Positioned, SqlIdentifierInput, TableInput};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
@@ -61,12 +61,14 @@ fn translate_column(stage3_col: Stage3ColumnInput) -> Stage4ColumnInput {
 
 #[cfg(test)]
 mod test {
-    use crate::syntax::stage1::parse_stage1;
-    use crate::syntax::stage2::Stage2Rep;
-    use crate::syntax::stage3::Stage3Rep;
-    use crate::syntax::stage4::Stage4Rep;
-    use crate::syntax::OptionalInput::{Implicit, Specified};
-    use crate::syntax::{parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::engine::syntax::stage1::parse_stage1;
+    use crate::engine::syntax::stage2::Stage2Rep;
+    use crate::engine::syntax::stage3::Stage3Rep;
+    use crate::engine::syntax::stage4::Stage4Rep;
+    use crate::engine::syntax::OptionalInput::{Implicit, Specified};
+    use crate::engine::syntax::{
+        parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, TableInput,
+    };
     use std::ops::Range;
 
     #[test]

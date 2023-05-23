@@ -10,10 +10,10 @@ pub enum Stage1Error {
     InvalidSyntax(#[from] pest::error::Error<Rule>),
 }
 #[derive(Parser)]
-#[grammar = "syntax/pine.pest"]
+#[grammar = "engine/syntax/pine.pest"]
 struct Stage1Parser;
 
-pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, crate::Error> {
+pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, crate::error::Error> {
     let pest = Stage1Parser::parse(Rule::root, input)?;
 
     Ok(Stage1Rep { input, pest })

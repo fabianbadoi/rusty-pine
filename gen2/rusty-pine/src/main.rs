@@ -11,19 +11,11 @@
 //!
 //! [a friend's really cool project]: https://github.com/pine-lang/pine
 
+mod engine;
 mod error;
-mod query_builder;
-mod rendering;
-mod syntax;
 
-use crate::query_builder::build_query;
-use crate::rendering::render_query;
-use crate::syntax::parse_to_stage4;
-pub use error::Error;
+use crate::engine::render;
 
 fn main() {
-    println!(
-        "{}",
-        render_query(build_query(parse_to_stage4("table").unwrap()))
-    );
+    println!("{}", render("table").unwrap());
 }

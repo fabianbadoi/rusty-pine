@@ -29,14 +29,15 @@ mod stage3;
 /// Produces a structure that is a little bit easier to use in the future.
 mod stage4;
 
-use crate::syntax::stage1::parse_stage1;
-use crate::syntax::stage2::Stage2Rep;
-use crate::syntax::stage3::Stage3Rep;
 pub use stage1::Rule;
 pub use stage4::{Stage4ColumnInput, Stage4Rep};
+
+use crate::engine::syntax::stage1::parse_stage1;
+use crate::engine::syntax::stage2::Stage2Rep;
+use crate::engine::syntax::stage3::Stage3Rep;
 use std::ops::Range;
 
-pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::Error> {
+pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
     let stage1 = parse_stage1(input)?;
     let stage2: Stage2Rep = stage1.into();
     let stage3: Stage3Rep<_> = stage2.into();

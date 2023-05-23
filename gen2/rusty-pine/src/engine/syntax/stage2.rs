@@ -14,8 +14,8 @@
 //!
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
-use crate::syntax::stage1::{Rule, Stage1Rep};
-use crate::syntax::{ColumnInput, Position, Positioned, TableInput};
+use crate::engine::syntax::stage1::{Rule, Stage1Rep};
+use crate::engine::syntax::{ColumnInput, Position, Positioned, TableInput};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -134,9 +134,9 @@ impl From<Span<'_>> for Position {
 
 #[cfg(test)]
 mod test {
-    use crate::syntax::stage1::parse_stage1;
-    use crate::syntax::stage2::{Stage2Pine, Stage2Rep};
-    use crate::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::engine::syntax::stage1::parse_stage1;
+    use crate::engine::syntax::stage2::{Stage2Pine, Stage2Rep};
+    use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
 
     #[test]
     fn test_simple_parse() {

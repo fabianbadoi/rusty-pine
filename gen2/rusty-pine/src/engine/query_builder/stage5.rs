@@ -1,5 +1,5 @@
-use crate::query_builder::{Query, Source, Sourced, Table, ToSource};
-use crate::syntax::{OptionalInput, Stage4Rep, TableInput};
+use crate::engine::query_builder::{Query, Source, Sourced, Table, ToSource};
+use crate::engine::syntax::{OptionalInput, Stage4Rep, TableInput};
 
 #[derive(Debug)]
 pub enum Stage5Error {}
@@ -33,8 +33,8 @@ impl From<TableInput<'_>> for Sourced<Table> {
 
 #[cfg(test)]
 mod test {
-    use crate::query_builder::stage5::Stage5Builder;
-    use crate::syntax::parse_to_stage4;
+    use crate::engine::query_builder::stage5::Stage5Builder;
+    use crate::engine::syntax::parse_to_stage4;
 
     #[test]
     fn test_try_from_simple() {
