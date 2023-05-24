@@ -40,7 +40,7 @@ use std::ops::Range;
 pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
     let stage1 = parse_stage1(input)?;
     let stage2: Stage2Rep = stage1.into();
-    let stage3: Stage3Rep<_> = stage2.into();
+    let stage3: Stage3Rep = stage2.into();
 
     Ok(stage3.into())
 }
