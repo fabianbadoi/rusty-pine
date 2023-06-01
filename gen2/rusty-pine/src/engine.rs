@@ -2,6 +2,9 @@ mod query_builder;
 mod rendering;
 mod syntax;
 
+#[cfg(test)]
+mod tests;
+
 pub use syntax::Rule;
 
 use crate::engine::query_builder::build_query;
