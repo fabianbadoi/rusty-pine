@@ -93,6 +93,10 @@ impl SqlTestFileReader {
     }
 }
 
+/// One of our integration tests.
+///
+/// Keeping all of the info related to where we found the test helps us a lot when printing test
+/// failures.
 pub struct Test {
     pub file: String,
     pub line_nr: usize,

@@ -1,3 +1,11 @@
+//! Provides a convenient way to print test errors.
+//!
+//! The strategy here is to create the appropriate data structures for each section of the desired
+//! output, and then just implement `Display` for them.
+//!
+//! The output style is based on the output style of rustc/cargo and other tools like this. I use
+//! the colored crate for nicer output.
+
 use crate::engine::tests::error_print::zip::GreedyZip;
 use colored::{Color, Colorize};
 use std::fmt::{Display, Formatter};
@@ -5,6 +13,26 @@ use std::ops::Range;
 
 mod zip;
 
+/// Renders to something like:
+///
+/// ```txt
+/// test tests/pine-tests.sql:: humans | s: id name ... FAILURE
+/// error: unexpected outcome
+///    --> src/tests/pine-tests.sql:9:9
+///     |
+///  9  |  -- Test: humans | s: id name
+///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+///  10 |/ SELECT id, name
+///  11 || FROM humans
+///  12 || LIMIT 10
+///     |\ ^^^^^^^^^^^^^^^^^
+///
+///                 Expected                 |                  Found
+/// -----------------------------------------------------------------------------------
+/// SELECT id, name                          <
+/// FROM humans                              <
+/// LIMIT 10                                 <
+/// ```
 pub struct TestErrorReport<'a> {
     pub header: TestHeaderLine<'a>,
     pub message: ErrorMessage<'a>,
@@ -12,40 +40,49 @@ pub struct TestErrorReport<'a> {
     pub diff: TestOutcomeDiff<'a>,
 }
 
-/// test rusty_pine::engine::tests:: humans | s: id name ... FAILED
+/// Renders to something like:
+///
+/// ```txt
+/// test tests/pine-tests.sql:: humans | s: id name ... FAILURE
+/// ```
 pub struct TestHeaderLine<'a> {
     pub module: &'a str,
     pub input: &'a str,
     pub outcome: TestOutcome,
 }
 
-/// error: unexpected output
+/// Renders to something like:
+///
+/// ```txt
+/// error: unexpected outcome
+/// ```
 pub struct ErrorMessage<'a> {
     pub message: &'a str,
 }
 
-///    --> src/engine/tests/pine-tests.sql:145
+/// Renders to something like:
+///
+/// ```txt
+///    --> src/tests/pine-tests.sql:9:9
 ///     |
-/// 145 | -- Test: humans | s: id name
-///     |          ------------------- output for this pine
-/// 123 | /                 format!("{} {}", " ".repeat(line_number.len()), "|")
-/// 124 | |                     .bold()
-/// 125 | |                     .blue(),
-/// 126 | |                 format!(
-/// 127 | |                     "{} {}",
-/// 128 | |                     "^".repeat(expected_output.len()),
-/// 129 | |                     "did not match this"
-/// 130 | |                 )
-/// 131 | |                 .bold()
-/// 132 | \                 .red(),
-///     |
+///  9  |  -- Test: humans | s: id name
+///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+///  10 |/ SELECT id, name
+///  11 || FROM humans
+///  12 || LIMIT 10
+///     |\ ^^^^^^^^^^^^^^^^^
+/// ```
 pub struct FileExtract<'a> {
     pub location: TestLocation<'a>,
     pub test_input: TestInput<'a>,
     pub expected_outcome: ExpectedOutcome<'a>,
 }
 
-///    --> src/engine/tests/pine-tests.sql:145
+/// Renders to something like:
+///
+/// ```txt
+///    --> src/tests/pine-tests.sql:9:9
+/// ```
 pub struct TestLocation<'a> {
     pub gutter_width: usize,
     pub file_path: &'a str,
@@ -53,35 +90,43 @@ pub struct TestLocation<'a> {
     pub column: usize,
 }
 
+/// Renders to something like:
+///
+/// ```txt
 ///     |
-/// 145 | -- Test: humans | s: id name
-///     |          ------------------- output for this pine
+///  9  |  -- Test: humans | s: id name
+///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+/// ```
 pub struct TestInput<'a> {
-    pub left_pad: usize,
+    pub gutter_width: usize,
     pub content: &'a str,
     pub line: usize,
     pub highlight: Range<usize>,
 }
 
-/// 123 | /                 format!("{} {}", " ".repeat(line_number.len()), "|")
-/// 124 | |                     .bold()
-/// 125 | |                     .blue(),
-/// 126 | |                 format!(
-/// 127 | |                     "{} {}",
-/// 128 | |                     "^".repeat(expected_output.len()),
-/// 129 | |                     "did not match this"
-/// 130 | |                 )
-/// 131 | |                 .bold()
-/// 132 | \                 .red(),
-///     |
+/// Renders to something like:
+///
+/// ```txt
+///  10 |/ SELECT id, name
+///  11 || FROM humans
+///  12 || LIMIT 10
+///     |\ ^^^^^^^^^^^^^^^^^
+/// ```
 pub struct ExpectedOutcome<'a> {
-    pub left_pad: usize,
+    pub gutter_width: usize,
     pub content: &'a str,
     pub start_line: usize,
 }
 
-/// Left:  1
-/// Right: 2
+/// Renders to something like:
+///
+/// ```txt
+///                 Expected                 |                  Found
+/// -----------------------------------------------------------------------------------
+/// SELECT id, name                          <
+/// FROM humans                              <
+/// LIMIT 10                                 <
+/// ```
 pub struct TestOutcomeDiff<'a> {
     pub expected: &'a str,
     pub found: &'a str,
@@ -94,6 +139,8 @@ pub enum TestOutcome {
 
 impl<'a> Display for TestErrorReport<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        // Since all of our data structs here implement Display printing the result means just
+        // printing the structs in the right order.
         writeln!(f)?;
         writeln!(f, "{}", self.header)?;
         writeln!(f, "{}", self.message)?;
@@ -130,6 +177,8 @@ impl<'a> Display for FileExtract<'a> {
 impl<'a> Display for TestLocation<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let gutter = " ".repeat(self.gutter_width - 1);
+        // An example of using the colored crate: .blue() and .bold() are not part of &str, but
+        // are added as a trait impl on &str.
         let arrow = "-->".blue().bold();
         let file = self.file_path;
         let line = self.line;
@@ -141,8 +190,9 @@ impl<'a> Display for TestLocation<'a> {
 
 impl<'a> Display for TestInput<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let gutter = self.left_pad;
+        let gutter = self.gutter_width;
 
+        // File extracts also show the line numbers in the gutter: ` <nr> |  <line content>`
         let vertical_space = gutter.with("", "");
 
         let input_line = gutter.with(self.line, format!("  {}", self.content));
@@ -167,7 +217,7 @@ impl<'a> Display for TestInput<'a> {
 
 impl<'a> Display for ExpectedOutcome<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let gutter = self.left_pad;
+        let gutter = self.gutter_width;
         let mut max_line_width = 0;
 
         for (i, output_line) in self.content.lines().enumerate() {
