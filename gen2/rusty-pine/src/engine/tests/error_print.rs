@@ -1,6 +1,10 @@
-use colored::Colorize;
+use crate::engine::tests::error_print::zip::Zip;
+use colored::{Color, Colorize};
+use pest::Lines;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
+
+mod zip;
 
 pub struct TestErrorReport<'a> {
     pub header: TestHeaderLine<'a>,
@@ -80,7 +84,7 @@ pub struct ExpectedOutcome<'a> {
 /// Left:  1
 /// Right: 2
 pub struct TestOutcomeDiff<'a> {
-    pub expected: &'a str, // TODO columns
+    pub expected: &'a str,
     pub found: &'a str,
 }
 
@@ -94,6 +98,7 @@ impl<'a> Display for TestErrorReport<'a> {
         writeln!(f, "{}", self.header)?;
         writeln!(f, "{}", self.message)?;
         writeln!(f, "{}", self.file_extract)?;
+        writeln!(f)?;
         write!(f, "{}", self.diff)
     }
 }
@@ -191,11 +196,41 @@ impl<'a> Display for ExpectedOutcome<'a> {
 
 impl<'a> Display for TestOutcomeDiff<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let left = self.expected.replace('\n', "\\n").red();
-        let right = "hi ".replace('\n', "\\n").red();
+        let left_lines = self.expected.lines();
+        let right_lines = self.found.lines();
+        let diff = Zip::new(left_lines, right_lines);
 
-        writeln!(f, "Left:  {left}")?;
-        writeln!(f, "Right: {right}")
+        let header = format!("{:^40} | {:^40}", "Expected", "Found")
+            .blue()
+            .bold();
+        let border = "-".repeat(40 + 40 + 3).blue().bold();
+
+        writeln!(f, "{header}")?;
+        writeln!(f, "{border}")?;
+
+        for (left, right) in diff {
+            let (left, mid, right, color) = match (left, right) {
+                (Some(left), Some(right)) => {
+                    if left == right {
+                        (left, ' ', right, Color::Black)
+                    } else {
+                        (left, '|', right, Color::Red)
+                    }
+                }
+                (Some(left), None) => (left, '<', "", Color::Red),
+                (None, Some(right)) => ("", '>', right, Color::Red),
+                (None, None) => panic!("Guaranteed by Zip"),
+            };
+
+            let left = &left[..(40.min(left.len()))];
+            let right = &right[..(40.min(right.len()))];
+
+            let line = format!("{:<40} {} {:>40}", left, mid, right).color(color);
+
+            writeln!(f, "{line}")?;
+        }
+
+        Ok(())
     }
 }
 
