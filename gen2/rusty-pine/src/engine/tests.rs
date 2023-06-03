@@ -180,8 +180,8 @@ enum TestError {
 fn run_single_test(test: &Test) -> Outcome {
     let found_output = super::render(test.input());
 
-    if found_output.is_err() {
-        return Outcome::Error(found_output.unwrap_err().into());
+    if let Err(error) = found_output {
+        return Outcome::Error(error.into());
     }
 
     let found_output = found_output.unwrap();

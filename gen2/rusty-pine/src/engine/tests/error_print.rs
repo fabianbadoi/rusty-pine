@@ -94,6 +94,7 @@ pub enum TestOutcome {
 
 impl<'a> Display for TestErrorReport<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f)?;
         writeln!(f, "{}", self.header)?;
         writeln!(f, "{}", self.message)?;
         writeln!(f, "{}", self.file_extract)?;
