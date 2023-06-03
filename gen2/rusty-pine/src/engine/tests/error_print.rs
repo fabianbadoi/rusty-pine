@@ -44,7 +44,7 @@ pub struct FileExtract<'a> {
 
 ///    --> src/engine/tests/pine-tests.sql:145
 pub struct TestLocation<'a> {
-    pub left_pad: usize,
+    pub gutter_width: usize,
     pub file_path: &'a str,
     pub line: usize,
     pub column: usize,
@@ -80,7 +80,7 @@ pub struct ExpectedOutcome<'a> {
 /// Left:  1
 /// Right: 2
 pub struct TestOutcomeDiff<'a> {
-    pub expected: &'a str,
+    pub expected: &'a str, // TODO columns
     pub found: &'a str,
 }
 
@@ -91,14 +91,10 @@ pub enum TestOutcome {
 
 impl<'a> Display for TestErrorReport<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "+===============================")?;
         writeln!(f, "{}", self.header)?;
         writeln!(f, "{}", self.message)?;
         writeln!(f, "{}", self.file_extract)?;
-        write!(f, "{}", self.diff)?;
-
-        writeln!(f)?;
-        writeln!(f, "+===============================")
+        write!(f, "{}", self.diff)
     }
 }
 
@@ -107,9 +103,7 @@ impl<'a> Display for TestHeaderLine<'a> {
         write!(
             f,
             "test {}:: {} ... {}",
-            self.module.strip_prefix("rusty_pine::").unwrap(),
-            self.input,
-            self.outcome
+            self.module, self.input, self.outcome
         )
     }
 }
@@ -130,7 +124,7 @@ impl<'a> Display for FileExtract<'a> {
 
 impl<'a> Display for TestLocation<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let gutter = " ".repeat(self.left_pad - 1);
+        let gutter = " ".repeat(self.gutter_width - 1);
         let arrow = "-->".blue().bold();
         let file = self.file_path;
         let line = self.line;
