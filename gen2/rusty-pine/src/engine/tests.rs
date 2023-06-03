@@ -5,7 +5,6 @@ use crate::engine::tests::error_print::{
 use crate::engine::tests::reader::{SqlTestFileReader, Test};
 use std::fmt::{Display, Formatter};
 use std::fs;
-use std::io::Error;
 use std::path::Path;
 use thiserror::Error;
 

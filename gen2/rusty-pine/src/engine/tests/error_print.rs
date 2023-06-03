@@ -1,6 +1,5 @@
-use crate::engine::tests::error_print::zip::Zip;
+use crate::engine::tests::error_print::zip::GreedyZip;
 use colored::{Color, Colorize};
-use pest::Lines;
 use std::fmt::{Display, Formatter};
 use std::ops::Range;
 
@@ -198,7 +197,7 @@ impl<'a> Display for TestOutcomeDiff<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let left_lines = self.expected.lines();
         let right_lines = self.found.lines();
-        let diff = Zip::new(left_lines, right_lines);
+        let diff = GreedyZip::new(left_lines, right_lines);
 
         let header = format!("{:^40} | {:^40}", "Expected", "Found")
             .blue()
@@ -208,18 +207,19 @@ impl<'a> Display for TestOutcomeDiff<'a> {
         writeln!(f, "{header}")?;
         writeln!(f, "{border}")?;
 
-        for (left, right) in diff {
-            let (left, mid, right, color) = match (left, right) {
-                (Some(left), Some(right)) => {
+        for diff_line in diff {
+            use zip::ZipItem::*;
+
+            let (left, mid, right, color) = match diff_line {
+                Both(left, right) => {
                     if left == right {
                         (left, ' ', right, Color::Black)
                     } else {
                         (left, '|', right, Color::Red)
                     }
                 }
-                (Some(left), None) => (left, '<', "", Color::Red),
-                (None, Some(right)) => ("", '>', right, Color::Red),
-                (None, None) => panic!("Guaranteed by Zip"),
+                LeftOnly(left) => (left, '<', "", Color::Red),
+                RightOnly(right) => ("", '>', right, Color::Red),
             };
 
             let left = &left[..(40.min(left.len()))];
