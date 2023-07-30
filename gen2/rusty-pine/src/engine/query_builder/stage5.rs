@@ -1,5 +1,7 @@
-use crate::engine::query_builder::{Query, Source, Sourced, Table, ToSource};
-use crate::engine::syntax::{OptionalInput, Stage4Rep, TableInput};
+use crate::engine::query_builder::{
+    ColumnName, Query, Select, SelectedColumn, Source, Sourced, Table, ToSource,
+};
+use crate::engine::syntax::{OptionalInput, Stage4ColumnInput, Stage4Rep, TableInput};
 
 #[derive(Debug)]
 pub enum Stage5Error {}
@@ -12,6 +14,11 @@ impl Stage5Builder {
         Ok(Query {
             from,
             input: input.input.to_owned(),
+            select: input
+                .selected_columns
+                .into_iter()
+                .map(|s| s.into())
+                .collect(),
         })
     }
 }
@@ -26,6 +33,18 @@ impl From<TableInput<'_>> for Sourced<Table> {
                 },
                 name: value.table.to_sourced(),
             },
+            source: Source::Input(value.position),
+        }
+    }
+}
+
+impl From<Stage4ColumnInput<'_>> for Sourced<Select> {
+    fn from(value: Stage4ColumnInput<'_>) -> Self {
+        Sourced {
+            it: Select::SelectedColumn(SelectedColumn {
+                table: Some(value.table.into()), // TODO hide table if not needed
+                column: value.column.to_sourced(),
+            }),
             source: Source::Input(value.position),
         }
     }

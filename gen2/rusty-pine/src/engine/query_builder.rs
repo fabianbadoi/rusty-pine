@@ -10,7 +10,7 @@ pub fn build_query(input: Stage4Rep<'_>) -> Query {
 pub struct Query {
     pub input: String,
     pub from: Sourced<Table>,
-    // pub select: Vec<Select>,
+    pub select: Vec<Sourced<Select>>,
 }
 
 #[derive(Debug)]
@@ -20,7 +20,22 @@ pub struct Table {
 }
 
 #[derive(Debug)]
+pub enum Select {
+    SelectedColumn(SelectedColumn),
+}
+
+#[derive(Debug)]
+pub struct SelectedColumn {
+    pub table: Option<Sourced<Table>>,
+    pub column: Sourced<ColumnName>,
+}
+
+#[derive(Debug)]
+pub struct ColumnName(pub String);
+
+#[derive(Debug)]
 pub struct TableName(pub String);
+
 #[derive(Debug)]
 pub struct DatabaseName(pub String);
 
@@ -70,12 +85,21 @@ impl From<Position> for Source {
     }
 }
 
+impl<T> From<&T> for ColumnName
+where
+    for<'a> &'a T: Into<String>,
+{
+    fn from(value: &T) -> Self {
+        Self(value.into())
+    }
+}
+
 impl<T> From<&T> for TableName
 where
     for<'a> &'a T: Into<String>,
 {
     fn from(value: &T) -> Self {
-        TableName(value.into())
+        Self(value.into())
     }
 }
 
@@ -84,6 +108,6 @@ where
     for<'a> &'a T: Into<String>,
 {
     fn from(value: &T) -> Self {
-        DatabaseName(value.into())
+        Self(value.into())
     }
 }
