@@ -11,11 +11,30 @@
 //!
 //! [a friend's really cool project]: https://github.com/pine-lang/pine
 
+use crate::lsp::Backend;
+use log::{debug, LevelFilter};
+use std::fs::File;
+use tower_lsp::{LspService, Server};
+
 mod engine;
 mod error;
+mod lsp;
 
-use crate::engine::render;
+#[tokio::main]
+async fn main() {
+    let target = Box::new(File::create("/tmp/rusty.log").expect("Can't create file"));
 
-fn main() {
-    println!("{}", render("table").unwrap());
+    env_logger::builder()
+        .target(env_logger::Target::Pipe(target))
+        .filter_module("rusty_pine", LevelFilter::Debug)
+        .try_init()
+        .unwrap();
+
+    let read = tokio::io::stdin();
+    let write = tokio::io::stdout();
+
+    debug!("starting");
+
+    let (service, socket) = LspService::new(|client| Backend { client });
+    Server::new(read, write, socket).serve(service).await;
 }
