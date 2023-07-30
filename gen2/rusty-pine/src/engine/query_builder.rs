@@ -20,9 +20,9 @@ pub struct Table {
 }
 
 #[derive(Debug)]
-pub struct TableName(String);
+pub struct TableName(pub String);
 #[derive(Debug)]
-pub struct DatabaseName(String);
+pub struct DatabaseName(pub String);
 
 #[derive(Debug)]
 pub enum Source {

@@ -294,7 +294,7 @@ impl<'a> Display for TestOutcomeDiff<'a> {
             let (left, mid, right, color) = match diff_line {
                 Both(left, right) => {
                     if left == right {
-                        (left, ' ', right, Color::Black)
+                        (left, ' ', right, Color::Green)
                     } else {
                         (left, '|', right, Color::Red)
                     }
