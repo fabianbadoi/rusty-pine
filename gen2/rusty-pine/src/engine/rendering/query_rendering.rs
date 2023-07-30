@@ -1,5 +1,5 @@
 use crate::engine::query_builder::{
-    ColumnName, DatabaseName, Query, Select, SelectedColumn, Sourced, Table, TableName,
+    ColumnName, DatabaseName, Limit, Query, Select, SelectedColumn, Sourced, Table, TableName,
 };
 use std::fmt::{write, Display, Formatter};
 
@@ -11,7 +11,7 @@ impl Display for Query {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SELECT {}", RenderableSelect(self.select.as_slice()))?;
         writeln!(f, "FROM {}", self.from)?;
-        writeln!(f, "LIMIT")?;
+        writeln!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
     }
@@ -48,6 +48,16 @@ impl Display for SelectedColumn {
         }
 
         write!(f, "{}", self.column)
+    }
+}
+
+impl Display for Limit {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Limit::Implicit() => write!(f, "10"), // default
+            Limit::RowCountLimit(max_rows) => write!(f, "{}", max_rows),
+            Limit::RangeLimit(range) => write!(f, "{}, {}", range.start, range.end),
+        }
     }
 }
 

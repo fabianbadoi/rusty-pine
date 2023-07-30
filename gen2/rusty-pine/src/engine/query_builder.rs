@@ -1,4 +1,5 @@
-use crate::engine::syntax::{Position, Stage4Rep};
+use crate::engine::syntax::{Position, Stage4ColumnInput, Stage4Rep};
+use std::ops::Range;
 
 mod stage5;
 
@@ -11,6 +12,7 @@ pub struct Query {
     pub input: String,
     pub from: Sourced<Table>,
     pub select: Vec<Sourced<Select>>,
+    pub limit: Sourced<Limit>,
 }
 
 #[derive(Debug)]
@@ -31,6 +33,13 @@ pub struct SelectedColumn {
 }
 
 #[derive(Debug)]
+pub enum Limit {
+    Implicit(),
+    RowCountLimit(usize),
+    RangeLimit(Range<usize>),
+}
+
+#[derive(Debug)]
 pub struct ColumnName(pub String);
 
 #[derive(Debug)]
@@ -39,8 +48,21 @@ pub struct TableName(pub String);
 #[derive(Debug)]
 pub struct DatabaseName(pub String);
 
+impl Select {
+    fn from_singly_selected(input: &Stage4ColumnInput) -> Sourced<Self> {
+        Sourced {
+            it: Select::SelectedColumn(SelectedColumn {
+                column: input.column.to_sourced(),
+                table: None,
+            }),
+            source: (&input.position).into(),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum Source {
+    Implicit,
     Input(Position),
 }
 
@@ -79,9 +101,9 @@ where
     }
 }
 
-impl From<Position> for Source {
-    fn from(value: Position) -> Self {
-        Source::Input(value)
+impl From<&Position> for Source {
+    fn from(value: &Position) -> Self {
+        Source::Input(value.clone())
     }
 }
 

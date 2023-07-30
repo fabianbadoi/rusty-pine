@@ -30,7 +30,7 @@ mod stage3;
 mod stage4;
 
 pub use stage1::Rule;
-pub use stage4::{Stage4ColumnInput, Stage4Rep};
+pub use stage4::{Stage4ColumnInput, Stage4LimitInput, Stage4Rep};
 
 use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;

@@ -1,22 +1,29 @@
-//! Stage 4 representation is a hierarchical structure representing what query the user would
-//! constructed.
+//! Stage 4 representation is a hierarchical structure representing what query the user constructed.
 //! It will have all data present in the input, but will not have any data present that relates
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
-use crate::engine::syntax::{Position, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::{Position, Positioned, SqlIdentifierInput, TableInput};
+use std::ops::Range;
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: TableInput<'a>,
     pub selected_columns: Vec<Stage4ColumnInput<'a>>,
+    pub limit: Stage4LimitInput,
 }
 
 pub struct Stage4ColumnInput<'a> {
     pub table: TableInput<'a>, // we always know it because of SYNTAX
     pub column: SqlIdentifierInput<'a>,
     pub position: Position,
+}
+
+pub enum Stage4LimitInput {
+    Implicit(),
+    RowCountLimit(usize, Position),
+    RangeLimit(Range<usize>, Position),
 }
 
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
@@ -44,6 +51,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             input,
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
             selected_columns: select,
+            limit: Stage4LimitInput::Implicit(),
         }
     }
 }

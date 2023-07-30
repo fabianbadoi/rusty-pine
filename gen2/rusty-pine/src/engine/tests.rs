@@ -142,7 +142,7 @@ impl TestResult {
     /// Returns a printable error report.
     ///
     /// ```
-    /// # let report: TestErrorReport = todo()!;
+    /// # let report: TestErrorReport;
     /// println!("{report}"); // like I said, convenient
     /// ```
     pub fn to_error_report(&self) -> Option<TestErrorReport> {
