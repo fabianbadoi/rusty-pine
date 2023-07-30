@@ -7,8 +7,8 @@
 //! This module also makes sure to display test failures in a human friendly way, but you will have
 //! to run the tests with `cargo test -- --nocapture` to see the output.
 use crate::engine::tests::error_print::{
-    ErrorMessage, ExpectedOutcome, FileExtract, TestErrorReport, TestHeaderLine, TestInput,
-    TestLocation, TestOutcome, TestOutcomeDiff,
+    ErrorMessage, ExpectedOutcome, FileExtract, FileExtractMessage, TestErrorReport,
+    TestHeaderLine, TestInput, TestLocation, TestOutcome, TestOutcomeDiff,
 };
 use crate::engine::tests::reader::{SqlTestFileReader, Test};
 use std::fmt::{Display, Formatter};
@@ -155,42 +155,83 @@ impl TestResult {
             Outcome::Success => None,
             Outcome::Error(err) => match err {
                 TestError::DifferentOutput(found) => Some(TestErrorReport {
-                    header: TestHeaderLine {
-                        module: self.test.file.split_once('/').expect("We know it's fine").1,
-                        input: self.test.input(),
-                        outcome: TestOutcome::Failure,
-                    },
+                    header: self.test_header_line(TestOutcome::Failure),
+                    file_extract: self.test_highlighting_file_extract(),
                     message: ErrorMessage {
                         message: "unexpected outcome",
                     },
-                    file_extract: FileExtract {
-                        location: TestLocation {
-                            file_path: self.test.file.as_str(),
-                            line: self.test.line_nr,
-                            column: self.test.input_range().start,
-                            gutter_width,
-                        },
-                        test_input: TestInput {
-                            line: self.test.line_nr,
-                            content: self.test.input_line(),
-                            highlight: self.test.input_range(),
-                            gutter_width,
-                        },
-                        expected_outcome: ExpectedOutcome {
-                            start_line: self.test.line_nr + self.test.input().lines().count(),
-                            content: self.test.expected(),
-                            gutter_width,
-                        },
-                    },
-                    diff: TestOutcomeDiff {
+                    diff: Some(TestOutcomeDiff {
                         expected: self.test.expected(),
                         found: found.as_str(),
-                    },
+                    }),
                 }),
-                TestError::RenderError(_error) => {
-                    todo!()
-                }
+                TestError::RenderError(error) => Some(TestErrorReport {
+                    header: self.test_header_line(TestOutcome::Failure),
+                    file_extract: self.file_extract_with_error(error),
+                    message: ErrorMessage {
+                        message: "Processing error",
+                    },
+                    diff: None,
+                }),
             },
+        }
+    }
+
+    fn test_header_line(&self, test_outcome: TestOutcome) -> TestHeaderLine {
+        TestHeaderLine {
+            module: self.test.file.split_once('/').expect("We know it's fine").1,
+            input: self.test.input(),
+            outcome: test_outcome,
+        }
+    }
+
+    fn test_highlighting_file_extract(&self) -> FileExtract {
+        let gutter_width = (self.test.line_nr + self.test.expected().lines().count())
+            .to_string()
+            .len()
+            + 2;
+
+        FileExtract {
+            location: TestLocation {
+                file_path: self.test.file.as_str(),
+                line: self.test.line_nr,
+                column: self.test.input_range().start,
+                gutter_width,
+            },
+            test_input: TestInput {
+                line: self.test.line_nr,
+                content: self.test.input_line(),
+                highlight: self.test.input_range(),
+                gutter_width,
+            },
+            message: FileExtractMessage::ExpectedOutcome(ExpectedOutcome {
+                start_line: self.test.line_nr + self.test.input().lines().count(),
+                content: self.test.expected(),
+                gutter_width,
+            }),
+        }
+    }
+
+    fn file_extract_with_error<'a>(&'a self, error: &'a crate::error::Error) -> FileExtract<'a> {
+        let gutter_width = (self.test.line_nr + self.test.expected().lines().count())
+            .to_string()
+            .len()
+            + 2;
+
+        FileExtract {
+            location: TestLocation {
+                file_path: self.test.file.as_str(),
+                line: self.test.line_nr,
+                column: self.test.input_range().start,
+                gutter_width,
+            },
+            test_input: TestInput {
+                line: self.test.line_nr,
+                content: self.test.input_line(),
+                highlight: self.test.input_range(),
+                gutter_width,
+            },
+            message: FileExtractMessage::RenderingError(error),
         }
     }
 }

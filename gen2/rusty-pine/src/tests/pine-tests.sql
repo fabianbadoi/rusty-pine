@@ -10,3 +10,8 @@
 SELECT id, name
 FROM humans
 LIMIT 10
+
+-- Test: humans | s: FUNCTION(id, name, 3)
+SELECT FUNCTION(id, name, 3)
+FROM humans
+LIMIT 10

@@ -21,7 +21,7 @@ mod zip;
 ///    --> src/tests/pine-tests.sql:9:9
 ///     |
 ///  9  |  -- Test: humans | s: id name
-///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+///     |           ^^^^^^^^^^^^^^^^^^^ processing this query
 ///  10 |/ SELECT id, name
 ///  11 || FROM humans
 ///  12 || LIMIT 10
@@ -37,7 +37,7 @@ pub struct TestErrorReport<'a> {
     pub header: TestHeaderLine<'a>,
     pub message: ErrorMessage<'a>,
     pub file_extract: FileExtract<'a>,
-    pub diff: TestOutcomeDiff<'a>,
+    pub diff: Option<TestOutcomeDiff<'a>>,
 }
 
 /// Renders to something like:
@@ -66,7 +66,7 @@ pub struct ErrorMessage<'a> {
 ///    --> src/tests/pine-tests.sql:9:9
 ///     |
 ///  9  |  -- Test: humans | s: id name
-///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+///     |           ^^^^^^^^^^^^^^^^^^^ processing this query
 ///  10 |/ SELECT id, name
 ///  11 || FROM humans
 ///  12 || LIMIT 10
@@ -75,7 +75,7 @@ pub struct ErrorMessage<'a> {
 pub struct FileExtract<'a> {
     pub location: TestLocation<'a>,
     pub test_input: TestInput<'a>,
-    pub expected_outcome: ExpectedOutcome<'a>,
+    pub message: FileExtractMessage<'a>,
 }
 
 /// Renders to something like:
@@ -95,13 +95,27 @@ pub struct TestLocation<'a> {
 /// ```txt
 ///     |
 ///  9  |  -- Test: humans | s: id name
-///     |           ^^^^^^^^^^^^^^^^^^^ output for this query
+///     |           ^^^^^^^^^^^^^^^^^^^ processing this query
 /// ```
 pub struct TestInput<'a> {
     pub gutter_width: usize,
     pub content: &'a str,
     pub line: usize,
     pub highlight: Range<usize>,
+}
+
+/// Renders to something like:
+///
+/// ```txt
+///  10 |/ SELECT id, name
+///  11 || FROM humans
+///  12 || LIMIT 10
+///     |\ ^^^^^^^^^^^^^^^^^
+/// ```
+/// Or other messages right below the test input, for example syntax errors.
+pub enum FileExtractMessage<'a> {
+    ExpectedOutcome(ExpectedOutcome<'a>),
+    RenderingError(&'a crate::error::Error),
 }
 
 /// Renders to something like:
@@ -146,7 +160,12 @@ impl<'a> Display for TestErrorReport<'a> {
         writeln!(f, "{}", self.message)?;
         writeln!(f, "{}", self.file_extract)?;
         writeln!(f)?;
-        write!(f, "{}", self.diff)
+
+        if let Some(diff) = &self.diff {
+            write!(f, "{}", diff)?;
+        }
+
+        Ok(())
     }
 }
 
@@ -170,7 +189,7 @@ impl<'a> Display for FileExtract<'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.location)?;
         writeln!(f, "{}", self.test_input)?;
-        write!(f, "{}", self.expected_outcome)
+        write!(f, "{}", self.message)
     }
 }
 
@@ -201,7 +220,7 @@ impl<'a> Display for TestInput<'a> {
         let highlight = gutter.with(
             "",
             format!(
-                "  {:^margin_left$}{underline} output for this query",
+                "  {:^margin_left$}{underline} processing this query",
                 " ",
                 margin_left = self.highlight.start
             )
@@ -212,6 +231,17 @@ impl<'a> Display for TestInput<'a> {
         writeln!(f, "{vertical_space}")?;
         writeln!(f, "{input_line}")?;
         write!(f, "{highlight}")
+    }
+}
+
+impl<'a> Display for FileExtractMessage<'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            FileExtractMessage::ExpectedOutcome(expected) => write!(f, "{}", expected),
+            FileExtractMessage::RenderingError(error) => {
+                write!(f, "{}", error)
+            }
+        }
     }
 }
 
