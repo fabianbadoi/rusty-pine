@@ -306,7 +306,7 @@ impl<'a> Display for TestOutcomeDiff<'a> {
             let left = &left[..(40.min(left.len()))];
             let right = &right[..(40.min(right.len()))];
 
-            let line = format!("{:<40} {} {:>40}", left, mid, right).color(color);
+            let line = format!("{:<40} {} {:<40}", left, mid, right).color(color);
 
             writeln!(f, "{line}")?;
         }
