@@ -99,6 +99,7 @@ fn run_single_test(test: &Test) -> Outcome {
     }
 
     let found_output = found_output.unwrap();
+
     if test.expected() == found_output {
         Outcome::Success
     } else {
@@ -146,11 +147,6 @@ impl TestResult {
     /// println!("{report}"); // like I said, convenient
     /// ```
     pub fn to_error_report(&self) -> Option<TestErrorReport> {
-        let gutter_width = (self.test.line_nr + self.test.expected().lines().count())
-            .to_string()
-            .len()
-            + 2;
-
         match &self.outcome {
             Outcome::Success => None,
             Outcome::Error(err) => match err {
