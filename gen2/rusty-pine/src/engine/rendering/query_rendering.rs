@@ -11,7 +11,7 @@ impl Display for Query {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SELECT {}", RenderableSelect(self.select.as_slice()))?;
         writeln!(f, "FROM {}", self.from)?;
-        writeln!(f, "LIMIT {}", self.limit)?;
+        write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
     }
