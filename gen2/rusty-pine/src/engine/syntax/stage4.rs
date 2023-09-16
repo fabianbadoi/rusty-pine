@@ -3,20 +3,31 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3Pine, Stage3Rep};
-use crate::engine::syntax::{Position, Positioned, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
+use crate::engine::syntax::{Position, SqlIdentifierInput, TableInput};
 use std::ops::Range;
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: TableInput<'a>,
-    pub selected_columns: Vec<Stage4ColumnInput<'a>>,
+    pub selected_columns: Vec<Stage4ComputationInput<'a>>,
     pub limit: Stage4LimitInput,
 }
 
 pub struct Stage4ColumnInput<'a> {
     pub table: TableInput<'a>, // we always know it because of SYNTAX
     pub column: SqlIdentifierInput<'a>,
+    pub position: Position,
+}
+
+pub enum Stage4ComputationInput<'a> {
+    Column(Stage4ColumnInput<'a>),
+    FunctionCall(Stage4FunctionCall<'a>),
+}
+
+pub struct Stage4FunctionCall<'a> {
+    pub fn_name: SqlIdentifierInput<'a>,
+    pub params: Vec<Stage4ComputationInput<'a>>,
     pub position: Position,
 }
 
@@ -56,12 +67,12 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     }
 }
 
-fn translate_columns(columns: Vec<Stage3ColumnInput>) -> Vec<Stage4ColumnInput> {
+fn translate_columns(columns: Vec<Stage3ComputationInput>) -> Vec<Stage4ComputationInput> {
     columns.into_iter().map(translate_column).collect()
 }
 
-fn translate_column(stage3_col: Stage3ColumnInput) -> Stage4ColumnInput {
-    stage3_col
+fn translate_column(stage3_comp: Stage3ComputationInput) -> Stage4ComputationInput {
+    stage3_comp
 }
 
 #[cfg(test)]
@@ -72,8 +83,10 @@ mod test {
     use crate::engine::syntax::stage4::Stage4Rep;
     use crate::engine::syntax::OptionalInput::{Implicit, Specified};
     use crate::engine::syntax::{
-        parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, TableInput,
+        parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, Stage4ComputationInput,
+        TableInput,
     };
+
     use std::ops::Range;
 
     #[test]
@@ -172,11 +185,11 @@ mod test {
             let output = parse_to_stage4(input).unwrap();
 
             assert_eq!(1, output.selected_columns.len());
-            assert_eq!(expected_column, output.selected_columns[0].column);
-            assert_eq!(expected_column, output.selected_columns[0].column);
-
-            let table = output.selected_columns[0].table;
-            assert_eq!(expected_table, table);
+            assert!(matches!(
+                &output.selected_columns[0],
+                Stage4ComputationInput::Column(column)
+                    if column.column == expected_column && column.table == expected_table
+            ));
         }
     }
 

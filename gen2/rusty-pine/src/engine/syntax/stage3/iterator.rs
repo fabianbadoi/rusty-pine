@@ -1,8 +1,11 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{PestIterator, Stage2Pine};
-use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3Pine};
-use crate::engine::syntax::{ColumnInput, Position, Positioned, TableInput};
+use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3ComputationInput, Stage3Pine};
+use crate::engine::syntax::stage4::Stage4FunctionCall;
+use crate::engine::syntax::{
+    ColumnInput, Computation, FunctionCall, Position, Positioned, TableInput,
+};
 use std::collections::VecDeque;
 
 pub struct Stage3Iterator<'a> {
@@ -108,18 +111,44 @@ impl<'a> Stage3Iterator<'a> {
     fn translate_select(
         &mut self,
         position: Position,
-        columns: Vec<ColumnInput<'a>>,
+        columns: Vec<Computation<'a>>,
     ) -> Stage3Buffer<'a> {
         let columns = columns
             .iter()
-            .map(|column| Stage3ColumnInput {
-                column: column.column,
-                position: column.position,
-                // our amazing context in action 💪
-                table: column.table.or(self.context.previous_table),
-            })
+            .map(|column| self.translate_computation(column))
             .collect();
 
         VecDeque::from([position.holding(Stage3Pine::Select(columns))])
+    }
+
+    fn translate_computation(&self, computation: &Computation<'a>) -> Stage3ComputationInput<'a> {
+        match computation {
+            Computation::Column(column) => self.translate_select_from_column(column),
+            Computation::FunctionCall(fn_call) => self.translate_select_from_fn_call(fn_call),
+        }
+    }
+
+    fn translate_select_from_column(&self, column: &ColumnInput<'a>) -> Stage3ComputationInput<'a> {
+        Stage3ComputationInput::Column(Stage3ColumnInput {
+            column: column.column,
+            position: column.position,
+            // our amazing context in action 💪
+            table: column.table.or(self.context.previous_table),
+        })
+    }
+
+    fn translate_select_from_fn_call(
+        &self,
+        fn_call: &FunctionCall<'a>,
+    ) -> Stage3ComputationInput<'a> {
+        Stage3ComputationInput::FunctionCall(Stage4FunctionCall {
+            fn_name: fn_call.fn_name,
+            params: fn_call
+                .params
+                .iter()
+                .map(|computation| self.translate_computation(computation))
+                .collect(),
+            position: fn_call.position,
+        })
     }
 }

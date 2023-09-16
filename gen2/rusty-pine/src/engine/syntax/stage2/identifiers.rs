@@ -103,7 +103,7 @@ fn translate_table_sql_name(pair: Pair<Rule>) -> TableInput {
     }
 }
 
-fn translate_sql_name(pair: Pair<Rule>) -> SqlIdentifierInput {
+pub fn translate_sql_name(pair: Pair<Rule>) -> SqlIdentifierInput {
     assert_eq!(Rule::sql_name, pair.as_rule());
 
     let position = pair.as_span().into();

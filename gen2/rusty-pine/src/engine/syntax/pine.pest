@@ -3,8 +3,13 @@ root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
 pine = _{ select_pine }
-select_pine = { ("s:" | "select:") ~ column+ }
+select_pine = { ("s:" | "select:") ~ computation+ }
 // todo multiple columns
+
+// Computations are either columns or function calls. They're the things you can put in SELECT or WHERE clauses
+// (and more).
+computation = { function_call | column }
+function_call = { sql_name ~ "(" ~ computation* ~ ")"}
 
 column = { db_table_column_name | table_column_name | column_name }
 column_name = { sql_name }

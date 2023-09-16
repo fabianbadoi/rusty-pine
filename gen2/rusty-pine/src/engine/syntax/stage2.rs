@@ -15,10 +15,13 @@
 //! Since this is just a more convenient way of representing the source Pest info, it's not possible
 //! to fail to parse.
 use crate::engine::syntax::stage1::{Rule, Stage1Rep};
-use crate::engine::syntax::{ColumnInput, Position, Positioned, TableInput};
+use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
+use crate::engine::syntax::stage2::identifiers::translate_column;
+use crate::engine::syntax::{Computation, Position, Positioned, TableInput};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
+mod fn_calls;
 /// We split up identifier (databases, tables, and columns) into its own module to keep things clean.
 mod identifiers;
 
@@ -55,7 +58,7 @@ pub struct Stage2Rep<'a> {
 #[derive(Debug)]
 pub enum Stage2Pine<'a> {
     Base { table: TableInput<'a> },
-    Select(Vec<ColumnInput<'a>>),
+    Select(Vec<Computation<'a>>),
 }
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
@@ -168,11 +171,25 @@ fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
     let mut columns = Vec::new();
 
     for column_pair in select.into_inner() {
-        let column = identifiers::translate_column(column_pair);
+        let column = translate_computation(column_pair);
         columns.push(column);
     }
 
     position.holding(Stage2Pine::Select(columns))
+}
+
+fn translate_computation(computation: Pair<Rule>) -> Computation {
+    assert_eq!(Rule::computation, computation.as_rule());
+
+    let mut inners = computation.into_inner();
+    let inner = inners.next().expect("Has to be valid syntax");
+    assert!(inners.next().is_none());
+
+    match inner.as_rule() {
+        Rule::column => Computation::Column(translate_column(inner)),
+        Rule::function_call => Computation::FunctionCall(translate_fn_call(inner)),
+        _ => panic!("impossible syntax"),
+    }
 }
 
 impl From<Span<'_>> for Position {

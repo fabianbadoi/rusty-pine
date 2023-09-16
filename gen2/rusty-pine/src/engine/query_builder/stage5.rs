@@ -1,8 +1,9 @@
 use crate::engine::query_builder::{
-    ColumnName, Limit, Query, Select, SelectedColumn, Source, Sourced, Table, ToSource,
+    Computation, FunctionCall, Limit, Query, SelectedColumn, Source, Sourced, Table, ToSource,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage4ColumnInput, Stage4LimitInput, Stage4Rep, TableInput,
+    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LimitInput,
+    Stage4Rep, TableInput,
 };
 
 #[derive(Debug)]
@@ -24,18 +25,18 @@ impl Stage5Builder {
             select: input
                 .selected_columns
                 .iter()
-                .map(|column| {
+                .map(|computation| {
                     if simplify_columns_and_tables {
-                        Select::from_singly_selected(column)
+                        Computation::without_table_name(computation)
                     } else {
-                        column.into()
+                        computation.into()
                     }
                 })
                 .collect(),
             limit: (&input.limit).into(),
         })
     }
-    fn is_single_table_query(&self, p0: &Stage4Rep) -> bool {
+    fn is_single_table_query(&self, _p0: &Stage4Rep) -> bool {
         // can only be true now, will change once we can add joins
         true
     }
@@ -56,12 +57,37 @@ impl From<TableInput<'_>> for Sourced<Table> {
     }
 }
 
-impl From<&Stage4ColumnInput<'_>> for Sourced<Select> {
+impl From<&Stage4ComputationInput<'_>> for Sourced<Computation> {
+    fn from(value: &Stage4ComputationInput) -> Self {
+        match value {
+            Stage4ComputationInput::Column(column) => column.into(),
+            Stage4ComputationInput::FunctionCall(fn_call) => fn_call.into(),
+        }
+    }
+}
+
+impl From<&Stage4ColumnInput<'_>> for Sourced<Computation> {
     fn from(value: &Stage4ColumnInput<'_>) -> Self {
         Sourced {
-            it: Select::SelectedColumn(SelectedColumn {
+            it: Computation::SelectedColumn(SelectedColumn {
                 table: Some(value.table.into()), // TODO hide table if not needed
                 column: value.column.to_sourced(),
+            }),
+            source: Source::Input(value.position),
+        }
+    }
+}
+
+impl From<&Stage4FunctionCall<'_>> for Sourced<Computation> {
+    fn from(value: &Stage4FunctionCall<'_>) -> Self {
+        Sourced {
+            it: Computation::FunctionCall(FunctionCall {
+                fn_name: value.fn_name.to_sourced(),
+                params: value
+                    .params
+                    .iter()
+                    .map(<&Stage4ComputationInput>::into)
+                    .collect(),
             }),
             source: Source::Input(value.position),
         }

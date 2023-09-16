@@ -5,11 +5,9 @@ use std::collections::HashMap;
 use tower_lsp::jsonrpc::Result as RPCResult;
 use tower_lsp::lsp_types::{
     CodeActionKind, CodeActionOptions, CodeActionOrCommand, CodeActionParams,
-    CodeActionProviderCapability, CodeActionResponse, Command, CompletionItem, CompletionOptions,
-    CompletionParams, CompletionResponse, DocumentChanges, ExecuteCommandOptions,
+    CodeActionProviderCapability, CodeActionResponse, Command, ExecuteCommandOptions,
     ExecuteCommandParams, InitializeParams, InitializeResult, InitializedParams, MessageType,
-    OneOf, OptionalVersionedTextDocumentIdentifier, Position, Range, ServerCapabilities,
-    TextDocumentEdit, TextEdit, Url, WorkDoneProgressOptions, WorkspaceEdit,
+    Position, Range, ServerCapabilities, TextEdit, Url, WorkDoneProgressOptions, WorkspaceEdit,
 };
 use tower_lsp::{Client, LanguageServer};
 

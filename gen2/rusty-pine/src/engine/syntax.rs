@@ -30,7 +30,13 @@ mod stage3;
 mod stage4;
 
 pub use stage1::Rule;
-pub use stage4::{Stage4ColumnInput, Stage4LimitInput, Stage4Rep};
+pub use stage4::{
+    Stage4ColumnInput,
+    Stage4ComputationInput,
+    Stage4FunctionCall,
+    Stage4LimitInput,
+    Stage4Rep,
+};
 
 use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;
@@ -79,10 +85,36 @@ pub struct TableInput<'a> {
     pub position: Position,
 }
 
+#[derive(Clone, Debug)]
+pub enum Computation<'a> {
+    Column(ColumnInput<'a>),
+    FunctionCall(FunctionCall<'a>),
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct ColumnInput<'a> {
     pub table: OptionalInput<TableInput<'a>>, // we always know it because of SYNTAX
     pub column: SqlIdentifierInput<'a>,
+    pub position: Position,
+}
+
+#[derive(Clone, Debug)]
+pub struct FunctionCall<'a> {
+    pub fn_name: SqlIdentifierInput<'a>,
+    /// Params for the function call.
+    ///
+    /// A Computation can contain a FunctionCall can contain multiple Computations. This means
+    /// we're dealing with a recursive data type.
+    /// Such types cannot be build without Vec<> or Box<>. Because they contain themselves, their
+    /// memory size would be infinite (Computation.computation.computation.computation...).
+    /// Of course, in reality the function calls stop, and it's not really infinite. But because of
+    /// this limitation, aka not knowing how deep the structure goes, we have to allocate the params
+    /// on the heap.
+    ///
+    /// If we only supported one param, it would need to be Box<>ed, which might look weird to
+    /// someone unfamiliar with the problem.
+    /// We support multiple params, so we already need to use Vec, which is fortunate.
+    pub params: Vec<Computation<'a>>,
     pub position: Position,
 }
 

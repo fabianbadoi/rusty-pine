@@ -1,7 +1,8 @@
 use crate::engine::query_builder::{
-    ColumnName, DatabaseName, Limit, Query, Select, SelectedColumn, Sourced, Table, TableName,
+    ColumnName, Computation, DatabaseName, FunctionCall, Limit, Query, SelectedColumn, Sourced,
+    Table, TableName,
 };
-use std::fmt::{write, Display, Formatter};
+use std::fmt::{Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
     format!("{}", query)
@@ -17,7 +18,7 @@ impl Display for Query {
     }
 }
 
-struct RenderableSelect<'a>(&'a [Sourced<Select>]);
+struct RenderableSelect<'a>(&'a [Sourced<Computation>]);
 
 impl Display for RenderableSelect<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -33,10 +34,11 @@ impl Display for RenderableSelect<'_> {
     }
 }
 
-impl Display for Select {
+impl Display for Computation {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Select::SelectedColumn(column) => write!(f, "{}", column),
+            Computation::SelectedColumn(column) => write!(f, "{}", column),
+            Computation::FunctionCall(fn_call) => write!(f, "{}", fn_call),
         }
     }
 }
@@ -48,6 +50,30 @@ impl Display for SelectedColumn {
         }
 
         write!(f, "{}", self.column)
+    }
+}
+
+impl Display for FunctionCall {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}(", self.fn_name)?;
+
+        let nr_params_with_comma_after = match self.params.len() {
+            0 | 1 => 0,
+            n => n - 1,
+        };
+
+        for param in self.params.iter().take(nr_params_with_comma_after) {
+            // all params except the last one have a comma (,) after them
+            write!(f, "{}, ", param)?;
+        }
+
+        // this is optional because some fn calls could take 0 params
+        if let Some(param) = self.params.last() {
+            // the last param must not have a comma after it
+            write!(f, "{}", param)?;
+        }
+
+        write!(f, ")")
     }
 }
 

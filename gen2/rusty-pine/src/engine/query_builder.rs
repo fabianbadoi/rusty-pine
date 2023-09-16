@@ -1,4 +1,4 @@
-use crate::engine::syntax::{Position, Stage4ColumnInput, Stage4Rep};
+use crate::engine::syntax::{Position, Stage4ComputationInput, Stage4Rep};
 use std::ops::Range;
 
 mod stage5;
@@ -11,7 +11,7 @@ pub fn build_query(input: Stage4Rep<'_>) -> Query {
 pub struct Query {
     pub input: String,
     pub from: Sourced<Table>,
-    pub select: Vec<Sourced<Select>>,
+    pub select: Vec<Sourced<Computation>>,
     pub limit: Sourced<Limit>,
 }
 
@@ -22,8 +22,15 @@ pub struct Table {
 }
 
 #[derive(Debug)]
-pub enum Select {
+pub enum Computation {
     SelectedColumn(SelectedColumn),
+    FunctionCall(FunctionCall),
+}
+
+#[derive(Debug)]
+pub struct FunctionCall {
+    pub fn_name: Sourced<String>,
+    pub params: Vec<Sourced<Computation>>,
 }
 
 #[derive(Debug)]
@@ -48,14 +55,33 @@ pub struct TableName(pub String);
 #[derive(Debug)]
 pub struct DatabaseName(pub String);
 
-impl Select {
-    fn from_singly_selected(input: &Stage4ColumnInput) -> Sourced<Self> {
-        Sourced {
-            it: Select::SelectedColumn(SelectedColumn {
-                column: input.column.to_sourced(),
-                table: None,
-            }),
-            source: (&input.position).into(),
+/// These functions here are special because they *omit the table name*.
+///
+/// The idea behind "from_singly_selected" is that if there is only one table involved, we can
+/// simplify the rendered query to implicitly use the select in the FROM clause.
+///
+/// If we were to use stage4_computation.into(), we would get fully qualified table names.
+impl Computation {
+    fn without_table_name(input: &Stage4ComputationInput) -> Sourced<Self> {
+        match input {
+            Stage4ComputationInput::Column(column) => Sourced {
+                it: Computation::SelectedColumn(SelectedColumn {
+                    column: column.column.to_sourced(),
+                    table: None,
+                }),
+                source: (&column.position).into(),
+            },
+            Stage4ComputationInput::FunctionCall(fn_call) => Sourced {
+                it: Computation::FunctionCall(FunctionCall {
+                    fn_name: fn_call.fn_name.to_sourced(),
+                    params: fn_call
+                        .params
+                        .iter()
+                        .map(Computation::without_table_name)
+                        .collect(),
+                }),
+                source: (&fn_call.position).into(),
+            },
         }
     }
 }
@@ -103,7 +129,7 @@ where
 
 impl From<&Position> for Source {
     fn from(value: &Position) -> Self {
-        Source::Input(value.clone())
+        Source::Input(*value)
     }
 }
 

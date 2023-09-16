@@ -11,7 +11,13 @@ SELECT id, name
 FROM humans
 LIMIT 10
 
--- Test: humans | s: FUNCTION(id, name, 3)
-SELECT FUNCTION(id, name, 3)
+-- TODO scalars in select
+-- Test: humans | s: call()
+SELECT call()
+FROM humans
+LIMIT 10
+
+-- Test: humans | s: FUNCTION(id name FUNCTION2(id name))
+SELECT FUNCTION(id, name, FUNCTION2(id, name))
 FROM humans
 LIMIT 10
