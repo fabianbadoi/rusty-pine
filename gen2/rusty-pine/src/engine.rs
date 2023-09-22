@@ -1,5 +1,7 @@
 mod query_builder;
 mod rendering;
+/// Provides helpful data from the database
+mod sql;
 mod syntax;
 
 #[cfg(test)]
