@@ -11,14 +11,10 @@
 //!
 //! [a friend's really cool project]: https://github.com/pine-lang/pine
 
-use crate::lsp::Backend;
 use log::{debug, LevelFilter};
+use rusty_pine::lsp::Backend;
 use std::fs::File;
 use tower_lsp::{LspService, Server};
-
-mod engine;
-mod error;
-mod lsp;
 
 #[tokio::main]
 async fn main() {
