@@ -2,7 +2,7 @@
 //! For example "users 1 | s: id" would be represented by:
 //!
 //! # Examples
-//! ```rust
+//! ```ignore
 //! # let (pine1, pine2) = (0,0); // ignore this
 //! vec![
 //!     pine1,
@@ -28,7 +28,7 @@ mod identifiers;
 /// It's a pattern we have that every stage keeps a ref to the input string + whatever data we
 /// processed.
 ///
-/// ```rust
+/// ```ignore
 /// # use crate::syntax::stage1::parse_stage1;
 /// # let stage1_rep = parse_stage1("name").unwrap();
 /// let stage2_rep = stage2_rep.into();

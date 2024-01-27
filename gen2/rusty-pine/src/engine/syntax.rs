@@ -1,7 +1,7 @@
 //! Pine language input parsing
 //!
 //! The pine language looks like this:
-//! ```
+//! ```ignore
 //!     some_table | another_table_to_be_joined | s: column_name count(1) | g: column_name
 //! ```
 //! `s:` is shorthand for `select:` and `g:` is shorthand for `group:`.
