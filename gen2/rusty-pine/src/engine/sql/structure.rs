@@ -1,5 +1,18 @@
 //! Structures used to represent the structure of the database. Used for using foreign keys to
 //! augment our Pines.
+
+/// Each server config will be cached to disk to responding to queries way snappier.
+///
+/// This structure represents the info we gather for an entire analyzed DB server.
+#[derive(Debug)]
+pub struct Server<'a> {
+    pub hostname: &'a str,
+    pub port: u16,
+    // Because the different users may have access to different databases and different tables,
+    pub user: &'a str,
+    pub databases: Vec<Database<'a>>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Database<'a> {
     pub name: TableName<'a>,

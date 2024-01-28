@@ -1,3 +1,4 @@
+use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -122,8 +123,8 @@ impl<'a> Key<'a> {
 }
 
 impl<'a> Table<'a> {
-    fn from_sql_string(input: &'a str) -> Result<Self, String> {
-        let mut lines = input.trim_start().split('\n').peekable();
+    pub fn from_sql_string(input: &'a TableDescription) -> Result<Self, String> {
+        let mut lines = input.as_str().trim_start().split('\n').peekable();
 
         let name: TableName = Self::parse_table_name_line(&mut lines)?.into();
         let columns = Self::parse_columns(&mut lines);
@@ -250,7 +251,8 @@ CREATE TABLE `teams` (
   CONSTRAINT `FK_96C22258F17FD7A5` FOREIGN KEY (`customerId`) REFERENCES `customers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
 ";
-        let table = Table::from_sql_string(input).unwrap();
+        let input = TableDescription::new_for_tests(input);
+        let table = Table::from_sql_string(&input).unwrap();
 
         assert_eq!(table.name, "teams");
         assert_eq!(table.columns.len(), 4);

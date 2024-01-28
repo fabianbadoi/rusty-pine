@@ -1,9 +1,10 @@
-use crate::engine::sql::structure::Database;
-
 /// Parses CREATE TABLE queries into Database instances.
 mod parsing;
+pub mod querying;
 /// Structs used to represent database structure.
-mod structure;
+pub mod structure;
+
+use crate::engine::sql::structure::Database;
 
 struct DatabaseInfo<'a> {
     /// The original create table queries.
