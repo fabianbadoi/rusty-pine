@@ -2,7 +2,9 @@ use clap::Parser;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{MultiSelect, Password};
 use mysql::{Opts, OptsBuilder, Pool};
-use rusty_pine::analyze::{describe_table, list_databases, list_tables, Table};
+use rusty_pine::analyze::{
+    describe_table, list_databases, list_tables, Database, Server, Table, TableName,
+};
 
 // Uses clap::Parser to give some really nice CLI options.
 //
@@ -117,14 +119,34 @@ fn main() {
         })
         .collect();
 
-    for db in selected_databases.iter() {
-        let tables = list_tables(&mut connection, db).expect("Cannot read table");
+    let server = Server {
+        hostname: "fdsa".to_string(),
+        port: 3306,
+        user: "fabi".to_string(),
+        databases: selected_databases
+            .iter()
+            .map(|db_name| {
+                let tables = list_tables(&mut connection, db_name).expect("Cannot read table"); // TODO
 
-        let create = describe_table(&mut connection, db, tables.get(0).unwrap()).unwrap();
+                let tables = tables
+                    .into_iter()
+                    .map(|table_name| {
+                        let create = describe_table(&mut connection, db_name, &table_name)
+                            .expect("Cannot read table description"); // TODO
 
-        let table = Table::from_sql_string(&create);
-        println!("{:#?}", table);
-    }
+                        Table::from_sql_string(&create)
+                    })
+                    .filter(Result::is_ok) // todo
+                    .map(Result::unwrap) // TODO
+                    .collect();
 
-    println!("{:#?}", selected_databases);
+                Database {
+                    name: TableName(db_name.as_str().to_string()),
+                    tables,
+                }
+            })
+            .collect(),
+    };
+
+    println!("{:#?}", server);
 }

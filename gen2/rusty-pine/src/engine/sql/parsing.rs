@@ -1,11 +1,12 @@
+use crate::analyze::ColumnName;
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::iter::Peekable;
 
-impl<'a> Column<'a> {
-    fn from_sql_string(input: &'a str) -> Result<Self, String> {
+impl Column {
+    fn from_sql_string(input: &str) -> Result<Self, String> {
         static COLUMN_NAME_REGEX: Lazy<Regex> =
             Lazy::new(|| Regex::new("(?i)^`([a-z0-9_]+)` ").unwrap());
         let matches = COLUMN_NAME_REGEX.captures(input.trim_start());
@@ -24,8 +25,8 @@ impl<'a> Column<'a> {
     }
 }
 
-impl<'a> ForeignKey<'a> {
-    fn from_sql_string(from_table: &'a str, input: &'a str) -> Result<Self, String> {
+impl ForeignKey {
+    fn from_sql_string(from_table: &str, input: &str) -> Result<Self, String> {
         static FK_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
             Regex::new(
             // This regex is a bit more relaxed then the actual syntax, but it will work anyway.
@@ -62,8 +63,8 @@ impl<'a> ForeignKey<'a> {
     }
 }
 
-impl<'a> KeyReference<'a> {
-    fn from_sql_str(table: &'a str, input: &'a str) -> Self {
+impl KeyReference {
+    fn from_sql_str(table: &str, input: &str) -> Self {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
         let matches: Vec<_> = SQL_NAME_REGEX
             .find_iter(input)
@@ -75,14 +76,14 @@ impl<'a> KeyReference<'a> {
         }
 
         let table = table.into();
-        let key = matches.into();
+        let key = matches.as_slice().into();
 
         Self { table, key }
     }
 }
 
-impl<'a> Key<'a> {
-    fn from_sql_str(input: &'a str) -> Self {
+impl Key {
+    fn from_sql_str(input: &str) -> Self {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
         let columns: Vec<_> = SQL_NAME_REGEX
             .find_iter(input)
@@ -98,16 +99,21 @@ impl<'a> Key<'a> {
     }
 }
 
-impl<'a> From<Vec<&'a str>> for Key<'a> {
-    fn from(value: Vec<&'a str>) -> Self {
+// TODO
+
+impl<'a, T> From<T> for Key
+where
+    T: Into<&'a [&'a str]>,
+{
+    fn from(value: T) -> Self {
         Self {
-            columns: value.iter().map(|i| (*i).into()).collect(),
+            columns: value.into().iter().map(|i| (*i).into()).collect(),
         }
     }
 }
 
-impl<'a> Key<'a> {
-    fn try_from_sql_string(value: &'a str) -> Result<Self, String> {
+impl Key {
+    fn try_from_sql_string(value: &str) -> Result<Self, String> {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
         let matches: Vec<_> = SQL_NAME_REGEX
             .find_iter(value)
@@ -118,18 +124,18 @@ impl<'a> Key<'a> {
             return Err(format!("Can't accept keys with 0 columns: {}", value));
         }
 
-        Ok(matches.into())
+        Ok(matches.as_slice().into())
     }
 }
 
-impl<'a> Table<'a> {
-    pub fn from_sql_string(input: &'a TableDescription) -> Result<Self, String> {
+impl Table {
+    pub fn from_sql_string(input: &TableDescription) -> Result<Self, String> {
         let mut lines = input.as_str().trim_start().split('\n').peekable();
 
         let name: TableName = Self::parse_table_name_line(&mut lines)?.into();
         let columns = Self::parse_columns(&mut lines);
         let primary_key = Self::parse_primary_key(&mut lines)?;
-        let foreign_keys = Self::parse_foreign_keys(name.0, &mut lines);
+        let foreign_keys = Self::parse_foreign_keys(name.0.as_str(), &mut lines);
 
         Ok(Table {
             name,
@@ -139,7 +145,9 @@ impl<'a> Table<'a> {
         })
     }
 
-    fn parse_table_name_line(lines: &mut dyn Iterator<Item = &'a str>) -> Result<&'a str, String> {
+    fn parse_table_name_line<'a>(
+        lines: &mut dyn Iterator<Item = &'a str>,
+    ) -> Result<&'a str, String> {
         if let Some(table_name_line) = lines.next() {
             static CREATE_TABLE_SQL_FIRST_LINE_REGEX: Lazy<Regex> =
                 Lazy::new(|| Regex::new("(?i)^CREATE TABLE `([a-z0-9_]+)`").unwrap());
@@ -160,7 +168,7 @@ impl<'a> Table<'a> {
         }
     }
 
-    fn parse_columns(lines: &mut Peekable<std::str::Split<'a, char>>) -> Vec<Column<'a>> {
+    fn parse_columns(lines: &mut Peekable<std::str::Split<'_, char>>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::new();
 
         while let Some(next_line) = lines.peek() {
@@ -178,10 +186,10 @@ impl<'a> Table<'a> {
         columns
     }
 
-    fn parse_primary_key(lines: &mut dyn Iterator<Item = &'a str>) -> Result<Key<'a>, String> {
+    fn parse_primary_key(lines: &mut dyn Iterator<Item = &str>) -> Result<Key, String> {
         if let Some(table_name_line) = lines.next() {
             static PRIMARY_KEY_SQL_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
-                Regex::new(r"(?i)^\s*PRIMARY KEY \((?<key>(`[a-z0-9_]+`),?)+\)").unwrap()
+                Regex::new(r"(?i)^\s*PRIMARY KEY \((?<key>((`[a-z0-9_]+`),?\s?)+)\)").unwrap()
             });
             let matches = PRIMARY_KEY_SQL_LINE_REGEX.captures(table_name_line);
 
@@ -191,7 +199,7 @@ impl<'a> Table<'a> {
                 Key::try_from_sql_string(table_names.as_str())
             } else {
                 Err(format!(
-                    "Only primary keys with single columns are supported:\n{}",
+                    "Unsupported primary key spec:\n{}",
                     table_name_line
                 ))
             }
@@ -201,10 +209,7 @@ impl<'a> Table<'a> {
     }
 
     /// Consumes the rest of the iterator
-    fn parse_foreign_keys(
-        table: &'a str,
-        lines: &mut dyn Iterator<Item = &'a str>,
-    ) -> Vec<ForeignKey<'a>> {
+    fn parse_foreign_keys(table: &str, lines: &mut dyn Iterator<Item = &str>) -> Vec<ForeignKey> {
         lines
             .map(|fk| ForeignKey::from_sql_string(table, fk))
             .filter_map(Result::ok)
@@ -244,7 +249,7 @@ CREATE TABLE `teams` (
   `name` varchar(50) COLLATE utf8_unicode_ci NOT NULL,
   `description` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
   `parentId` int(11) DEFAULT NULL,
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`id`, `id2`),
   KEY `IDX_96C22258F17FD7A5` (`customerId`),
   KEY `IDX_96C2225810EE4CEE` (`parentId`),
   CONSTRAINT `FK_96C2225810EE4CEE` FOREIGN KEY (`parentId`) REFERENCES `teams` (`id`) ON DELETE CASCADE,
@@ -255,6 +260,7 @@ CREATE TABLE `teams` (
         let table = Table::from_sql_string(&input).unwrap();
 
         assert_eq!(table.name, "teams");
+        assert_eq!(table.primary_key.columns.len(), 2);
         assert_eq!(table.columns.len(), 4);
         assert_eq!(table.foreign_keys.len(), 2);
     }

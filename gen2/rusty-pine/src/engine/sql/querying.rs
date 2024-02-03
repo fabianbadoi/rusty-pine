@@ -86,3 +86,9 @@ impl TableDescription {
         self.0.as_str()
     }
 }
+
+impl SchemaObjectName {
+    pub fn as_str(&self) -> &str {
+        self.0.as_str()
+    }
+}

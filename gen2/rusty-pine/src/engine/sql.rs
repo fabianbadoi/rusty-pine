@@ -6,7 +6,7 @@ pub mod structure;
 
 use crate::engine::sql::structure::Database;
 
-struct DatabaseInfo<'a> {
+struct DatabaseInfo {
     /// The original create table queries.
     ///
     /// The way this struct works is by keeping the create table queries in memory, and only making
@@ -20,5 +20,5 @@ struct DatabaseInfo<'a> {
     /// Structure of the database.
     ///
     /// Only contains &str's from the create table queries.
-    database: Database<'a>,
+    database: Database,
 }
