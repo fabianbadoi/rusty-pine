@@ -1,6 +1,8 @@
 //! Structures used to represent the structure of the database. Used for using foreign keys to
 //! augment our Pines.
 
+use std::collections::HashMap;
+
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
 /// This structure represents the info we gather for an entire analyzed DB server.
@@ -10,13 +12,13 @@ pub struct Server {
     pub port: u16,
     // Because the different users may have access to different databases and different tables,
     pub user: String,
-    pub databases: Vec<Database>,
+    pub databases: HashMap<TableName, Database>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Database {
     pub name: TableName,
-    pub tables: Vec<Table>,
+    pub tables: HashMap<TableName, Table>,
 }
 
 #[derive(Debug, Clone)]
@@ -52,7 +54,7 @@ pub struct KeyReference {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ColumnName(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TableName(pub String);
 
 impl Table {

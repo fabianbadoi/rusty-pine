@@ -1,6 +1,6 @@
-use crate::analyze::ColumnName;
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
+use crate::error::InternalError;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::iter::Peekable;
@@ -99,8 +99,6 @@ impl Key {
     }
 }
 
-// TODO
-
 impl<'a, T> From<T> for Key
 where
     T: Into<&'a [&'a str]>,
@@ -113,7 +111,7 @@ where
 }
 
 impl Key {
-    fn try_from_sql_string(value: &str) -> Result<Self, String> {
+    fn try_from_sql_string(value: &str) -> Result<Self, InternalError> {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
         let matches: Vec<_> = SQL_NAME_REGEX
             .find_iter(value)
@@ -121,15 +119,18 @@ impl Key {
             .collect();
 
         if matches.is_empty() {
-            return Err(format!("Can't accept keys with 0 columns: {}", value));
+            Err(InternalError(format!(
+                "Can't accept keys with 0 columns: {}",
+                value
+            )))
+        } else {
+            Ok(matches.as_slice().into())
         }
-
-        Ok(matches.as_slice().into())
     }
 }
 
 impl Table {
-    pub fn from_sql_string(input: &TableDescription) -> Result<Self, String> {
+    pub fn from_sql_string(input: &TableDescription) -> Result<Self, InternalError> {
         let mut lines = input.as_str().trim_start().split('\n').peekable();
 
         let name: TableName = Self::parse_table_name_line(&mut lines)?.into();
@@ -147,7 +148,7 @@ impl Table {
 
     fn parse_table_name_line<'a>(
         lines: &mut dyn Iterator<Item = &'a str>,
-    ) -> Result<&'a str, String> {
+    ) -> Result<&'a str, InternalError> {
         if let Some(table_name_line) = lines.next() {
             static CREATE_TABLE_SQL_FIRST_LINE_REGEX: Lazy<Regex> =
                 Lazy::new(|| Regex::new("(?i)^CREATE TABLE `([a-z0-9_]+)`").unwrap());
@@ -158,13 +159,13 @@ impl Table {
 
                 Ok(table_name.as_str())
             } else {
-                Err(format!(
+                Err(InternalError(format!(
                     "Column name line not as expected:\n{}",
                     table_name_line
-                ))
+                )))
             }
         } else {
-            Err("Column name line not found".to_string())
+            Err(InternalError("Column name line not found".to_string()))
         }
     }
 
@@ -186,7 +187,7 @@ impl Table {
         columns
     }
 
-    fn parse_primary_key(lines: &mut dyn Iterator<Item = &str>) -> Result<Key, String> {
+    fn parse_primary_key(lines: &mut dyn Iterator<Item = &str>) -> Result<Key, InternalError> {
         if let Some(table_name_line) = lines.next() {
             static PRIMARY_KEY_SQL_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
                 Regex::new(r"(?i)^\s*PRIMARY KEY \((?<key>((`[a-z0-9_]+`),?\s?)+)\)").unwrap()
@@ -198,13 +199,13 @@ impl Table {
 
                 Key::try_from_sql_string(table_names.as_str())
             } else {
-                Err(format!(
+                Err(InternalError(format!(
                     "Unsupported primary key spec:\n{}",
                     table_name_line
-                ))
+                )))
             }
         } else {
-            Err("Primary Key line not found".to_string())
+            Err(InternalError("Primary Key line not found".to_string()))
         }
     }
 
