@@ -92,6 +92,14 @@ pub enum Source {
     Input(Position),
 }
 
+/// Holds a reference to where we got something from.
+///
+/// I use this to help print better error messages.
+/// ```text
+/// humans | friends]
+///                 ^-- Sourced<':', &input pos 15>
+///                 \- I can point to the invalid character because of Sourced<>
+/// ```
 #[derive(Debug)]
 pub struct Sourced<T: Sized> {
     pub it: T,
