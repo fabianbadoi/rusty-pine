@@ -45,11 +45,11 @@ pub fn describe_table(
     table: &SchemaObjectName,
 ) -> Result<TableDescription, Error> {
     let result: Option<(String, String)> =
-        connection.query_first(format!("SHOW CREATE TABLE {}.{}", database, table))?;
+        connection.query_first(format!("SHOW CREATE TABLE `{}`.`{}`", database, table))?;
 
     match result {
         Some((_, create_table_query)) => Ok(TableDescription(create_table_query)),
-        None => Err(InternalError(format!("Table disappeared {}.{}", database, table)).into()),
+        None => Err(InternalError(format!("Table disappeared `{}`.`{}`", database, table)).into()),
     }
 }
 

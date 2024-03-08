@@ -151,7 +151,7 @@ impl Table {
     ) -> Result<&'a str, InternalError> {
         if let Some(table_name_line) = lines.next() {
             static CREATE_TABLE_SQL_FIRST_LINE_REGEX: Lazy<Regex> =
-                Lazy::new(|| Regex::new("(?i)^CREATE TABLE `([a-z0-9_]+)`").unwrap());
+                Lazy::new(|| Regex::new("(?i)^CREATE TABLE `(.+)`").unwrap());
             let matches = CREATE_TABLE_SQL_FIRST_LINE_REGEX.captures(table_name_line);
 
             if let Some(captures) = matches {
