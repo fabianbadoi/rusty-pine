@@ -5,11 +5,10 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::MultiSelect;
 use mysql::{Opts, Pool, PooledConn};
 use rusty_pine::analyze::{
-    describe_table, list_databases, list_tables, Database, SchemaObjectName, Server, Table,
-    TableName,
+    describe_table, list_databases, list_tables, Database, SchemaObjectName, Server, ServerParams,
+    Table, TableName,
 };
-use rusty_pine::Error;
-use std::collections::HashMap;
+use rusty_pine::{cache, Error};
 
 fn main() {
     let cli_args = MySqlConnectionArgs::cli_interactive();
@@ -39,9 +38,11 @@ fn main() {
         .collect();
 
     let server = Server {
-        hostname: cli_args.hostname_or_ip,
-        port: cli_args.port,
-        user: cli_args.username,
+        params: ServerParams {
+            hostname: cli_args.hostname_or_ip,
+            port: cli_args.port,
+            user: cli_args.username,
+        },
         databases: selected_databases
             .iter()
             .map(|db_name| {
@@ -52,7 +53,9 @@ fn main() {
             .collect(),
     };
 
-    println!("{:#?}", server);
+    cache::write(&server).unwrap();
+
+    println!("Database analyzed and cached");
 }
 
 fn analyze_db(connection: &mut PooledConn, db_name: &SchemaObjectName) -> Result<Database, Error> {

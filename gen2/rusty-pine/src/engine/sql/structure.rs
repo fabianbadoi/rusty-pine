@@ -1,32 +1,39 @@
 //! Structures used to represent the structure of the database. Used for using foreign keys to
 //! augment our Pines.
 
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
 /// This structure represents the info we gather for an entire analyzed DB server.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Server {
+    pub params: ServerParams,
+    pub databases: HashMap<TableName, Database>,
+}
+
+/// Parameters used to connect to a server
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerParams {
     pub hostname: String,
     pub port: u16,
     // Because the different users may have access to different databases and different tables,
     pub user: String,
-    pub databases: HashMap<TableName, Database>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Database {
     pub name: TableName,
     pub tables: HashMap<TableName, Table>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Column {
     pub name: ColumnName,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Table {
     pub name: TableName,
     pub primary_key: Key,
@@ -34,27 +41,27 @@ pub struct Table {
     pub foreign_keys: Vec<ForeignKey>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Key {
     pub columns: Vec<ColumnName>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ForeignKey {
     pub from: KeyReference,
     pub to: KeyReference,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct KeyReference {
     pub table: TableName,
     pub key: Key,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ColumnName(pub String);
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct TableName(pub String);
 
 impl Table {

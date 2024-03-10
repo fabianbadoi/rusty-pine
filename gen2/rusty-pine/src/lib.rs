@@ -1,3 +1,4 @@
+pub mod cache;
 mod engine;
 mod error;
 pub mod lsp;

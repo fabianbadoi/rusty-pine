@@ -1,4 +1,5 @@
 use mysql::Error as MySqlError;
+use std::env::VarError;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
 
@@ -23,9 +24,14 @@ pub enum ErrorKind {
     /// Errors originating from the MySQL library
     #[error("Error trying to query database:\n{0}")]
     MySqlError(#[from] MySqlError),
-
     #[error("Internal error:\n{0}")]
     InternalError(#[from] InternalError),
+    #[error("Could not find environment variable: {0}")]
+    EnvVarError(#[from] VarError),
+    #[error("IO error:\n{0}")]
+    IoError(#[from] std::io::Error),
+    #[error("JSON error:\n{0}")]
+    JsonError(#[from] serde_json::Error),
 }
 
 pub type PestError = pest::error::Error<crate::engine::Rule>;
