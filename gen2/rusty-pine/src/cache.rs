@@ -4,8 +4,10 @@
 //! To use the cache system, implement the Cacheable and CacheKey traits, then you can
 //! use the read() and write() functions.
 use crate::analyze::{Server, ServerParams};
+use crate::context::{Context, ContextName};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
+use std::fmt::format;
 use std::fs;
 use std::path::PathBuf;
 
@@ -36,9 +38,9 @@ pub trait Cacheable {
     // Binding the cache key type to the type that it will point to helps with type safety.
     type CacheKey;
 
-    // Using CacheKey instead of a String means we use the exact same thing in both
-    // the read() and write() functions.
-    fn cache_key(&self) -> &Self::CacheKey;
+    // Using CacheKey instead of a String means both write() and read() functions use the same cache
+    // key. It also helps make sure cache reads and writes are type-safe at compile time.
+    fn cache_key(&self) -> Self::CacheKey;
 }
 
 pub fn read<D, K>(cache_key: &K) -> Result<D, crate::Error>
@@ -98,13 +100,43 @@ fn require_cache_folder() -> Result<PathBuf, crate::Error> {
 impl Cacheable for Server {
     type CacheKey = ServerParams;
 
-    fn cache_key(&self) -> &Self::CacheKey {
-        &self.params
+    fn cache_key(&self) -> Self::CacheKey {
+        self.params.clone()
     }
 }
 
 impl CacheKey for ServerParams {
     fn as_path(&self) -> String {
-        format!("server-{}-{}-{}", self.hostname, self.port, self.user)
+        format!("server-{}-{}-{}.json", self.hostname, self.port, self.user)
+    }
+}
+
+impl Cacheable for Context {
+    type CacheKey = ContextName;
+
+    fn cache_key(&self) -> Self::CacheKey {
+        self.name.clone()
+    }
+}
+
+impl CacheKey for ContextName {
+    fn as_path(&self) -> String {
+        format!("context_{}.json", self)
+    }
+}
+
+impl Cacheable for ContextName {
+    type CacheKey = SharedCacheKey;
+
+    fn cache_key(&self) -> Self::CacheKey {
+        SharedCacheKey("current_context".to_owned())
+    }
+}
+
+pub struct SharedCacheKey(String);
+
+impl CacheKey for SharedCacheKey {
+    fn as_path(&self) -> String {
+        self.0.clone()
     }
 }

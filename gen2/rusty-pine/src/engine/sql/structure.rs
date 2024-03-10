@@ -14,7 +14,7 @@ pub struct Server {
 }
 
 /// Parameters used to connect to a server
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerParams {
     pub hostname: String,
     pub port: u16,
