@@ -17,6 +17,7 @@ where
 }
 
 #[derive(Debug, Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum ErrorKind {
     /// Errors originating from the Pest library
     #[error("Invalid syntax, failed to parse:\n{0}")]
@@ -32,6 +33,8 @@ pub enum ErrorKind {
     IoError(#[from] std::io::Error),
     #[error("JSON error:\n{0}")]
     JsonError(#[from] serde_json::Error),
+    #[error("Error reading data from stdin")]
+    DialogueError(#[from] dialoguer::Error),
 }
 
 pub type PestError = pest::error::Error<crate::engine::Rule>;

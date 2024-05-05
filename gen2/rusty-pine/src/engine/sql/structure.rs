@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
@@ -107,5 +108,18 @@ impl<T: Into<String>> From<T> for Column {
 impl<'a> From<&'a TableName> for &'a str {
     fn from(name: &'a TableName) -> &'a str {
         name.0.as_str()
+    }
+}
+
+impl Display for ServerParams {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.port == 3306 {
+            // If we're using the default port, we can just omit it.
+            write!(f, "{}@{}", self.user, self.hostname)?
+        } else {
+            write!(f, "{}@{}:{}", self.user, self.hostname, self.port)?
+        }
+
+        Ok(())
     }
 }

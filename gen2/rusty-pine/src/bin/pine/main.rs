@@ -1,4 +1,5 @@
 mod args;
+mod commands;
 
 use crate::args::{Command, ContextParams};
 use args::Args;
@@ -13,6 +14,7 @@ fn main() {
         Command::CreateContext(context) => create_context(context).unwrap(),
         Command::UseContext { name } => use_context(name).unwrap(),
         Command::ListContexts => list_contexts().unwrap(),
+        Command::Analyze => commands::analyze::analyze().unwrap(),
     }
 }
 
