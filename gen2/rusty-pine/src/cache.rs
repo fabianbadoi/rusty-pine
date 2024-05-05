@@ -7,7 +7,6 @@ use crate::analyze::{Server, ServerParams};
 use crate::context::{Context, ContextName};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
-use std::fmt::format;
 use std::fs;
 use std::path::PathBuf;
 
@@ -34,6 +33,9 @@ pub trait CacheKey {
 ///     &ServerParams { hostname: "".to_string(), port: 0, user: "".to_string()}
 /// )?;
 /// ```
+///
+/// There is nothing stopping you from using the same CacheKey type for multiple Cacheables. Not
+/// much I can do there, and maybe sometimes you want to do that.
 pub trait Cacheable {
     // Binding the cache key type to the type that it will point to helps with type safety.
     type CacheKey;
@@ -41,6 +43,12 @@ pub trait Cacheable {
     // Using CacheKey instead of a String means both write() and read() functions use the same cache
     // key. It also helps make sure cache reads and writes are type-safe at compile time.
     fn cache_key(&self) -> Self::CacheKey;
+
+    /// The type_id can be used to get all instances of the same type. Type ids should be unique.
+    ///
+    /// All structs of the same type will be saved in a similar place, so that we can answer
+    /// questions like "how many Xs do we have", or do things like reading all the Ys.
+    fn type_id() -> &'static str;
 }
 
 pub fn read<D, K>(cache_key: &K) -> Result<D, crate::Error>
@@ -51,7 +59,7 @@ where
     D: Cacheable<CacheKey = K> + DeserializeOwned,
     K: CacheKey,
 {
-    let file_location = get_cache_path(cache_key.as_path().as_str())?;
+    let file_location = get_cache_path(D::type_id(), cache_key.as_path().as_str())?;
 
     let data = serde_json::from_reader(fs::File::open(file_location)?)?;
 
@@ -63,7 +71,7 @@ where
     D: Cacheable<CacheKey = K> + Serialize,
     K: CacheKey,
 {
-    let file_location = get_cache_path(data.cache_key().as_path().as_str())?;
+    let file_location = get_cache_path(D::type_id(), data.cache_key().as_path().as_str())?;
 
     let data = serde_json::to_string(&data)?;
 
@@ -72,15 +80,15 @@ where
     Ok(())
 }
 
-fn get_cache_path(cache_key: &str) -> Result<PathBuf, crate::Error> {
-    let mut location = require_cache_folder()?;
+fn get_cache_path(type_id: &'static str, cache_key: &str) -> Result<PathBuf, crate::Error> {
+    let mut location = require_cache_folder(type_id)?;
 
     location.push(cache_key);
 
     Ok(location)
 }
 
-fn require_cache_folder() -> Result<PathBuf, crate::Error> {
+fn require_cache_folder(type_id: &'static str) -> Result<PathBuf, crate::Error> {
     let home = std::env::var("HOME")?;
 
     let mut path = PathBuf::from(home);
@@ -88,6 +96,7 @@ fn require_cache_folder() -> Result<PathBuf, crate::Error> {
     path.push("rusty-pine");
     path.push("cache");
     path.push("v2");
+    path.push(type_id);
 
     // we have to make sure it exists, right?
     fs::create_dir_all(&path)?;
@@ -95,13 +104,17 @@ fn require_cache_folder() -> Result<PathBuf, crate::Error> {
     Ok(path)
 }
 
-// Please dump all impls here so we keep the rest of the code base clean.
+// Please dump all impls here, so we keep the rest of the code base clean.
 
 impl Cacheable for Server {
     type CacheKey = ServerParams;
 
     fn cache_key(&self) -> Self::CacheKey {
         self.params.clone()
+    }
+
+    fn type_id() -> &'static str {
+        "server"
     }
 }
 
@@ -117,6 +130,10 @@ impl Cacheable for Context {
     fn cache_key(&self) -> Self::CacheKey {
         self.name.clone()
     }
+
+    fn type_id() -> &'static str {
+        "context"
+    }
 }
 
 impl CacheKey for ContextName {
@@ -129,7 +146,11 @@ impl Cacheable for ContextName {
     type CacheKey = SharedCacheKey;
 
     fn cache_key(&self) -> Self::CacheKey {
-        SharedCacheKey("current_context".to_owned())
+        SharedCacheKey(Self::type_id().to_owned())
+    }
+
+    fn type_id() -> &'static str {
+        "current_context"
     }
 }
 
