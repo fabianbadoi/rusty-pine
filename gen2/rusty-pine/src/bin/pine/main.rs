@@ -12,6 +12,7 @@ fn main() {
     match args.command {
         Command::CreateContext(context) => create_context(context).unwrap(),
         Command::UseContext { name } => use_context(name).unwrap(),
+        Command::ListContexts => list_contexts().unwrap(),
     }
 }
 
@@ -41,6 +42,30 @@ fn use_context(name: String) -> Result<(), rusty_pine::Error> {
     cache::write(&context_name)?;
 
     println!("Switched to context \x1b[1m{}\x1b[0m", context_name);
+
+    Ok(())
+}
+
+fn list_contexts() -> Result<(), rusty_pine::Error> {
+    use colored::Colorize;
+
+    let current_context = ContextName::current()?;
+    let known_contexts: Vec<Context> = cache::read_all()?;
+
+    println!("Available contexts:");
+    for context in &known_contexts {
+        println!(
+            "{}{}: {} ({})",
+            if current_context == context.name {
+                " * ".bold()
+            } else {
+                "   ".into()
+            },
+            context.name.to_string().bold(),
+            context.server_params.hostname,
+            context.default_database
+        )
+    }
 
     Ok(())
 }

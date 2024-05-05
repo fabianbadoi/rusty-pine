@@ -12,11 +12,14 @@ pub struct Args {
 
 #[derive(Subcommand, Debug)]
 pub enum Command {
-    /// Creates a context
+    /// Creates a context and sets it as the current context.
+    ///
+    /// Contexts allow the pine command to switch between different database connections.
     CreateContext(ContextParams),
-    UseContext {
-        name: String,
-    },
+    /// Selects an existing context.
+    UseContext { name: String },
+    /// List available contexts.
+    ListContexts,
 }
 
 #[derive(clap::Args, Debug)]
