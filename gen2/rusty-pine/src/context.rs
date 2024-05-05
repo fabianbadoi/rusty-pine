@@ -1,4 +1,5 @@
 use crate::analyze::ServerParams;
+use crate::cache;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
@@ -12,9 +13,23 @@ pub struct Context {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ContextName(String);
 
+impl ContextName {
+    pub fn current() -> Result<ContextName, crate::Error> {
+        // All context names use the cache key, because that's how we save the current context.
+        // Reading a context named "any" will just get us the current context.
+        cache::read(&ContextName("any".to_string()).cache_key())
+    }
+}
+
 impl From<String> for ContextName {
     fn from(value: String) -> Self {
         ContextName(value)
+    }
+}
+
+impl From<&str> for ContextName {
+    fn from(value: &str) -> Self {
+        ContextName(value.to_string())
     }
 }
 
