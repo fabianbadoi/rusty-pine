@@ -1,5 +1,6 @@
 use crate::analyze::ServerParams;
 use crate::cache;
+use crate::cache::Cacheable;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter};
 
@@ -10,7 +11,7 @@ pub struct Context {
     pub default_database: String,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ContextName(String);
 
 impl ContextName {

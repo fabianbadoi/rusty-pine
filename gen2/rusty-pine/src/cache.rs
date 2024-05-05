@@ -8,6 +8,7 @@ use crate::context::{Context, ContextName};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
+use std::fs::{read_dir, DirEntry};
 use std::path::PathBuf;
 
 /// You need a cache key in order to read something for cache. Why not just use a string
@@ -66,6 +67,22 @@ where
     Ok(data)
 }
 
+pub fn read_all<D>() -> Result<Vec<D>, crate::Error>
+where
+    D: Cacheable + DeserializeOwned,
+{
+    let files = list_cached_files_of_type(D::type_id())?;
+
+    files
+        .iter()
+        .map(|dir_entry| -> Result<D, crate::Error> {
+            let reader = fs::File::open(dir_entry.path())?;
+
+            Ok(serde_json::from_reader(reader)?)
+        })
+        .collect()
+}
+
 pub fn write<D, K>(data: &D) -> Result<(), crate::Error>
 where
     D: Cacheable<CacheKey = K> + Serialize,
@@ -102,6 +119,13 @@ fn require_cache_folder(type_id: &'static str) -> Result<PathBuf, crate::Error> 
     fs::create_dir_all(&path)?;
 
     Ok(path)
+}
+
+fn list_cached_files_of_type(type_id: &'static str) -> Result<Vec<DirEntry>, crate::Error> {
+    let cache_folder = require_cache_folder(type_id)?;
+    let dir_iterator = read_dir(cache_folder)?;
+
+    Ok(dir_iterator.collect::<Result<Vec<DirEntry>, _>>()?)
 }
 
 // Please dump all impls here, so we keep the rest of the code base clean.
