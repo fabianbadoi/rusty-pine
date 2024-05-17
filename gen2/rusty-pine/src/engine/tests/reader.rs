@@ -1,28 +1,35 @@
+use crate::analyze::Server;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Lines};
 use std::iter::{Enumerate, Peekable};
 use std::ops::Range;
 use std::path::PathBuf;
 
+mod setup_parser;
+
 pub struct SqlTestFileReader {
     pub file_path: PathBuf,
+    /// The server spec can be set as create table statements at the beginning of the test file.
+    pub mock_server: Server,
     // Peekable<> because we scan for the next line
     // Enumerate<> because we want line numbers
     // Lines<> because we scan line by line
-    pub lines: Peekable<Enumerate<Lines<BufReader<File>>>>,
+    lines: Peekable<Enumerate<Lines<BufReader<File>>>>,
 }
 
 impl Iterator for SqlTestFileReader {
-    type Item = Result<Test, std::io::Error>;
+    type Item = Result<Test, crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((_, next_line)) = self.lines.peek() {
             if next_line.is_err() {
                 // some problem reading the file
-                return Some(Err(self.lines.next().unwrap().1.err().unwrap()));
+                return Some(Err(self.lines.next().unwrap().1.err().unwrap().into()));
             }
 
-            let next_line = next_line.as_ref().unwrap();
+            let next_line = next_line
+                .as_ref()
+                .expect("next_line was just checked above");
             if !next_line.starts_with("-- Test: ") {
                 // Any line not in a test "block" is ignored
                 self.lines.next();
@@ -37,16 +44,21 @@ impl Iterator for SqlTestFileReader {
 }
 
 impl SqlTestFileReader {
-    pub fn new(file_path: PathBuf) -> Result<Self, std::io::Error> {
+    pub fn new(file_path: PathBuf) -> Result<Self, crate::Error> {
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
 
-        let lines = reader.lines().enumerate().peekable();
+        let mut lines = reader.lines().enumerate().peekable();
+        let mock_server = setup_parser::read_mock_server(&mut lines)?;
 
-        Ok(SqlTestFileReader { lines, file_path })
+        Ok(SqlTestFileReader {
+            lines,
+            file_path,
+            mock_server,
+        })
     }
 
-    fn create_test(&mut self) -> Result<Test, std::io::Error> {
+    fn create_test(&mut self) -> Result<Test, crate::Error> {
         let (line_nr, read_result) = self.lines.next().expect("Already tested in Self::next()");
 
         let input_line = read_result.expect("Already tested in Self::next() but a bit later");
@@ -56,7 +68,7 @@ impl SqlTestFileReader {
         while let Some((_, next_line)) = self.lines.peek() {
             if next_line.is_err() {
                 // some problem reading the file
-                return Err(self.lines.next().unwrap().1.err().unwrap());
+                return Err(self.lines.next().unwrap().1.err().unwrap().into());
             }
 
             let next_line = next_line.as_ref().unwrap();
@@ -95,7 +107,7 @@ impl SqlTestFileReader {
 
 /// One of our integration tests.
 ///
-/// Keeping all of the info related to where we found the test helps us a lot when printing test
+/// Keeping all the info related to where we found the test helps us a lot when printing test
 /// failures.
 pub struct Test {
     pub file: String,

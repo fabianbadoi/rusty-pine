@@ -1,9 +1,10 @@
+use crate::analyze::Server;
 use crate::engine::syntax::{Position, Stage4ComputationInput, Stage4Rep};
 use std::ops::Range;
 
 mod stage5;
 
-pub fn build_query(input: Stage4Rep<'_>) -> Query {
+pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Query {
     stage5::Stage5Builder {}.try_build(input).unwrap()
 }
 

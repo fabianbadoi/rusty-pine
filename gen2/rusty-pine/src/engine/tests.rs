@@ -6,6 +6,7 @@
 //!
 //! This module also makes sure to display test failures in a human friendly way, but you will have
 //! to run the tests with `cargo test -- --nocapture` to see the output.
+use crate::analyze::Server;
 use crate::engine::tests::error_print::{
     ErrorMessage, ExpectedOutcome, FileExtract, FileExtractMessage, TestErrorReport,
     TestHeaderLine, TestInput, TestLocation, TestOutcome, TestOutcomeDiff,
@@ -65,13 +66,14 @@ fn run_all_tests_in_test_folder() -> Vec<SuiteResult> {
 }
 
 fn run_tests(tests: SqlTestFileReader) -> SuiteResult {
+    let mock_server = tests.mock_server.clone();
     let mut test_results = Vec::new();
     let file = tests.file_path.to_str().unwrap().to_owned();
 
     for test in tests {
         match test {
             Ok(test) => {
-                let outcome = run_single_test(&test);
+                let outcome = run_single_test(&test, &mock_server);
                 test_results.push(TestResult { test, outcome });
             }
             // Even if we successfully read bytes from the file, they might not be valid UTF-8
@@ -91,8 +93,8 @@ fn run_tests(tests: SqlTestFileReader) -> SuiteResult {
     }
 }
 
-fn run_single_test(test: &Test) -> Outcome {
-    let found_output = super::render(test.input());
+fn run_single_test(test: &Test, server: &Server) -> Outcome {
+    let found_output = super::render(test.input(), server);
 
     if let Err(error) = found_output {
         return Outcome::Error(error.into());
@@ -109,7 +111,7 @@ fn run_single_test(test: &Test) -> Outcome {
 
 struct SuiteResult {
     file: String,
-    result: Result<Vec<TestResult>, std::io::Error>,
+    result: Result<Vec<TestResult>, crate::Error>,
 }
 
 struct TestResult {
@@ -142,7 +144,7 @@ enum TestError {
 impl TestResult {
     /// Returns a printable error report.
     ///
-    /// ```
+    /// ```no_run
     /// # let report: TestErrorReport;
     /// println!("{report}"); // like I said, convenient
     /// ```

@@ -8,7 +8,7 @@ use std::fmt::{Display, Formatter};
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
 /// This structure represents the info we gather for an entire analyzed DB server.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     pub params: ServerParams,
     pub databases: HashMap<TableName, Database>,

@@ -43,7 +43,7 @@ fn use_context(name: String) -> Result<(), rusty_pine::Error> {
 
     cache::write(&context_name)?;
 
-    println!("Switched to context \x1b[1m{}\x1b[0m", context_name);
+    println!("Switched to context \x1b[1m{}\x1b[0m.", context_name);
 
     Ok(())
 }

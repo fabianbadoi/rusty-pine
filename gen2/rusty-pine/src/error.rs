@@ -27,7 +27,7 @@ pub enum ErrorKind {
     MySqlError(#[from] MySqlError),
     #[error("Internal error:\n{0}")]
     InternalError(#[from] InternalError),
-    #[error("Could not find environment variable: {0}")]
+    #[error("Could not find environment variable: \n{0}")]
     EnvVarError(#[from] VarError),
     #[error("IO error:\n{0}")]
     IoError(#[from] std::io::Error),

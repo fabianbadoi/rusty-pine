@@ -21,7 +21,8 @@ pub trait CacheKey {
 ///
 /// Part 2: Cacheable has an associated type so that can always pair up a struct to be cached
 /// with its cache key. The benefit of doing things this way is some compile time protection:
-/// ```
+///
+/// ```no_run
 /// use rusty_pine::analyze::{Server, ServerParams};
 /// use rusty_pine::cache::read;
 ///
@@ -32,7 +33,7 @@ pub trait CacheKey {
 /// //                  to compile. So we the compiler now makes sure we read and write to our
 /// //                  cache in a type safe manner.
 ///     &ServerParams { hostname: "".to_string(), port: 0, user: "".to_string()}
-/// )?;
+/// ).unwrap();
 /// ```
 ///
 /// There is nothing stopping you from using the same CacheKey type for multiple Cacheables. Not
