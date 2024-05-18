@@ -1,25 +1,23 @@
 //! We can insert create table queries at the beginning of our .sql tests and these will be used
 //! to create the test database structure.
 
-// TODO find a way to print the line number on failures here.
 
 use crate::analyze::{Database, Server, ServerParams, Table};
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::DbStructureParsingContext as Context;
 use crate::engine::sql::{DbStructureParseError, InputWindow};
 use crate::error::ErrorKind;
-use crate::Error;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Error as IOError;
 use std::io::{BufReader, Lines};
 use std::iter::{Enumerate, Peekable};
+use std::path::PathBuf;
 
-pub fn read_mock_server(
-    context: Context,
-    lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
-) -> Result<Server, crate::Error> {
-    let tables = read_create_table_statements(context, lines)?;
+type TestLines = Peekable<Enumerate<Lines<BufReader<File>>>>;
+
+pub fn read_mock_server(file: &PathBuf, lines: &mut TestLines) -> Result<Server, crate::Error> {
+    let tables = read_create_table_statements(file, lines)?;
 
     let databases = HashMap::from([(
         "default".into(),
@@ -41,85 +39,142 @@ pub fn read_mock_server(
 }
 
 fn read_create_table_statements(
-    context: Context,
+    file: &PathBuf,
     lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
 ) -> Result<Vec<Table>, crate::Error> {
     let mut tables = Vec::new();
+    let mut parser = TableParser::new(file, lines);
 
-    while let Some(next_table) = next_table(&context, lines)? {
+    while let Some(next_table) = parser.next_table()? {
         tables.push(next_table);
     }
 
     return Ok(tables);
 }
 
-fn next_table(
-    context: &Context,
-    lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
-) -> Result<Option<Table>, crate::Error> {
-    if advance_until_next_create(lines)?.is_none() {
-        return Ok(None);
-    }
-
-    if lines.peek().is_none() {
-        // End of input.
-        return Ok(None);
-    }
-
-    let (start_line, _) = *lines.peek().expect("lines.peek() is checked above");
-
-    let statement = read_entire_create_statement(context, lines)?;
-    let table = Table::from_sql_string(context, &TableDescription::new_for_tests(statement))
-        .map_err(|err| {
-            let kind = err.into_inner();
-            if let ErrorKind::DbStructureParseError(ddl_error) = kind {
-                ErrorKind::DbStructureParseError(ddl_error.move_window(start_line))
-            } else {
-                kind
-            }
-        })?;
-
-    Ok(Some(table))
+struct TableParser<'a> {
+    lines: &'a mut TestLines,
+    context: Context,
 }
 
-fn read_entire_create_statement(
-    context: &Context,
-    lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
-) -> Result<String, DbStructureParseError> {
-    let start_line = match lines.peek() {
-        None => {
-            return Ok("".to_string());
-        }
-        Some((line_nr, _)) => *line_nr,
-    };
-    let mut input_window = InputWindow {
-        start_line,
-        context: context.clone(),
-        content: String::new(),
-    };
-
-    while let Some((line_number, next_item)) = lines.next() {
-        let in_buffer_line_nr = line_number - start_line;
-        let line = valid_line(in_buffer_line_nr, next_item, &input_window)?;
-
-        input_window.content.push_str(line.as_str());
-        input_window.content.push('\n');
-
-        if line.contains(';') && !line.trim().ends_with(';') {
-            return Err(DbStructureParseError {
-                line_number: in_buffer_line_nr,
-                message: "';' should only appear at the very end of ceate table statements"
-                    .to_string(),
-                input: input_window.with_line(line),
-            });
-        }
-
-        if line.trim().ends_with(';') {
-            break;
+impl<'a> TableParser<'a> {
+    fn new(file: &'a PathBuf, lines: &'a mut TestLines) -> Self {
+        TableParser {
+            context: Context::File(file.clone()),
+            lines,
         }
     }
 
-    Ok(input_window.content)
+    fn next_table(&mut self) -> Result<Option<Table>, crate::Error> {
+        if self.advance_until_next_create()?.is_none() {
+            return Ok(None);
+        }
+
+        if self.lines.peek().is_none() {
+            // End of input.
+            return Ok(None);
+        }
+
+        let (start_line, _) = *self.lines.peek().expect("lines.peek() is checked above");
+
+        let statement = self.read_entire_create_statement()?;
+        let table =
+            Table::from_sql_string(&self.context, &TableDescription::new_for_tests(statement))
+                .map_err(|err| move_start_line(err, start_line))?;
+
+        Ok(Some(table))
+    }
+
+    fn advance_until_next_create(&mut self) -> Result<Option<()>, crate::Error> {
+        while let Some((_, next_item)) = self.lines.peek() {
+            if next_item.is_err() {
+                return Err(self
+                    .lines
+                    .next()
+                    .expect("lines.next() should be a Some because we already checked")
+                    .1
+                    .expect_err("lines.next().1 should be an Err because we checked"))?;
+            }
+
+            let line = next_item
+                .as_ref()
+                .expect("next_item was checked right before")
+                .trim();
+
+            if line.starts_with("-- Test: ") {
+                // You can put create table statements at the begging of a test.sql file. Any create
+                // table statements AFTER the first test will be ignored.
+                return Ok(None);
+            }
+
+            if line.to_lowercase().starts_with("create table ") {
+                // We found it, the next lines is a create table statement
+                break;
+            }
+
+            self.lines.next();
+        }
+
+        Ok(Some(()))
+    }
+
+    fn read_entire_create_statement(&mut self) -> Result<String, DbStructureParseError> {
+        let reader = match SingleCreateTableStatementReader::new(&self.context, self.lines) {
+            Some(reader) => reader,
+            None => {
+                return Ok("".to_string());
+            }
+        };
+
+        reader.read_statement()
+    }
+}
+
+struct SingleCreateTableStatementReader<'a> {
+    input: InputWindow,
+    lines: &'a mut TestLines,
+}
+
+impl<'a> SingleCreateTableStatementReader<'a> {
+    fn new(context: &'a Context, lines: &'a mut TestLines) -> Option<Self> {
+        match lines.peek() {
+            None => None,
+            Some((start_line, _)) => Some(Self {
+                input: InputWindow {
+                    start_line: *start_line,
+                    context: context.clone(),
+                    content: String::new(),
+                },
+                lines,
+            }),
+        }
+    }
+
+    fn read_statement(mut self) -> Result<String, DbStructureParseError> {
+        while let Some((line_number, next_item)) = self.lines.next() {
+            let in_buffer_line_nr = line_number - self.input.start_line;
+
+            let line = valid_line(in_buffer_line_nr, next_item, &self.input)?;
+
+            self.input.content.push_str(line.as_str());
+            self.input.content.push('\n');
+
+            if line.contains(';') && !line.trim().ends_with(';') {
+                return Err(DbStructureParseError {
+                    line_number: in_buffer_line_nr,
+                    message: "';' should only appear at the very end of ceate table statements"
+                        .to_string(),
+                    input: self.input.with_line(line),
+                });
+            }
+
+            if line.trim().ends_with(';') {
+                break;
+            }
+        }
+
+        Ok(self.input.content)
+    }
 }
 
 fn valid_line(
@@ -165,36 +220,13 @@ fn valid_line(
     Ok(line)
 }
 
-fn advance_until_next_create(
-    lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
-) -> Result<Option<()>, crate::Error> {
-    while let Some((_, next_item)) = lines.peek() {
-        if next_item.is_err() {
-            return Err(lines
-                .next()
-                .expect("lines.next() should be a Some because we already checked")
-                .1
-                .expect_err("lines.next().1 should be an Err because we checked"))?;
-        }
+fn move_start_line(err: crate::Error, mode_by: usize) -> ErrorKind {
+    use ErrorKind::DbStructureParseError as ParseError;
 
-        let line = next_item
-            .as_ref()
-            .expect("next_item was checked right before")
-            .trim();
+    let kind = err.into_inner();
 
-        if line.starts_with("-- Test: ") {
-            // You can put create table statements at the begging of a test.sql file. Any create
-            // table statements AFTER the first test will be ignored.
-            return Ok(None);
-        }
-
-        if line.to_lowercase().starts_with("create table ") {
-            // We found it, the next lines is a create table statement
-            break;
-        }
-
-        lines.next();
+    match kind {
+        ParseError(ddl_error) => ParseError(ddl_error.move_window(mode_by)),
+        _ => kind,
     }
-
-    Ok(Some(()))
 }

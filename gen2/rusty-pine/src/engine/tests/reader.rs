@@ -48,9 +48,8 @@ impl SqlTestFileReader {
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
 
-        let context = DbStructureParsingContext::File(file_path.clone());
         let mut lines = reader.lines().enumerate().peekable();
-        let mock_server = setup_parser::read_mock_server(context, &mut lines)?;
+        let mock_server = setup_parser::read_mock_server(&file_path, &mut lines)?;
 
         Ok(SqlTestFileReader {
             lines,
