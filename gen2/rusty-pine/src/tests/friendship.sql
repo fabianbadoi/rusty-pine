@@ -21,7 +21,7 @@ create table `friendMap` (
 
 create table `friendshipLog` (
     `id`       int auto_increment,
-    `friendA  int  not null,
+    `friendA`  int  not null,
     `friendB`  int  not null,
     `metadata` text null,
     primary key (`id`),

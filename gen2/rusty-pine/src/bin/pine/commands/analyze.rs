@@ -3,8 +3,8 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{MultiSelect, Password};
 use mysql::{Opts, OptsBuilder, Pool, PooledConn};
 use rusty_pine::analyze::{
-    describe_table, list_databases, list_tables, Database, SchemaObjectName, Server, ServerParams,
-    Table, TableName,
+    describe_table, list_databases, list_tables, Database, DbStructureParsingContext,
+    SchemaObjectName, Server, ServerParams, Table, TableName,
 };
 use rusty_pine::context::{Context, ContextName};
 use rusty_pine::{cache, Error};
@@ -70,7 +70,11 @@ fn analyze_db(connection: &mut PooledConn, db_name: &SchemaObjectName) -> Result
             let create = describe_table(connection, db_name, &table_name)?;
             let table_name = TableName(table_name.to_string());
 
-            Ok((table_name, Table::from_sql_string(&create)?))
+            let context = DbStructureParsingContext::Connection {
+                database: db_name.to_string(),
+                table: table_name.0.clone(),
+            };
+            Ok((table_name, Table::from_sql_string(&context, &create)?))
         })
         .collect();
 

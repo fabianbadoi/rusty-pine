@@ -8,6 +8,7 @@ use crate::engine::sql::structure::Database;
 use colored::Colorize;
 use std::fmt::{Display, Formatter};
 use std::ops::Add;
+use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -17,8 +18,20 @@ pub(crate) struct DbStructureParseError {
     pub message: String,
 }
 
+#[derive(Debug, Clone, Default)]
+pub enum DbStructureParsingContext {
+    File(PathBuf),
+    Connection {
+        database: String,
+        table: String,
+    },
+    #[default]
+    None,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct InputWindow {
+    pub context: DbStructureParsingContext,
     pub start_line: usize,
     pub content: String,
 }
@@ -44,6 +57,7 @@ impl InputWindow {
     pub fn with_line<'a, T: AsRef<str>>(&self, line: T) -> Self {
         InputWindow {
             content: self.content.clone().add(line.as_ref()),
+            context: self.context.clone(),
             ..*self
         }
     }
@@ -69,6 +83,7 @@ impl Display for DbStructureParseError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Error parsing DDL statement:")?;
         writeln!(f, "{}", self.message.bold())?;
+        writeln!(f, "{}", self.input.context)?;
 
         for line in self.input.content.lines().enumerate() {
             let (nr, text) = line;
@@ -79,6 +94,24 @@ impl Display for DbStructureParseError {
                 writeln!(f, "    | {}", "^".repeat(text.len()).red())?;
             }
         }
+
+        Ok(())
+    }
+}
+
+impl Display for DbStructureParsingContext {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DbStructureParsingContext::File(path) => {
+                write!(
+                    f,
+                    "In file: {}",
+                    path.to_str().expect("You better fucking work")
+                )?;
+            }
+            DbStructureParsingContext::Connection { .. } => todo!(),
+            DbStructureParsingContext::None => {}
+        };
 
         Ok(())
     }

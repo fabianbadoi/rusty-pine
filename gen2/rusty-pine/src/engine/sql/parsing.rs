@@ -1,4 +1,5 @@
 use super::{DbStructureParseError, InputWindow};
+use crate::analyze::DbStructureParsingContext;
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
 use crate::error::InternalError;
@@ -135,10 +136,14 @@ impl Key {
 }
 
 impl Table {
-    pub fn from_sql_string(input: &TableDescription) -> Result<Self, crate::Error> {
+    pub fn from_sql_string(
+        context: &DbStructureParsingContext,
+        input: &TableDescription,
+    ) -> Result<Self, crate::Error> {
         let mut lines = input.as_str().trim_start().lines().enumerate().peekable();
         let window = InputWindow {
             start_line: 0,
+            context: context.clone(),
             content: input.as_str().to_string(),
         };
 
@@ -288,7 +293,7 @@ CREATE TABLE `teams` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
 ";
         let input = TableDescription::new_for_tests(input);
-        let table = Table::from_sql_string(&input).unwrap();
+        let table = Table::from_sql_string(&Default::default(), &input).unwrap();
 
         assert_eq!(table.name, "teams");
         assert_eq!(table.primary_key.columns.len(), 2);

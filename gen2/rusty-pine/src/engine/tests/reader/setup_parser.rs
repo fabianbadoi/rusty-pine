@@ -5,6 +5,7 @@
 
 use crate::analyze::{Database, Server, ServerParams, Table};
 use crate::engine::sql::querying::TableDescription;
+use crate::engine::sql::DbStructureParsingContext as Context;
 use crate::engine::sql::{DbStructureParseError, InputWindow};
 use crate::error::ErrorKind;
 use crate::Error;
@@ -13,12 +14,12 @@ use std::fs::File;
 use std::io::Error as IOError;
 use std::io::{BufReader, Lines};
 use std::iter::{Enumerate, Peekable};
-use std::ops::Add;
 
 pub fn read_mock_server(
+    context: Context,
     lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
 ) -> Result<Server, crate::Error> {
-    let tables = read_create_table_statements(lines)?;
+    let tables = read_create_table_statements(context, lines)?;
 
     let databases = HashMap::from([(
         "default".into(),
@@ -40,11 +41,12 @@ pub fn read_mock_server(
 }
 
 fn read_create_table_statements(
+    context: Context,
     lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
 ) -> Result<Vec<Table>, crate::Error> {
     let mut tables = Vec::new();
 
-    while let Some(next_table) = next_table(lines)? {
+    while let Some(next_table) = next_table(&context, lines)? {
         tables.push(next_table);
     }
 
@@ -52,19 +54,23 @@ fn read_create_table_statements(
 }
 
 fn next_table(
+    context: &Context,
     lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
 ) -> Result<Option<Table>, crate::Error> {
     if advance_until_next_create(lines)?.is_none() {
         return Ok(None);
     }
 
-    let (start_line, _) = *lines
-        .peek()
-        .expect("lines.peek() checked by advance_until_next_create()");
+    if lines.peek().is_none() {
+        // End of input.
+        return Ok(None);
+    }
 
-    let statement = read_entire_create_statement(lines)?;
-    let table =
-        Table::from_sql_string(&TableDescription::new_for_tests(statement)).map_err(|err| {
+    let (start_line, _) = *lines.peek().expect("lines.peek() is checked above");
+
+    let statement = read_entire_create_statement(context, lines)?;
+    let table = Table::from_sql_string(context, &TableDescription::new_for_tests(statement))
+        .map_err(|err| {
             let kind = err.into_inner();
             if let ErrorKind::DbStructureParseError(ddl_error) = kind {
                 ErrorKind::DbStructureParseError(ddl_error.move_window(start_line))
@@ -72,12 +78,12 @@ fn next_table(
                 kind
             }
         })?;
-    // TODO the unwrap
 
     Ok(Some(table))
 }
 
 fn read_entire_create_statement(
+    context: &Context,
     lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
 ) -> Result<String, DbStructureParseError> {
     let start_line = match lines.peek() {
@@ -88,6 +94,7 @@ fn read_entire_create_statement(
     };
     let mut input_window = InputWindow {
         start_line,
+        context: context.clone(),
         content: String::new(),
     };
 

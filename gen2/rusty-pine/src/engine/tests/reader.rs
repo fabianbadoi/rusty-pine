@@ -1,4 +1,4 @@
-use crate::analyze::Server;
+use crate::analyze::{DbStructureParsingContext, Server};
 use std::fs::File;
 use std::io::{BufRead, BufReader, Lines};
 use std::iter::{Enumerate, Peekable};
@@ -48,8 +48,9 @@ impl SqlTestFileReader {
         let file = File::open(&file_path)?;
         let reader = BufReader::new(file);
 
+        let context = DbStructureParsingContext::File(file_path.clone());
         let mut lines = reader.lines().enumerate().peekable();
-        let mock_server = setup_parser::read_mock_server(&mut lines)?;
+        let mock_server = setup_parser::read_mock_server(context, &mut lines)?;
 
         Ok(SqlTestFileReader {
             lines,
