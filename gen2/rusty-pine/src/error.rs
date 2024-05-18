@@ -1,3 +1,4 @@
+use crate::engine::sql::DbStructureParseError;
 use mysql::Error as MySqlError;
 use std::env::VarError;
 use std::fmt::{Display, Formatter};
@@ -27,6 +28,8 @@ pub enum ErrorKind {
     MySqlError(#[from] MySqlError),
     #[error("Internal error:\n{0}")]
     InternalError(#[from] InternalError),
+    #[error("Error parsing database structure:\n{0}")]
+    DbStructureParseError(#[from] DbStructureParseError),
     #[error("Could not find environment variable: \n{0}")]
     EnvVarError(#[from] VarError),
     #[error("IO error:\n{0}")]
@@ -45,5 +48,11 @@ pub struct InternalError(pub String);
 impl Display for InternalError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Error {
+    pub fn into_inner(self) -> ErrorKind {
+        *self.0
     }
 }

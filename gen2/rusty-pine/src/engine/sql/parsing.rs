@@ -1,9 +1,11 @@
+use super::{DbStructureParseError, InputWindow};
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
 use crate::error::InternalError;
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::iter::Peekable;
+use std::iter::{Enumerate, Peekable};
+use std::str::Lines;
 
 impl Column {
     fn from_sql_string(input: &str) -> Result<Self, String> {
@@ -29,15 +31,14 @@ impl ForeignKey {
     fn from_sql_string(from_table: &str, input: &str) -> Result<Self, String> {
         static FK_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
             Regex::new(
-            // This regex is a bit more relaxed then the actual syntax, but it will work anyway.
-            // A strict regex would match keys like (`k1`, `k2`, `k3`) - it would make sure that
-            // all k[1..] are followed by a comma except the last one.
-            // Our regex accepts all kind of inconsistent use of commas, which would never be found
-            // in the output of a SQL query.
-            // A strict regex would be much more complex, but would not offer any real benifit.
-            r"(?i)FOREIGN KEY \((?<from_keys>((`[a-z0-9_]+`),?\s*)+)\) REFERENCES `(?<to_table>[a-z0-9_]+)` \((?<to_keys>((`[a-z0-9_]+)`,?\s*)+)\)",
-        )
-        .unwrap()
+                // This regex is a bit more relaxed then the actual syntax, but it will work anyway.
+                // A strict regex would match keys like (`k1`, `k2`, `k3`) - it would make sure that
+                // all k[1..] are followed by a comma except the last one.
+                // Our regex accepts all kind of inconsistent use of commas, which would never be found
+                // in the output of a SQL query.
+                // A strict regex would be much more complex, but would not offer any real benifit.
+                r"(?i)FOREIGN KEY \((?<from_keys>((`[a-z0-9_]+`),?\s*)+)\) REFERENCES `(?<to_table>[a-z0-9_]+)` \((?<to_keys>((`[a-z0-9_]+)`,?\s*)+)\)",
+            ).unwrap()
         });
 
         let matches = FK_LINE_REGEX.captures(input.trim_start());
@@ -111,7 +112,10 @@ where
 }
 
 impl Key {
-    fn try_from_sql_string(value: &str) -> Result<Self, InternalError> {
+    fn try_from_sql_string(
+        input_window: &InputWindow,
+        value: &str,
+    ) -> Result<Self, DbStructureParseError> {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
         let matches: Vec<_> = SQL_NAME_REGEX
             .find_iter(value)
@@ -119,10 +123,11 @@ impl Key {
             .collect();
 
         if matches.is_empty() {
-            Err(InternalError(format!(
-                "Can't accept keys with 0 columns: {}",
-                value
-            )))
+            Err(DbStructureParseError {
+                input: input_window.with_line(value),
+                line_number: 0,
+                message: format!("Can't accept keys with 0 columns: {}", value),
+            })
         } else {
             Ok(matches.as_slice().into())
         }
@@ -130,12 +135,16 @@ impl Key {
 }
 
 impl Table {
-    pub fn from_sql_string(input: &TableDescription) -> Result<Self, InternalError> {
-        let mut lines = input.as_str().trim_start().split('\n').peekable();
+    pub fn from_sql_string(input: &TableDescription) -> Result<Self, crate::Error> {
+        let mut lines = input.as_str().trim_start().lines().enumerate().peekable();
+        let window = InputWindow {
+            start_line: 0,
+            content: input.as_str().to_string(),
+        };
 
-        let name: TableName = Self::parse_table_name_line(&mut lines)?.into();
+        let name: TableName = Self::parse_table_name_line(&window, &mut lines)?.into();
         let columns = Self::parse_columns(&mut lines);
-        let primary_key = Self::parse_primary_key(&mut lines)?;
+        let primary_key = Self::parse_primary_key(&window, &mut lines)?;
         let foreign_keys = Self::parse_foreign_keys(name.0.as_str(), &mut lines);
 
         Ok(Table {
@@ -147,9 +156,12 @@ impl Table {
     }
 
     fn parse_table_name_line<'a>(
-        lines: &mut dyn Iterator<Item = &'a str>,
-    ) -> Result<&'a str, InternalError> {
-        if let Some(table_name_line) = lines.next() {
+        window: &InputWindow,
+        lines: &mut dyn Iterator<Item = (usize, &'a str)>,
+    ) -> Result<&'a str, crate::Error> {
+        if let Some(line_item) = lines.next() {
+            let (line_number, table_name_line) = line_item;
+
             static CREATE_TABLE_SQL_FIRST_LINE_REGEX: Lazy<Regex> =
                 Lazy::new(|| Regex::new("(?i)^CREATE TABLE `(.+)`").unwrap());
             let matches = CREATE_TABLE_SQL_FIRST_LINE_REGEX.captures(table_name_line);
@@ -159,20 +171,26 @@ impl Table {
 
                 Ok(table_name.as_str())
             } else {
-                Err(InternalError(format!(
-                    "Column name line not as expected:\n{}",
-                    table_name_line
-                )))
+                Err(DbStructureParseError {
+                    line_number,
+                    message: format!("Column name line not as expected:\n{}", table_name_line),
+                    input: window.clone(),
+                })?
             }
         } else {
-            Err(InternalError("Column name line not found".to_string()))
+            Err(DbStructureParseError {
+                line_number: 0,
+                message: "Column name line not found".to_string(),
+                input: window.clone(),
+            })?
         }
     }
 
-    fn parse_columns(lines: &mut Peekable<std::str::Split<'_, char>>) -> Vec<Column> {
+    fn parse_columns(lines: &mut Peekable<Enumerate<Lines>>) -> Vec<Column> {
         let mut columns: Vec<Column> = Vec::new();
 
-        while let Some(next_line) = lines.peek() {
+        while let Some(line_item) = lines.peek() {
+            let (_, next_line) = line_item;
             if let Ok(column) = Column::from_sql_string(next_line) {
                 columns.push(column);
                 lines.next();
@@ -187,8 +205,13 @@ impl Table {
         columns
     }
 
-    fn parse_primary_key(lines: &mut dyn Iterator<Item = &str>) -> Result<Key, InternalError> {
-        if let Some(table_name_line) = lines.next() {
+    fn parse_primary_key(
+        window: &InputWindow,
+        lines: &mut dyn Iterator<Item = (usize, &str)>,
+    ) -> Result<Key, crate::Error> {
+        if let Some(line_item) = lines.next() {
+            let (line_number, table_name_line) = line_item;
+
             static PRIMARY_KEY_SQL_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
                 Regex::new(r"(?i)^\s*PRIMARY KEY \((?<key>((`[a-z0-9_]+`),?\s?)+)\)").unwrap()
             });
@@ -197,23 +220,30 @@ impl Table {
             if let Some(captures) = matches {
                 let table_names = captures.get(1).expect("Key group is not optional");
 
-                Key::try_from_sql_string(table_names.as_str())
+                Ok(Key::try_from_sql_string(window, table_names.as_str())?)
             } else {
-                Err(InternalError(format!(
-                    "Unsupported primary key spec:\n{}",
-                    table_name_line
-                )))
+                Err(DbStructureParseError {
+                    line_number,
+                    message: format!("Unsupported primary key spec:\n{}", table_name_line),
+                    input: window.clone(),
+                })?
             }
         } else {
-            Err(InternalError("Primary Key line not found".to_string()))
+            Err(InternalError("Primary Key line not found".to_string()))?
         }
     }
 
     /// Consumes the rest of the iterator
-    fn parse_foreign_keys(table: &str, lines: &mut dyn Iterator<Item = &str>) -> Vec<ForeignKey> {
+    fn parse_foreign_keys(
+        table: &str,
+        lines: &mut dyn Iterator<Item = (usize, &str)>,
+    ) -> Vec<ForeignKey> {
         lines
-            .map(|fk| ForeignKey::from_sql_string(table, fk))
-            .filter_map(Result::ok)
+            .filter_map(|fk| match ForeignKey::from_sql_string(table, fk.1) {
+                Ok(fk) => Some(fk),
+                // This means we've gone past the FK section in the create table statement.
+                Err(_) => None,
+            })
             .collect()
     }
 }
