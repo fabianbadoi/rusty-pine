@@ -40,6 +40,8 @@ use std::path::PathBuf;
 
 mod setup_parser;
 
+type TestLineIterator = Peekable<Enumerate<Lines<BufReader<File>>>>;
+
 pub struct SqlTestFileReader {
     pub file_path: PathBuf,
     /// The server spec can be set as create table statements at the beginning of the test file.
@@ -50,7 +52,7 @@ pub struct SqlTestFileReader {
     /// The test reader will walk all the lines in the test files one by one. At first (on
     /// construction) the mock_server will be built. Then each test will be emitted using
     /// the Iterator implementation until the end of the file.
-    lines: Peekable<Enumerate<Lines<BufReader<File>>>>,
+    lines: TestLineIterator,
 }
 
 impl Iterator for SqlTestFileReader {

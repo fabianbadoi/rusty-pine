@@ -6,17 +6,16 @@ use crate::analyze::{Database, Server, ServerParams, Table};
 use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::DbStructureParsingContext as Context;
 use crate::engine::sql::{DbStructureParseError, InputWindow};
+use crate::engine::tests::reader::TestLineIterator;
 use crate::error::ErrorKind;
 use std::collections::HashMap;
-use std::fs::File;
 use std::io::Error as IOError;
-use std::io::{BufReader, Lines};
-use std::iter::{Enumerate, Peekable};
 use std::path::PathBuf;
 
-type TestLines = Peekable<Enumerate<Lines<BufReader<File>>>>;
-
-pub fn read_mock_server(file: &PathBuf, lines: &mut TestLines) -> Result<Server, crate::Error> {
+pub fn read_mock_server(
+    file: &PathBuf,
+    lines: &mut TestLineIterator,
+) -> Result<Server, crate::Error> {
     let tables = read_create_table_statements(file, lines)?;
 
     let databases = HashMap::from([(
@@ -40,7 +39,7 @@ pub fn read_mock_server(file: &PathBuf, lines: &mut TestLines) -> Result<Server,
 
 fn read_create_table_statements(
     file: &PathBuf,
-    lines: &mut Peekable<Enumerate<Lines<BufReader<File>>>>,
+    lines: &mut TestLineIterator,
 ) -> Result<Vec<Table>, crate::Error> {
     let mut tables = Vec::new();
     let mut parser = TableParser::new(file, lines);
@@ -53,12 +52,12 @@ fn read_create_table_statements(
 }
 
 struct TableParser<'a> {
-    lines: &'a mut TestLines,
+    lines: &'a mut TestLineIterator,
     context: Context,
 }
 
 impl<'a> TableParser<'a> {
-    fn new(file: &'a PathBuf, lines: &'a mut TestLines) -> Self {
+    fn new(file: &'a PathBuf, lines: &'a mut TestLineIterator) -> Self {
         TableParser {
             context: Context::File(file.clone()),
             lines,
@@ -132,11 +131,11 @@ impl<'a> TableParser<'a> {
 
 struct SingleCreateTableStatementReader<'a> {
     input: InputWindow,
-    lines: &'a mut TestLines,
+    lines: &'a mut TestLineIterator,
 }
 
 impl<'a> SingleCreateTableStatementReader<'a> {
-    fn new(context: &'a Context, lines: &'a mut TestLines) -> Option<Self> {
+    fn new(context: &'a Context, lines: &'a mut TestLineIterator) -> Option<Self> {
         match lines.peek() {
             None => None,
             Some((start_line, _)) => Some(Self {
