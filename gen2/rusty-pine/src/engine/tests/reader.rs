@@ -45,6 +45,8 @@ type TestLineIterator = Peekable<Enumerate<Lines<BufReader<File>>>>;
 pub struct SqlTestFileReader {
     pub file_path: PathBuf,
     /// The server spec can be set as create table statements at the beginning of the test file.
+    ///
+    /// The same server is used for all tests in the same .sql file.
     pub mock_server: Server,
     // Peekable<> because we sometimes scan for the next line.
     // Enumerate<> because we want line numbers.

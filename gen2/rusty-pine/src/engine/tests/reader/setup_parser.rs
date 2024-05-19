@@ -1,6 +1,7 @@
 //! We can insert create table queries at the beginning of our .sql tests and these will be used
 //! to create the test database structure.
-
+//!
+//! Because I'm lazy, the create table statements have to be written in just the right way.
 
 use crate::analyze::{Database, Server, ServerParams, Table};
 use crate::engine::sql::querying::TableDescription;
@@ -41,19 +42,27 @@ fn read_create_table_statements(
     file: &PathBuf,
     lines: &mut TestLineIterator,
 ) -> Result<Vec<Table>, crate::Error> {
-    let mut tables = Vec::new();
-    let mut parser = TableParser::new(file, lines);
+    let table_reader = TableParser::new(file, lines);
 
-    while let Some(next_table) = parser.next_table()? {
-        tables.push(next_table);
-    }
-
-    return Ok(tables);
+    Ok(table_reader
+        .into_iter()
+        .collect::<Result<Vec<Table>, crate::Error>>()?)
 }
 
 struct TableParser<'a> {
     lines: &'a mut TestLineIterator,
     context: Context,
+}
+
+impl Iterator for TableParser<'_> {
+    type Item = Result<Table, crate::Error>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next_table() {
+            Ok(table_or_none) => table_or_none.map(|table| Ok(table)),
+            Err(err) => Some(Err(err)),
+        }
+    }
 }
 
 impl<'a> TableParser<'a> {
