@@ -44,7 +44,7 @@ pub struct SqlTestFileReader {
     pub file_path: PathBuf,
     /// The server spec can be set as create table statements at the beginning of the test file.
     pub mock_server: Server,
-    // Peekable<> because we scan for the next line.
+    // Peekable<> because we sometimes scan for the next line.
     // Enumerate<> because we want line numbers.
     // Lines<> because we scan line by line.
     /// The test reader will walk all the lines in the test files one by one. At first (on
@@ -57,21 +57,16 @@ impl Iterator for SqlTestFileReader {
     type Item = Result<Test, crate::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // Advances through the file looking for -- Test: sections
-        while let Some((_, peek)) = self.lines.peek() {
-            match peek {
-                Ok(next_line) if next_line.starts_with("-- Test: ") => {
-                    return Some(self.create_test());
+        for (line_nr, line_res) in self.lines.by_ref() {
+            match line_res {
+                Ok(line) if line.starts_with("-- Test: ") => {
+                    return Some(self.create_test(line_nr, line));
                 }
                 Ok(_) => {
                     // Ignore this line: any line not in a -- Test: block is ignored.
-                    // Advance to the next line.
-                    self.lines.next();
                 }
-                Err(_) => {
-                    // Some problems reading the file. For example UTF-8 encoding issues or the file
-                    // getting deleted.
-                    return Some(Err(self.unwrap_next_line_err()));
+                Err(err) => {
+                    return Some(Err(err.into()));
                 }
             }
         }
@@ -98,32 +93,19 @@ impl SqlTestFileReader {
     /// Once we find a "-- Test: " section, we consider the content on the *same* line as
     /// the text input pine, and the following lines (until a blank line) as the expected
     /// output.
-    fn create_test(&mut self) -> Result<Test, crate::Error> {
-        let (line_nr, read_result) = self.lines.next().expect("Already tested in Self::next()");
-
-        let input_line = read_result.expect("Already tested in Self::next() but a bit later");
+    fn create_test(&mut self, line_nr: usize, input_line: String) -> Result<Test, crate::Error> {
         let input_range = "-- Test: ".len()..input_line.len();
         let mut content = vec![input_line];
 
-        while let Some((_, next_line)) = self.lines.peek() {
-            if next_line.is_err() {
-                // some problem reading the file
-                return Err(self.lines.next().unwrap().1.err().unwrap().into());
-            }
+        for (_, line_res) in self.lines.by_ref() {
+            let line = line_res?;
 
-            let next_line = next_line.as_ref().unwrap();
-            if next_line.trim() == "" {
+            if line.trim().is_empty() {
                 // Empty line => end of test
                 break;
             }
 
-            content.push(
-                self.lines
-                    .next()
-                    .expect("Checked right above")
-                    .1 // we don't care about the line number
-                    .expect("Checked right above but lower"),
-            );
+            content.push(line);
         }
 
         let content = content.join("\n");
@@ -142,14 +124,6 @@ impl SqlTestFileReader {
             .to_str()
             .expect("We know it exists")
             .to_owned()
-    }
-
-    /// Gets the next error. Panics if the next line is not an error.
-    ///
-    /// Given that we peek to see the next line, and that next line can be an IO error, we end up
-    /// writing this snake of a one-liner in multiple places.
-    fn unwrap_next_line_err(&mut self) -> crate::Error {
-        self.lines.next().unwrap().1.err().unwrap().into()
     }
 }
 
