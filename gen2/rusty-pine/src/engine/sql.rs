@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) struct DbStructureParseError {
+pub struct DbStructureParseError {
     pub input: InputWindow,
     pub line_number: usize,
     pub message: String,
@@ -30,31 +30,14 @@ pub enum DbStructureParsingContext {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct InputWindow {
+pub struct InputWindow {
     pub context: DbStructureParsingContext,
     pub start_line: usize,
     pub content: String,
 }
 
-struct DatabaseInfo {
-    /// The original create table queries.
-    ///
-    /// The way this struct works is by keeping the create table queries in memory, and only making
-    /// certain views into the data available. The lsp idea is that any return type that can be
-    /// read from this struct, will only contain references to the "inner" data.
-    /// If we had really large create table queries, this would mean we avoid duplicating/cloning
-    /// some strings. I suspect that in practice this "optimization" is worthless, but it was more
-    /// fun to write.
-    create_table_queries: Vec<String>,
-
-    /// Structure of the database.
-    ///
-    /// Only contains &str's from the create table queries.
-    database: Database,
-}
-
 impl InputWindow {
-    pub fn with_line<'a, T: AsRef<str>>(&self, line: T) -> Self {
+    pub fn with_line<T: AsRef<str>>(&self, line: T) -> Self {
         InputWindow {
             content: self.content.clone().add(line.as_ref()),
             context: self.context.clone(),

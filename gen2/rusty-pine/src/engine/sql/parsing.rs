@@ -84,23 +84,6 @@ impl KeyReference {
     }
 }
 
-impl Key {
-    fn from_sql_str(input: &str) -> Self {
-        static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
-        let columns: Vec<_> = SQL_NAME_REGEX
-            .find_iter(input)
-            .map(|m| m.as_str())
-            .map(|str| str.into())
-            .collect();
-
-        if columns.is_empty() {
-            panic!("Found key with 0 columns"); // is this even possible?
-        }
-
-        Self { columns }
-    }
-}
-
 impl<'a, T> From<T> for Key
 where
     T: Into<&'a [&'a str]>,
