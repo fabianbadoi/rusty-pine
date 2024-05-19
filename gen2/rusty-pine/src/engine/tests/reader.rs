@@ -38,7 +38,7 @@ use std::iter::{Enumerate, Peekable};
 use std::ops::Range;
 use std::path::PathBuf;
 
-mod setup_parser;
+mod test_setup_parser;
 
 type TestLineIterator = Peekable<Enumerate<Lines<BufReader<File>>>>;
 
@@ -85,7 +85,7 @@ impl SqlTestFileReader {
         let reader = BufReader::new(file);
 
         let mut lines = reader.lines().enumerate().peekable();
-        let mock_server = setup_parser::read_mock_server(&file_path, &mut lines)?;
+        let mock_server = test_setup_parser::read_mock_server(&file_path, &mut lines)?;
 
         Ok(SqlTestFileReader {
             lines,
