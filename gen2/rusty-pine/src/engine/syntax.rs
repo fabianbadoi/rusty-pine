@@ -30,6 +30,8 @@ mod stage3;
 mod stage4;
 
 pub use stage1::Rule;
+pub use stage2::JoinType; // TODO move?
+pub use stage3::Stage3ExplicitJoin;
 pub use stage4::{
     Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LimitInput, Stage4Rep,
 };

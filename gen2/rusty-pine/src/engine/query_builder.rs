@@ -1,17 +1,25 @@
-use crate::analyze::Server;
-use crate::engine::syntax::{Position, Stage4ComputationInput, Stage4Rep};
+use std::fmt::{Display, Formatter};
 use std::ops::Range;
+
+use thiserror::Error;
+
+use crate::analyze::Server;
+use crate::engine::syntax::{JoinType, Position, Stage4ComputationInput, Stage4Rep};
 
 mod stage5;
 
-pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Query {
-    stage5::Stage5Builder {}.try_build(input).unwrap()
+pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate::Error> {
+    Ok(stage5::Stage5Builder {}.try_build(input, server)?)
 }
+
+#[derive(Error, Debug)]
+pub struct QueryBuildError {}
 
 #[derive(Debug)]
 pub struct Query {
     pub input: String,
     pub from: Sourced<Table>,
+    pub joins: Vec<Sourced<ExplicitJoin>>,
     pub select: Vec<Sourced<Computation>>,
     pub limit: Sourced<Limit>,
 }
@@ -41,6 +49,21 @@ pub struct SelectedColumn {
 }
 
 #[derive(Debug)]
+pub struct ExplicitJoin {
+    pub join_type: Sourced<JoinType>,
+    /// The table to join to.
+    pub target_table: Sourced<Table>,
+    /// The "source" of the join's ON query.
+    ///
+    /// All column names will default to referring to the previous table.
+    pub source_arg: Sourced<Computation>,
+    /// The "target" of the join's ON query.
+    ///
+    /// All column names will default to referring to the target table.
+    pub target_arg: Sourced<Computation>,
+}
+
+#[derive(Debug)]
 pub enum Limit {
     Implicit(),
     RowCountLimit(usize),
@@ -55,6 +78,12 @@ pub struct TableName(pub String);
 
 #[derive(Debug)]
 pub struct DatabaseName(pub String);
+
+impl Display for QueryBuildError {
+    fn fmt(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
+}
 
 /// These functions here are special because they *omit the table name*.
 ///

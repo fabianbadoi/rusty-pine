@@ -14,9 +14,11 @@ use crate::engine::query_builder::build_query;
 use crate::engine::rendering::render_query;
 use crate::engine::syntax::parse_to_stage4;
 
+pub use query_builder::QueryBuildError;
+
 pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Error> {
     let pine = parse_to_stage4(input)?;
     let query = build_query(pine, server);
 
-    Ok(render_query(query))
+    Ok(render_query(query?))
 }

@@ -7,7 +7,7 @@
 //! does not have to look-backs.
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::iterator::Stage3Iterator;
-use crate::engine::syntax::stage4::{Stage4ComputationInput, Stage4FunctionCall};
+use crate::engine::syntax::stage4::{Stage4ComputationInput, Stage4ExplicitJoin};
 use crate::engine::syntax::{Stage4ColumnInput, TableInput};
 
 /// The module covers iterating over our stage2 pines and converting them into stage3 pines
@@ -22,12 +22,13 @@ pub struct Stage3Rep<'a> {
 pub enum Stage3Pine<'a> {
     From { table: TableInput<'a> },
     Select(Vec<Stage3ComputationInput<'a>>),
+    ExplicitJoin(Stage3ExplicitJoin<'a>),
 }
 
 // shh! keep these secret
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>;
 pub type Stage3ComputationInput<'a> = Stage4ComputationInput<'a>;
-pub type Stage3FunctionCall<'a> = Stage4FunctionCall<'a>;
+pub type Stage3ExplicitJoin<'a> = Stage4ExplicitJoin<'a>;
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
     fn from(stage2: Stage2Rep<'a>) -> Self {

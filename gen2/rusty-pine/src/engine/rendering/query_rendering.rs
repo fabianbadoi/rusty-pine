@@ -1,7 +1,8 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, DatabaseName, FunctionCall, Limit, Query, SelectedColumn, Sourced,
-    Table, TableName,
+    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Limit, Query,
+    SelectedColumn, Sourced, Table, TableName,
 };
+use crate::engine::syntax::JoinType;
 use std::fmt::{Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
@@ -12,6 +13,11 @@ impl Display for Query {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "SELECT {}", RenderableSelect(self.select.as_slice()))?;
         writeln!(f, "FROM {}", self.from)?;
+
+        for join in &self.joins {
+            writeln!(f, "{}", join)?;
+        }
+
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
@@ -22,6 +28,10 @@ struct RenderableSelect<'a>(&'a [Sourced<Computation>]);
 
 impl Display for RenderableSelect<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            return write!(f, "*");
+        }
+
         if let Some((last, first)) = self.0.split_last() {
             for select in first {
                 write!(f, "{}, ", select)?;
@@ -31,6 +41,22 @@ impl Display for RenderableSelect<'_> {
         }
 
         Ok(())
+    }
+}
+
+impl Display for ExplicitJoin {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            join_type,
+            target_table,
+            source_arg,
+            target_arg,
+        } = self;
+
+        write!(
+            f,
+            "{join_type} {target_table} ON {target_arg} = {source_arg}"
+        )
     }
 }
 
@@ -112,6 +138,14 @@ impl Display for DatabaseName {
 impl Display for TableName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl Display for JoinType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            JoinType::Left => write!(f, "LEFT JOIN"),
+        }
     }
 }
 

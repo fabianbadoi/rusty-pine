@@ -8,14 +8,14 @@ use std::fmt::{Display, Formatter};
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
 /// This structure represents the info we gather for an entire analyzed DB server.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Server {
     pub params: ServerParams,
     pub databases: HashMap<TableName, Database>,
 }
 
 /// Parameters used to connect to a server
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ServerParams {
     pub hostname: String,
     pub port: u16,

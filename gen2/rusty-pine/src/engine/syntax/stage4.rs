@@ -4,14 +4,31 @@
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
-use crate::engine::syntax::{Position, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::{JoinType, Position, SqlIdentifierInput, TableInput};
 use std::ops::Range;
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: TableInput<'a>,
+    pub joins: Vec<Stage4ExplicitJoin<'a>>,
     pub selected_columns: Vec<Stage4ComputationInput<'a>>,
     pub limit: Stage4LimitInput,
+}
+
+pub struct Stage4ExplicitJoin<'a> {
+    pub join_type: JoinType,
+    pub source_table: TableInput<'a>,
+    /// The table to join to.
+    pub target_table: TableInput<'a>,
+    /// The "source" of the join's ON query.
+    ///
+    /// All column names will default to referring to the previous table.
+    pub source_arg: Stage3ComputationInput<'a>,
+    /// The "target" of the join's ON query.
+    ///
+    /// All column names will default to referring to the target table.
+    pub target_arg: Stage3ComputationInput<'a>,
+    pub position: Position,
 }
 
 pub struct Stage4ColumnInput<'a> {
@@ -37,11 +54,25 @@ pub enum Stage4LimitInput {
     RangeLimit(Range<usize>, Position),
 }
 
+impl<'a> Stage4ExplicitJoin<'a> {
+    pub fn switch(self) -> Self {
+        Stage4ExplicitJoin {
+            source_table: self.target_table,
+            source_arg: self.target_arg,
+            target_table: self.source_table,
+            target_arg: self.source_arg,
+            join_type: self.join_type,
+            position: self.position,
+        }
+    }
+}
+
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
         let input = stage3.input;
         let mut from = None;
         let mut select = Vec::new();
+        let mut joins = Vec::new();
 
         for pine in stage3.pines {
             match pine.node {
@@ -55,12 +86,16 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 Stage3Pine::Select(columns) => {
                     select.append(&mut translate_columns(columns));
                 }
+                Stage3Pine::ExplicitJoin(join) => {
+                    joins.push(join);
+                }
             }
         }
 
         Stage4Rep {
             input,
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
+            joins,
             selected_columns: select,
             limit: Stage4LimitInput::Implicit(),
         }

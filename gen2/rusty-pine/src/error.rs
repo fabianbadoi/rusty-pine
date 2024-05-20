@@ -1,4 +1,5 @@
 use crate::engine::sql::DbStructureParseError;
+use crate::engine::QueryBuildError;
 use mysql::Error as MySqlError;
 use std::env::VarError;
 use std::fmt::{Display, Formatter};
@@ -30,6 +31,8 @@ pub enum ErrorKind {
     InternalError(#[from] InternalError),
     #[error("Error parsing database structure:\n{0}")]
     DbStructureParseError(#[from] DbStructureParseError),
+    #[error("Error building query:\n{0}")]
+    QueryBuildingError(#[from] QueryBuildError),
     #[error("Could not find environment variable: \n{0}")]
     EnvVarError(#[from] VarError),
     #[error("IO error:\n{0}")]

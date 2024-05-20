@@ -57,8 +57,36 @@ pub struct Stage2Rep<'a> {
 /// types.
 #[derive(Debug)]
 pub enum Stage2Pine<'a> {
+    /// All pines start with a base pine that can never repeat. This specified the original
+    /// table we'll be working with.
     Base { table: TableInput<'a> },
+    /// Selects one or more computations from the previous table.
     Select(Vec<Computation<'a>>),
+    /// Specify exactly how to join another table.
+    ExplicitJoin(Stage2ExplicitJoin<'a>),
+}
+
+#[derive(Debug)]
+pub struct Stage2ExplicitJoin<'a> {
+    pub join_type: JoinType,
+    /// The table to join to.
+    pub target_table: TableInput<'a>,
+    /// The "source" of the join's ON query.
+    ///
+    /// All column names will default to referring to the previous table.
+    pub source_arg: Computation<'a>,
+    /// The "target" of the join's ON query.
+    ///
+    /// All column names will default to referring to the target table.
+    pub target_arg: Computation<'a>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum JoinType {
+    Left,
+    // TODO
+    // Right,
+    // Inner,
 }
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
@@ -159,6 +187,8 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Positioned<Stage2Pine>> {
     // Pest decided to disallow that, so we have to have that catch-all case at the bottom.
     match pair.as_rule() {
         Rule::select_pine => Some(translate_select(pair)),
+        Rule::explicit_join_pine => Some(translate_explicit_join(pair)),
+        // Rule::join_pine => Some(todo!()),
         Rule::EOI => None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     }
@@ -176,6 +206,37 @@ fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
     }
 
     position.holding(Stage2Pine::Select(columns))
+}
+
+fn translate_explicit_join(join: Pair<Rule>) -> Positioned<Stage2Pine> {
+    assert_eq!(Rule::explicit_join_pine, join.as_rule());
+
+    let position: Position = join.as_span().into();
+    let mut inners = join.into_inner();
+
+    let target_table = identifiers::translate_table(
+        inners
+            .next()
+            .expect("explicit join target table should be present because of pest syntax"),
+    );
+    let source_arg = translate_computation(
+        inners
+            .next()
+            .expect("explicit join source arg should be present because of pest syntax"),
+    );
+
+    let target_arg = translate_computation(
+        inners
+            .next()
+            .expect("explicit join source arg should be present because of pest syntax"),
+    );
+
+    position.holding(Stage2Pine::ExplicitJoin(Stage2ExplicitJoin {
+        join_type: JoinType::Left,
+        target_table,
+        source_arg,
+        target_arg,
+    }))
 }
 
 fn translate_computation(computation: Pair<Rule>) -> Computation {

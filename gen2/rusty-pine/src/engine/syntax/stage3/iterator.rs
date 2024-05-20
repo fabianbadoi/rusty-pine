@@ -1,7 +1,9 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
-use crate::engine::syntax::stage2::{PestIterator, Stage2Pine};
-use crate::engine::syntax::stage3::{Stage3ColumnInput, Stage3ComputationInput, Stage3Pine};
+use crate::engine::syntax::stage2::{PestIterator, Stage2ExplicitJoin, Stage2Pine};
+use crate::engine::syntax::stage3::{
+    Stage3ColumnInput, Stage3ComputationInput, Stage3ExplicitJoin, Stage3Pine,
+};
 use crate::engine::syntax::stage4::Stage4FunctionCall;
 use crate::engine::syntax::{
     ColumnInput, Computation, FunctionCall, Position, Positioned, TableInput,
@@ -82,7 +84,7 @@ impl<'a> Stage3Iterator<'a> {
         }
     }
 
-    /// Tries generate religious victory points for the stage 3 buffer by cleansing filthy heretics
+    /// Tries to generate religious victory points for the stage 3 buffer by cleansing filthy heretics
     /// from the stage 2 source.
     fn consume_from_stage2(&mut self) {
         if let Some(next_stage2) = self.stage2_source.next() {
@@ -103,6 +105,9 @@ impl<'a> Stage3Iterator<'a> {
         let stage3_pines = match stage2_pine.node {
             Stage2Pine::Base { .. } => panic!("This was covered in the constructor"),
             Stage2Pine::Select(columns) => self.translate_select(position, columns),
+            Stage2Pine::ExplicitJoin(explicit_join) => {
+                self.process_explicit_join(position, explicit_join)
+            }
         };
 
         stage3_pines
@@ -115,40 +120,77 @@ impl<'a> Stage3Iterator<'a> {
     ) -> Stage3Buffer<'a> {
         let columns = columns
             .iter()
-            .map(|column| self.translate_computation(column))
+            .map(|column| translate_computation(column, &self.context.previous_table))
             .collect();
 
         VecDeque::from([position.holding(Stage3Pine::Select(columns))])
     }
 
-    fn translate_computation(&self, computation: &Computation<'a>) -> Stage3ComputationInput<'a> {
-        match computation {
-            Computation::Column(column) => self.translate_select_from_column(column),
-            Computation::FunctionCall(fn_call) => self.translate_select_from_fn_call(fn_call),
+    fn process_explicit_join(
+        &mut self,
+        position: Position,
+        join: Stage2ExplicitJoin<'a>,
+    ) -> Stage3Buffer<'a> {
+        let source_arg = translate_computation(&join.source_arg, &self.context.previous_table);
+        let target_arg = translate_computation(&join.target_arg, &join.target_table);
+
+        let Stage2ExplicitJoin {
+            join_type,
+            target_table,
+            ..
+        } = join;
+
+        let stage3_join = position.holding(Stage3Pine::ExplicitJoin(Stage3ExplicitJoin {
+            join_type,
+            source_table: self.context.previous_table,
+            target_table,
+            source_arg,
+            target_arg,
+            position,
+        }));
+
+        // Future pines will implicitly reference this table
+        self.context.previous_table = target_table;
+
+        VecDeque::from([stage3_join])
+    }
+}
+
+fn translate_computation<'a>(
+    computation: &Computation<'a>,
+    implicit_table: &TableInput<'a>,
+) -> Stage3ComputationInput<'a> {
+    match computation {
+        Computation::Column(column) => translate_select_from_column(column, implicit_table),
+        Computation::FunctionCall(fn_call) => {
+            translate_select_from_fn_call(fn_call, implicit_table)
         }
     }
+}
 
-    fn translate_select_from_column(&self, column: &ColumnInput<'a>) -> Stage3ComputationInput<'a> {
-        Stage3ComputationInput::Column(Stage3ColumnInput {
-            column: column.column,
-            position: column.position,
-            // our amazing context in action 💪
-            table: column.table.or(self.context.previous_table),
-        })
-    }
+fn translate_select_from_column<'a>(
+    column: &ColumnInput<'a>,
+    implicit_table: &TableInput<'a>,
+) -> Stage3ComputationInput<'a> {
+    Stage3ComputationInput::Column(Stage3ColumnInput {
+        column: column.column,
+        position: column.position,
+        // our amazing context in action 💪
+        table: column.table.or(*implicit_table),
+    })
+}
 
-    fn translate_select_from_fn_call(
-        &self,
-        fn_call: &FunctionCall<'a>,
-    ) -> Stage3ComputationInput<'a> {
-        Stage3ComputationInput::FunctionCall(Stage4FunctionCall {
-            fn_name: fn_call.fn_name,
-            params: fn_call
-                .params
-                .iter()
-                .map(|computation| self.translate_computation(computation))
-                .collect(),
-            position: fn_call.position,
-        })
-    }
+fn translate_select_from_fn_call<'a>(
+    fn_call: &FunctionCall<'a>,
+    implicit_table: &TableInput<'a>,
+) -> Stage3ComputationInput<'a> {
+    Stage3ComputationInput::FunctionCall(Stage4FunctionCall {
+        fn_name: fn_call.fn_name,
+        params: fn_call
+            .params
+            .iter()
+            .map(|computation| translate_computation(computation, implicit_table))
+            .collect(),
+        position: fn_call.position,
+    })
 }

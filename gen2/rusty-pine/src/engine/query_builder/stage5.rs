@@ -1,13 +1,14 @@
+use crate::analyze::Server;
 use crate::engine::query_builder::{
-    Computation, FunctionCall, Limit, Query, SelectedColumn, Source, Sourced, Table, ToSource,
+    Computation, ExplicitJoin, FunctionCall, Limit, Query, SelectedColumn, Source, Sourced, Table,
+    ToSource,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LimitInput,
-    Stage4Rep, TableInput,
+    OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
+    Stage4FunctionCall, Stage4LimitInput, Stage4Rep, TableInput,
 };
+use crate::engine::QueryBuildError;
 
-#[derive(Debug)]
-pub enum Stage5Error {}
 pub struct Stage5Builder {}
 
 // TODO this isn't really done yet.
@@ -15,13 +16,26 @@ pub struct Stage5Builder {}
 // for groups.
 // This will have to be renamed in the future
 impl Stage5Builder {
-    pub fn try_build(&self, input: Stage4Rep) -> Result<Query, Stage5Error> {
-        let from = input.from.into();
+    pub fn try_build(&self, input: Stage4Rep, _server: &Server) -> Result<Query, QueryBuildError> {
+        let mut from = input.from.into();
         let simplify_columns_and_tables: bool = self.is_single_table_query(&input);
 
+        let joins = input
+            .joins
+            .into_iter()
+            .map(|j| {
+                from = j.target_table.into();
+
+                // We always set the "from" table to the last join, and switch the join direction
+                // so it still looks good.
+                j.switch().into()
+            })
+            .collect();
+
         Ok(Query {
-            from,
             input: input.input.to_owned(),
+            from,
+            joins,
             select: input
                 .selected_columns
                 .iter()
@@ -36,9 +50,8 @@ impl Stage5Builder {
             limit: (&input.limit).into(),
         })
     }
-    fn is_single_table_query(&self, _p0: &Stage4Rep) -> bool {
-        // can only be true now, will change once we can add joins
-        true
+    fn is_single_table_query(&self, input: &Stage4Rep) -> bool {
+        input.joins.is_empty()
     }
 }
 
@@ -113,6 +126,23 @@ impl From<&Stage4LimitInput> for Sourced<Limit> {
     }
 }
 
+impl From<Stage3ExplicitJoin<'_>> for Sourced<ExplicitJoin> {
+    fn from(value: Stage3ExplicitJoin<'_>) -> Self {
+        Sourced {
+            it: ExplicitJoin {
+                join_type: Sourced {
+                    it: value.join_type,
+                    source: Source::Implicit,
+                },
+                target_table: value.target_table.into(),
+                source_arg: (&value.source_arg).into(),
+                target_arg: (&value.target_arg).into(),
+            },
+            source: Source::Input(value.position),
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::engine::query_builder::stage5::Stage5Builder;
@@ -121,7 +151,10 @@ mod test {
     #[test]
     fn test_try_from_simple() {
         let builder = Stage5Builder {};
-        let result = builder.try_build(parse_to_stage4("table | s: id").unwrap());
+        let result = builder.try_build(
+            parse_to_stage4("table | s: id").unwrap(),
+            &Default::default(),
+        );
 
         assert!(result.is_ok());
 
