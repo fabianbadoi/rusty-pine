@@ -1,8 +1,9 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Limit, Query,
-    SelectedColumn, Sourced, Table, TableName,
+    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn,
+    Table, TableName,
 };
 use crate::engine::syntax::JoinType;
+use crate::engine::{Limit, Sourced};
 use std::fmt::{Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
@@ -151,7 +152,7 @@ impl Display for JoinType {
 
 impl<T> Display for Sourced<T>
 where
-    T: Display,
+    T: Display + Clone,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.it)

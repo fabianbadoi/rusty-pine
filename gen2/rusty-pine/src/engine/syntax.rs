@@ -32,13 +32,12 @@ mod stage4;
 pub use stage1::Rule;
 pub use stage2::JoinType; // TODO move?
 pub use stage3::Stage3ExplicitJoin;
-pub use stage4::{
-    Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LimitInput, Stage4Rep,
-};
+pub use stage4::{Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4Rep};
 
 use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::Stage3Rep;
+use crate::engine::{Source, Sourced};
 use std::ops::Range;
 
 pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
@@ -49,7 +48,7 @@ pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
     Ok(stage3.into())
 }
 
-#[derive(Clone, Copy, Eq, PartialEq, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum OptionalInput<T> {
     #[default]
     Implicit,
@@ -76,29 +75,27 @@ impl<T> OptionalInput<T> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, Copy, PartialEq)]
 pub struct TableInput<'a> {
-    pub database: OptionalInput<SqlIdentifierInput<'a>>,
-    pub table: SqlIdentifierInput<'a>,
-    pub position: Position,
+    pub database: OptionalInput<Sourced<SqlIdentifierInput<'a>>>,
+    pub table: Sourced<SqlIdentifierInput<'a>>,
 }
 
 #[derive(Clone, Debug)]
 pub enum Computation<'a> {
-    Column(ColumnInput<'a>),
-    FunctionCall(FunctionCall<'a>),
+    Column(Sourced<ColumnInput<'a>>),
+    FunctionCall(Sourced<FunctionCall<'a>>),
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct ColumnInput<'a> {
-    pub table: OptionalInput<TableInput<'a>>, // we always know it because of SYNTAX
-    pub column: SqlIdentifierInput<'a>,
-    pub position: Position,
+    pub table: OptionalInput<Sourced<TableInput<'a>>>, // we always know it because of SYNTAX
+    pub column: Sourced<SqlIdentifierInput<'a>>,
 }
 
 #[derive(Clone, Debug)]
 pub struct FunctionCall<'a> {
-    pub fn_name: SqlIdentifierInput<'a>,
+    pub fn_name: Sourced<SqlIdentifierInput<'a>>,
     /// Params for the function call.
     ///
     /// A Computation can contain a FunctionCall can contain multiple Computations. This means
@@ -112,28 +109,27 @@ pub struct FunctionCall<'a> {
     /// If we only supported one param, it would need to be Box<>ed, which might look weird to
     /// someone unfamiliar with the problem.
     /// We support multiple params, so we already need to use Vec, which is fortunate.
-    pub params: Vec<Computation<'a>>,
-    pub position: Position,
+    pub params: Vec<Sourced<Computation<'a>>>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SqlIdentifierInput<'a> {
     pub name: &'a str,
-    pub position: Position,
 }
 
-impl From<&SqlIdentifierInput<'_>> for String {
-    fn from(value: &SqlIdentifierInput<'_>) -> Self {
-        value.name.to_owned()
+impl AsRef<str> for SqlIdentifierInput<'_> {
+    fn as_ref(&self) -> &str {
+        self.name
     }
 }
 
-impl From<&SqlIdentifierInput<'_>> for Position {
-    fn from(value: &SqlIdentifierInput<'_>) -> Self {
-        value.position
+impl From<SqlIdentifierInput<'_>> for String {
+    fn from(value: SqlIdentifierInput<'_>) -> Self {
+        value.name.to_string()
     }
 }
 
+// TODO move to engine
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Position {
     // pub input: &'a str,
@@ -148,6 +144,23 @@ impl PartialEq<Position> for Range<usize> {
     }
 }
 
+#[cfg(test)]
+impl PartialEq<Source> for Position {
+    fn eq(&self, other: &Source) -> bool {
+        match other {
+            Source::Implicit => false,
+            Source::Input(position) => position == self,
+        }
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<str> for SqlIdentifierInput<'_> {
+    fn eq(&self, other: &str) -> bool {
+        self.name == other
+    }
+}
+
 impl From<Range<usize>> for Position {
     fn from(range: Range<usize>) -> Self {
         Position {
@@ -155,19 +168,4 @@ impl From<Range<usize>> for Position {
             end: range.end,
         }
     }
-}
-
-impl Position {
-    pub fn holding<T>(self, node: T) -> Positioned<T> {
-        Positioned {
-            node,
-            position: self,
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct Positioned<T> {
-    node: T,
-    position: Position,
 }

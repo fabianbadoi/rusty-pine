@@ -1,10 +1,9 @@
-use std::fmt::{Display, Formatter};
-use std::ops::Range;
-
+use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
 use crate::analyze::Server;
-use crate::engine::syntax::{JoinType, Position, Stage4ComputationInput, Stage4Rep};
+use crate::engine::syntax::{JoinType, Stage4ComputationInput, Stage4Rep};
+use crate::engine::{Limit, Sourced};
 
 mod stage5;
 
@@ -26,31 +25,31 @@ pub struct Query {
     pub limit: Sourced<Limit>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Table {
     pub name: Sourced<TableName>,
     pub db: Option<Sourced<DatabaseName>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Computation {
-    SelectedColumn(SelectedColumn),
-    FunctionCall(FunctionCall),
+    SelectedColumn(Sourced<SelectedColumn>),
+    FunctionCall(Sourced<FunctionCall>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FunctionCall {
     pub fn_name: Sourced<String>,
     pub params: Vec<Sourced<Computation>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SelectedColumn {
     pub table: Option<Sourced<Table>>,
     pub column: Sourced<ColumnName>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ExplicitJoin {
     pub join_type: Sourced<JoinType>,
     /// The table to join to.
@@ -65,20 +64,13 @@ pub struct ExplicitJoin {
     pub target_arg: Sourced<Computation>,
 }
 
-#[derive(Debug)]
-pub enum Limit {
-    Implicit(),
-    RowCountLimit(usize),
-    RangeLimit(Range<usize>),
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ColumnName(pub String);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TableName(pub String);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DatabaseName(pub String);
 
 impl Display for QueryBuildError {
@@ -94,108 +86,44 @@ impl Display for QueryBuildError {
 ///
 /// If we were to use stage4_computation.into(), we would get fully qualified table names.
 impl Computation {
-    fn without_table_name(input: &Stage4ComputationInput) -> Sourced<Self> {
+    fn without_table_name(input: Stage4ComputationInput) -> Self {
         match input {
-            Stage4ComputationInput::Column(column) => Sourced {
-                it: Computation::SelectedColumn(SelectedColumn {
-                    column: column.column.to_sourced(),
+            Stage4ComputationInput::Column(column) => {
+                Computation::SelectedColumn(column.map(|column| SelectedColumn {
+                    column: column.clone().column.into(),
                     table: None,
-                }),
-                source: (&column.position).into(),
-            },
-            Stage4ComputationInput::FunctionCall(fn_call) => Sourced {
-                it: Computation::FunctionCall(FunctionCall {
-                    fn_name: fn_call.fn_name.to_sourced(),
-                    params: fn_call
-                        .params
-                        .iter()
-                        .map(Computation::without_table_name)
-                        .collect(),
-                }),
-                source: (&fn_call.position).into(),
-            },
+                }))
+            }
+            Stage4ComputationInput::FunctionCall(fn_call) => {
+                Computation::FunctionCall(fn_call.map(|fn_call| {
+                    FunctionCall {
+                        fn_name: fn_call.clone().fn_name.into(),
+                        params: fn_call
+                            .params
+                            .into_iter()
+                            .map(|param| param.map(|param| Computation::without_table_name(param)))
+                            .collect(),
+                    }
+                }))
+            }
         }
     }
 }
 
-#[derive(Debug)]
-pub enum Source {
-    Implicit,
-    Input(Position),
-}
-
-/// Holds a reference to where we got something from.
-///
-/// I use this to help print better error messages.
-/// ```text
-/// humans | friends]
-///                 ^-- Sourced<':', &input pos 15>
-///                 \- I can point to the invalid character because of Sourced<>
-/// ```
-#[derive(Debug)]
-pub struct Sourced<T: Sized> {
-    pub it: T,
-    pub source: Source,
-}
-
-trait ToSource<D> {
-    fn as_it(&self) -> D;
-    fn as_source(&self) -> Source;
-
-    fn to_sourced(self) -> Sourced<D>
-    where
-        Self: Sized,
-    {
-        let it = self.as_it();
-        let source = self.as_source();
-
-        Sourced { it, source }
-    }
-}
-
-impl<T, D> ToSource<D> for T
+impl<T> From<T> for ColumnName
 where
-    for<'a> &'a T: Into<D>,
-    for<'a> &'a T: Into<Position>,
+    T: AsRef<str>,
 {
-    fn as_it(&self) -> D {
-        self.into()
-    }
-
-    fn as_source(&self) -> Source {
-        Source::Input(self.into())
+    fn from(value: T) -> Self {
+        ColumnName(value.as_ref().to_string())
     }
 }
 
-impl From<&Position> for Source {
-    fn from(value: &Position) -> Self {
-        Source::Input(*value)
-    }
-}
-
-impl<T> From<&T> for ColumnName
+impl<T> From<T> for TableName
 where
-    for<'a> &'a T: Into<String>,
+    T: AsRef<str>,
 {
-    fn from(value: &T) -> Self {
-        Self(value.into())
-    }
-}
-
-impl<T> From<&T> for TableName
-where
-    for<'a> &'a T: Into<String>,
-{
-    fn from(value: &T) -> Self {
-        Self(value.into())
-    }
-}
-
-impl<T> From<&T> for DatabaseName
-where
-    for<'a> &'a T: Into<String>,
-{
-    fn from(value: &T) -> Self {
-        Self(value.into())
+    fn from(value: T) -> Self {
+        TableName(value.as_ref().to_string())
     }
 }

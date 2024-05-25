@@ -17,7 +17,8 @@
 use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
-use crate::engine::syntax::{Computation, Position, Positioned, TableInput};
+use crate::engine::syntax::{Computation, Position, TableInput};
+use crate::engine::Sourced;
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -55,30 +56,30 @@ pub struct Stage2Rep<'a> {
 ///
 /// Each pine will be one of these variants, and hold its own data that can be of use different
 /// types.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Stage2Pine<'a> {
     /// All pines start with a base pine that can never repeat. This specified the original
     /// table we'll be working with.
-    Base { table: TableInput<'a> },
+    Base { table: Sourced<TableInput<'a>> },
     /// Selects one or more computations from the previous table.
-    Select(Vec<Computation<'a>>),
+    Select(Vec<Sourced<Computation<'a>>>),
     /// Specify exactly how to join another table.
-    ExplicitJoin(Stage2ExplicitJoin<'a>),
+    ExplicitJoin(Sourced<Stage2ExplicitJoin<'a>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Stage2ExplicitJoin<'a> {
     pub join_type: JoinType,
     /// The table to join to.
-    pub target_table: TableInput<'a>,
+    pub target_table: Sourced<TableInput<'a>>,
     /// The "source" of the join's ON query.
     ///
     /// All column names will default to referring to the previous table.
-    pub source_arg: Computation<'a>,
+    pub source_arg: Sourced<Computation<'a>>,
     /// The "target" of the join's ON query.
     ///
     /// All column names will default to referring to the target table.
-    pub target_arg: Computation<'a>,
+    pub target_arg: Sourced<Computation<'a>>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -135,7 +136,7 @@ impl<'a> Iterator for PestIterator<'a> {
     // The Item type is the type of item you iterate over.
     // In our case, we iterate over Positioned elements, if we ever need to explain why something
     // happened, we highlight the relevant part of the input.
-    type Item = Positioned<Stage2Pine<'a>>;
+    type Item = Sourced<Stage2Pine<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let next = self.inners.next();
@@ -171,33 +172,35 @@ fn translate_root(mut pairs: Pairs<Rule>) -> PestIterator {
     PestIterator::new(root_pair.into_inner())
 }
 
-fn translate_base(base_pair: Pair<Rule>) -> Positioned<Stage2Pine> {
+fn translate_base(base_pair: Pair<Rule>) -> Sourced<Stage2Pine> {
     assert_eq!(Rule::base, base_pair.as_rule());
 
-    let position: Position = base_pair.as_span().into();
+    let span = base_pair.as_span();
     let table_name = identifiers::translate_table(base_pair.into_inner().next().unwrap());
 
-    position.holding(Stage2Pine::Base { table: table_name })
+    Sourced::from_input(span, Stage2Pine::Base { table: table_name })
 }
 
-fn translate_pine(pair: Pair<Rule>) -> Option<Positioned<Stage2Pine>> {
+fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
     // Normally, you would use an exhaustive list here. Meaning you would put in all the possible
     // types of rules. Then, if a new rule were to be added, the compiler will let you know there's
     // a case you missed.
     // Pest decided to disallow that, so we have to have that catch-all case at the bottom.
-    match pair.as_rule() {
-        Rule::select_pine => Some(translate_select(pair)),
-        Rule::explicit_join_pine => Some(translate_explicit_join(pair)),
+    let span = pair.as_span();
+    let pine = match pair.as_rule() {
+        Rule::select_pine => translate_select(pair),
+        Rule::explicit_join_pine => translate_explicit_join(pair),
         // Rule::join_pine => Some(todo!()),
-        Rule::EOI => None, // EOI is End Of Input
+        Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
-    }
+    };
+
+    Some(Sourced::from_input(span, pine))
 }
 
-fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
+fn translate_select(select: Pair<Rule>) -> Stage2Pine {
     assert_eq!(Rule::select_pine, select.as_rule());
 
-    let position: Position = select.as_span().into();
     let mut columns = Vec::new();
 
     for column_pair in select.into_inner() {
@@ -205,13 +208,13 @@ fn translate_select(select: Pair<Rule>) -> Positioned<Stage2Pine> {
         columns.push(column);
     }
 
-    position.holding(Stage2Pine::Select(columns))
+    Stage2Pine::Select(columns)
 }
 
-fn translate_explicit_join(join: Pair<Rule>) -> Positioned<Stage2Pine> {
+fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
     assert_eq!(Rule::explicit_join_pine, join.as_rule());
 
-    let position: Position = join.as_span().into();
+    let span = join.as_span();
     let mut inners = join.into_inner();
 
     let target_table = identifiers::translate_table(
@@ -231,26 +234,32 @@ fn translate_explicit_join(join: Pair<Rule>) -> Positioned<Stage2Pine> {
             .expect("explicit join source arg should be present because of pest syntax"),
     );
 
-    position.holding(Stage2Pine::ExplicitJoin(Stage2ExplicitJoin {
-        join_type: JoinType::Left,
-        target_table,
-        source_arg,
-        target_arg,
-    }))
+    Stage2Pine::ExplicitJoin(Sourced::from_input(
+        span,
+        Stage2ExplicitJoin {
+            join_type: JoinType::Left,
+            target_table,
+            source_arg,
+            target_arg,
+        },
+    ))
 }
 
-fn translate_computation(computation: Pair<Rule>) -> Computation {
+fn translate_computation(computation: Pair<Rule>) -> Sourced<Computation> {
     assert_eq!(Rule::computation, computation.as_rule());
 
     let mut inners = computation.into_inner();
     let inner = inners.next().expect("Has to be valid syntax");
     assert!(inners.next().is_none());
 
-    match inner.as_rule() {
-        Rule::column => Computation::Column(translate_column(inner)),
-        Rule::function_call => Computation::FunctionCall(translate_fn_call(inner)),
-        _ => panic!("impossible syntax"),
-    }
+    Sourced::from_input(
+        inner.as_span(),
+        match inner.as_rule() {
+            Rule::column => Computation::Column(translate_column(inner)),
+            Rule::function_call => Computation::FunctionCall(translate_fn_call(inner)),
+            _ => panic!("impossible syntax"),
+        },
+    )
 }
 
 impl From<Span<'_>> for Position {
@@ -267,6 +276,7 @@ mod test {
     use crate::engine::syntax::stage1::parse_stage1;
     use crate::engine::syntax::stage2::{Stage2Pine, Stage2Rep};
     use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::engine::{Source, Sourced};
 
     // You might be asking why I write so few tests. It's because writing out the structs for these
     // stages is a PITA. In this case, I'll just write some integration tests at the end and compare
@@ -281,16 +291,18 @@ mod test {
 
         let base = &stage2.pines.next().unwrap();
         assert!(matches!(
-            base.node,
+            base.it,
             // This is what us professionals like to call "FUGLY"
             Stage2Pine::Base {
-                table: TableInput {
-                    database: OptionalInput::Implicit,
-                    table: SqlIdentifierInput {
-                        name: "name",
-                        position: Position { start: 0, end: 4 }
+                table: Sourced {
+                    it: TableInput {
+                        database: OptionalInput::Implicit,
+                        table: Sourced {
+                            it: SqlIdentifierInput { name: "name" },
+                            source: Source::Input(Position { start: 0, end: 4 })
+                        },
                     },
-                    position: Position { start: 0, end: 4 },
+                    source: Source::Input(Position { start: 0, end: 4 })
                 }
             }
         ));
@@ -302,6 +314,6 @@ mod test {
         // Look for where the Position struct is defined, you will see it also implements the
         // PartialEq trait for ranges.
         // I did that just to save some key strokes.
-        assert_eq!(0..4, base.position);
+        assert_eq!(0..4, base.source);
     }
 }

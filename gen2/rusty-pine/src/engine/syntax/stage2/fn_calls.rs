@@ -4,12 +4,13 @@ use crate::engine::syntax::stage2::identifiers::translate_sql_name;
 use crate::engine::syntax::stage2::translate_computation;
 use crate::engine::syntax::{FunctionCall, Position};
 use crate::engine::Rule;
+use crate::engine::Sourced;
 use pest::iterators::Pair;
 
-pub fn translate_fn_call(fn_call: Pair<Rule>) -> FunctionCall {
+pub fn translate_fn_call(fn_call: Pair<Rule>) -> Sourced<FunctionCall> {
     assert_eq!(Rule::function_call, fn_call.as_rule());
 
-    let position: Position = fn_call.as_span().into();
+    let span = fn_call.as_span();
 
     let mut inners = fn_call.into_inner();
 
@@ -22,9 +23,5 @@ pub fn translate_fn_call(fn_call: Pair<Rule>) -> FunctionCall {
         params.push(column);
     }
 
-    FunctionCall {
-        fn_name,
-        params,
-        position,
-    }
+    Sourced::from_input(span, FunctionCall { fn_name, params })
 }

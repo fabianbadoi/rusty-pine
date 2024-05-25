@@ -1,13 +1,12 @@
 use crate::analyze::Server;
 use crate::engine::query_builder::{
-    Computation, ExplicitJoin, FunctionCall, Limit, Query, SelectedColumn, Source, Sourced, Table,
-    ToSource,
+    Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn, Table,
 };
 use crate::engine::syntax::{
     OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4FunctionCall, Stage4LimitInput, Stage4Rep, TableInput,
+    Stage4FunctionCall, Stage4Rep, TableInput,
 };
-use crate::engine::QueryBuildError;
+use crate::engine::{QueryBuildError, Source, Sourced};
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
@@ -39,7 +38,7 @@ impl<'a> Stage5Builder<'a> {
             from: self.from,
             joins,
             select,
-            limit: (&self.input.limit).into(),
+            limit: self.input.limit.clone(),
         })
     }
 
@@ -49,12 +48,22 @@ impl<'a> Stage5Builder<'a> {
         self.input
             .selected_columns
             .iter()
+            .map(Clone::clone)
             .map(|computation| {
-                if simplify_columns_and_tables {
-                    Computation::without_table_name(computation)
-                } else {
-                    computation.into()
-                }
+                computation.map(|computation| {
+                    if simplify_columns_and_tables {
+                        Computation::without_table_name(computation)
+                    } else {
+                        match computation {
+                            Stage4ComputationInput::Column(column) => {
+                                Computation::SelectedColumn(column.into())
+                            }
+                            Stage4ComputationInput::FunctionCall(fn_call) => {
+                                Computation::FunctionCall(fn_call.into())
+                            }
+                        }
+                    }
+                })
             })
             .collect()
     }
@@ -65,11 +74,11 @@ impl<'a> Stage5Builder<'a> {
             .iter()
             .map(|j| {
                 // if let Stage4Join::Explicit(j) = j {
-                self.from = j.target_table.into();
+                self.from = j.it.target_table.clone().into();
 
                 // We always set the "from" table to the last join, and switch the join direction
                 // so it still looks good.
-                j.clone().switch().into()
+                j.clone().map(|j| j.switch()).into()
                 // } else {
                 //     todo!()
                 // }
@@ -82,90 +91,57 @@ impl<'a> Stage5Builder<'a> {
     }
 }
 
-impl From<TableInput<'_>> for Sourced<Table> {
+impl From<TableInput<'_>> for Table {
     fn from(value: TableInput<'_>) -> Self {
-        Sourced {
-            it: Table {
-                db: match value.database {
-                    OptionalInput::Implicit => None,
-                    OptionalInput::Specified(value) => Some(value.to_sourced()),
-                },
-                name: value.table.to_sourced(),
+        Table {
+            db: match value.database {
+                OptionalInput::Implicit => None,
+                OptionalInput::Specified(value) => Some(value.into()),
             },
-            source: Source::Input(value.position),
+            name: value.table.into(),
         }
     }
 }
 
-impl From<&Stage4ComputationInput<'_>> for Sourced<Computation> {
-    fn from(value: &Stage4ComputationInput) -> Self {
+impl From<Stage4ComputationInput<'_>> for Computation {
+    fn from(value: Stage4ComputationInput) -> Self {
         match value {
-            Stage4ComputationInput::Column(column) => column.into(),
-            Stage4ComputationInput::FunctionCall(fn_call) => fn_call.into(),
+            Stage4ComputationInput::Column(column) => Computation::SelectedColumn(column.into()),
+            Stage4ComputationInput::FunctionCall(fn_call) => {
+                Computation::FunctionCall(fn_call.into())
+            }
         }
     }
 }
 
-impl From<&Stage4ColumnInput<'_>> for Sourced<Computation> {
-    fn from(value: &Stage4ColumnInput<'_>) -> Self {
-        Sourced {
-            it: Computation::SelectedColumn(SelectedColumn {
-                table: Some(value.table.into()), // TODO hide table if not needed
-                column: value.column.to_sourced(),
-            }),
-            source: Source::Input(value.position),
+impl From<Stage4ColumnInput<'_>> for SelectedColumn {
+    fn from(value: Stage4ColumnInput<'_>) -> Self {
+        SelectedColumn {
+            table: Some(value.table.into()),
+            column: value.column.into(),
         }
     }
 }
 
-impl From<&Stage4FunctionCall<'_>> for Sourced<Computation> {
-    fn from(value: &Stage4FunctionCall<'_>) -> Self {
-        Sourced {
-            it: Computation::FunctionCall(FunctionCall {
-                fn_name: value.fn_name.to_sourced(),
-                params: value
-                    .params
-                    .iter()
-                    .map(<&Stage4ComputationInput>::into)
-                    .collect(),
-            }),
-            source: Source::Input(value.position),
-        }
-    }
-}
-
-impl From<&Stage4LimitInput> for Sourced<Limit> {
-    fn from(value: &Stage4LimitInput) -> Self {
-        match value {
-            Stage4LimitInput::Implicit() => Sourced {
-                it: Limit::Implicit(),
+impl From<Stage3ExplicitJoin<'_>> for ExplicitJoin {
+    fn from(value: Stage3ExplicitJoin<'_>) -> Self {
+        ExplicitJoin {
+            join_type: Sourced {
+                it: value.join_type,
                 source: Source::Implicit,
             },
-            Stage4LimitInput::RowCountLimit(rows, position) => Sourced {
-                it: Limit::RowCountLimit(*rows),
-                source: position.into(),
-            },
-            Stage4LimitInput::RangeLimit(range, position) => Sourced {
-                it: Limit::RangeLimit(range.clone()),
-                source: position.into(),
-            },
+            target_table: value.target_table.into(),
+            source_arg: value.source_arg.into(),
+            target_arg: value.target_arg.into(),
         }
     }
 }
 
-impl From<Stage3ExplicitJoin<'_>> for Sourced<ExplicitJoin> {
-    fn from(value: Stage3ExplicitJoin<'_>) -> Self {
-        Sourced {
-            it: ExplicitJoin {
-                join_type: Sourced {
-                    it: value.join_type,
-                    source: Source::Implicit,
-                },
-                target_table: value.target_table.into(),
-                source_arg: (&value.source_arg).into(),
-                target_arg: (&value.target_arg).into(),
-            },
-            source: Source::Input(value.position),
+impl From<Stage4FunctionCall<'_>> for FunctionCall {
+    fn from(value: Stage4FunctionCall) -> Self {
+        FunctionCall {
+            fn_name: value.fn_name.into(),
+            params: value.params.into_iter().map(|param| param.into()).collect(),
         }
     }
 }
@@ -196,5 +172,14 @@ mod test {
         let query = result.unwrap();
 
         assert_eq!(query.from.it.name.it.0, "table");
+    }
+}
+
+impl<T> From<T> for DatabaseName
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        DatabaseName(value.as_ref().to_string())
     }
 }

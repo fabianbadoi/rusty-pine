@@ -9,6 +9,7 @@ use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::iterator::Stage3Iterator;
 use crate::engine::syntax::stage4::{Stage4ComputationInput, Stage4ExplicitJoin};
 use crate::engine::syntax::{Stage4ColumnInput, TableInput};
+use crate::engine::Sourced;
 
 /// The module covers iterating over our stage2 pines and converting them into stage3 pines
 mod iterator;
@@ -19,10 +20,11 @@ pub struct Stage3Rep<'a> {
     pub pines: Stage3Iterator<'a>,
 }
 
+#[derive(Debug, Clone)]
 pub enum Stage3Pine<'a> {
-    From { table: TableInput<'a> },
-    Select(Vec<Stage3ComputationInput<'a>>),
-    ExplicitJoin(Stage3ExplicitJoin<'a>),
+    From { table: Sourced<TableInput<'a>> },
+    Select(Vec<Sourced<Stage3ComputationInput<'a>>>),
+    ExplicitJoin(Sourced<Stage3ExplicitJoin<'a>>),
 }
 
 // shh! keep these secret
@@ -47,6 +49,7 @@ mod test {
     use crate::engine::syntax::stage2::Stage2Rep;
     use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep};
     use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
+    use crate::engine::{Source, Sourced};
 
     #[test]
     fn test_simple_convert() {
@@ -56,18 +59,20 @@ mod test {
         assert_eq!("table", stage3.input);
 
         let first = stage3.pines.next().unwrap();
-        assert_eq!(0..5, first.position);
+        assert_eq!(0..5, first.source);
 
         assert!(matches!(
-            first.node,
+            first.it,
             Stage3Pine::From {
-                table: TableInput {
-                    database: OptionalInput::Implicit,
-                    table: SqlIdentifierInput {
-                        name: "table",
-                        position: Position { start: 0, end: 5 },
+                table: Sourced {
+                    it: TableInput {
+                        database: OptionalInput::Implicit,
+                        table: Sourced {
+                            it: SqlIdentifierInput { name: "table" },
+                            source: Source::Input(Position { start: 0, end: 5 }),
+                        },
                     },
-                    position: Position { start: 0, end: 5 },
+                    source: Source::Input(Position { start: 0, end: 5 })
                 },
             }
         ))
