@@ -6,7 +6,7 @@ use crate::engine::syntax::JoinType;
 use std::fmt::{Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
-    format!("{}", query)
+    format!("{};", query)
 }
 
 impl Display for Query {

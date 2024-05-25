@@ -58,22 +58,22 @@ create table `preferenceHistory` (
 SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
-LIMIT 10
+LIMIT 10;
 
 -- Test: people | j: preferences people.id = personId
 SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
-LIMIT 10
+LIMIT 10;
 
 -- Test: people | j: preferences id = preferences.personId
 SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
-LIMIT 10
+LIMIT 10;
 
 -- Test: people | j: preferences id = personId
 SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
-LIMIT 10
+LIMIT 10;
