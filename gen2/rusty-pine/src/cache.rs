@@ -32,7 +32,7 @@ pub trait CacheKey {
 /// //                  any struct that does not have it as a CacheKey will likewise fail
 /// //                  to compile. So we the compiler now makes sure we read and write to our
 /// //                  cache in a type safe manner.
-///     &ServerParams { hostname: "".to_string(), port: 0, user: "".to_string()}
+///     &ServerParams { hostname: "".to_string(), port: 0, user: "".to_string(), default_database: "".into()}
 /// ).unwrap();
 /// ```
 ///

@@ -5,7 +5,7 @@ use crate::engine::query_builder::{
 };
 use crate::engine::syntax::{
     OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4FunctionCall, Stage4Join, Stage4LimitInput, Stage4Rep, TableInput,
+    Stage4FunctionCall, Stage4LimitInput, Stage4Rep, TableInput,
 };
 use crate::engine::QueryBuildError;
 
@@ -64,15 +64,15 @@ impl<'a> Stage5Builder<'a> {
             .joins
             .iter()
             .map(|j| {
-                if let Stage4Join::Explicit(j) = j {
-                    self.from = j.target_table.into();
+                // if let Stage4Join::Explicit(j) = j {
+                self.from = j.target_table.into();
 
-                    // We always set the "from" table to the last join, and switch the join direction
-                    // so it still looks good.
-                    j.switch().into()
-                } else {
-                    todo!()
-                }
+                // We always set the "from" table to the last join, and switch the join direction
+                // so it still looks good.
+                j.clone().switch().into()
+                // } else {
+                //     todo!()
+                // }
             })
             .collect()
     }
@@ -172,12 +172,21 @@ impl From<Stage3ExplicitJoin<'_>> for Sourced<ExplicitJoin> {
 
 #[cfg(test)]
 mod test {
+    use crate::analyze::{Server, ServerParams};
     use crate::engine::query_builder::stage5::Stage5Builder;
     use crate::engine::syntax::parse_to_stage4;
 
     #[test]
     fn test_try_from_simple() {
-        let server = Default::default();
+        let server = Server {
+            params: ServerParams {
+                hostname: "".to_string(),
+                port: 0,
+                user: "".to_string(),
+                default_database: "".into(),
+            },
+            databases: Default::default(),
+        };
         let builder = Stage5Builder::new(parse_to_stage4("table | s: id").unwrap(), &server);
 
         let result = builder.try_build();

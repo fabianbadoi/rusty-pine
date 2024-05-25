@@ -55,7 +55,7 @@ impl From<ContextParams> for Context {
                 hostname: value.hostname_or_ip,
                 port: value.port,
                 user: value.username,
-                default_database: value.default_database,
+                default_database: value.default_database.into(),
             },
         }
     }

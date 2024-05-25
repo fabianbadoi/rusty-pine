@@ -15,6 +15,7 @@ pub struct Stage4Rep<'a> {
     pub limit: Stage4LimitInput,
 }
 
+#[derive(Clone)]
 pub struct Stage4ExplicitJoin<'a> {
     pub join_type: JoinType,
     pub source_table: TableInput<'a>,
@@ -31,17 +32,20 @@ pub struct Stage4ExplicitJoin<'a> {
     pub position: Position,
 }
 
+#[derive(Clone)]
 pub struct Stage4ColumnInput<'a> {
     pub table: TableInput<'a>, // we always know it because of SYNTAX
     pub column: SqlIdentifierInput<'a>,
     pub position: Position,
 }
 
+#[derive(Clone)]
 pub enum Stage4ComputationInput<'a> {
     Column(Stage4ColumnInput<'a>),
     FunctionCall(Stage4FunctionCall<'a>),
 }
 
+#[derive(Clone)]
 pub struct Stage4FunctionCall<'a> {
     pub fn_name: SqlIdentifierInput<'a>,
     pub params: Vec<Stage4ComputationInput<'a>>,
