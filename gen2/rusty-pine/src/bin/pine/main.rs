@@ -65,7 +65,7 @@ fn list_contexts() -> Result<(), rusty_pine::Error> {
             },
             context.name.to_string().bold(),
             context.server_params.hostname,
-            context.default_database
+            context.server_params.default_database
         )
     }
 

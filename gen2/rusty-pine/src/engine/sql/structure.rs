@@ -8,19 +8,20 @@ use std::fmt::{Display, Formatter};
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
 /// This structure represents the info we gather for an entire analyzed DB server.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     pub params: ServerParams,
     pub databases: HashMap<TableName, Database>,
 }
 
 /// Parameters used to connect to a server
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerParams {
     pub hostname: String,
     pub port: u16,
     // Because the different users may have access to different databases and different tables,
     pub user: String,
+    pub default_database: TableName,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,5 +122,11 @@ impl Display for ServerParams {
         }
 
         Ok(())
+    }
+}
+
+impl Display for TableName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }

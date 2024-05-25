@@ -8,7 +8,6 @@ use std::fmt::{Display, Formatter};
 pub struct Context {
     pub name: ContextName,
     pub server_params: ServerParams,
-    pub default_database: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
