@@ -5,53 +5,80 @@ use crate::engine::query_builder::{
 };
 use crate::engine::syntax::{
     OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4FunctionCall, Stage4LimitInput, Stage4Rep, TableInput,
+    Stage4FunctionCall, Stage4Join, Stage4LimitInput, Stage4Rep, TableInput,
 };
 use crate::engine::QueryBuildError;
 
-pub struct Stage5Builder {}
+pub struct Stage5Builder<'a> {
+    input: Stage4Rep<'a>,
+    from: Sourced<Table>,
+    server: &'a Server,
+}
 
 // TODO this isn't really done yet.
 // We're missing some stages before this where we do joins and automatically adding sum/count
 // for groups.
 // This will have to be renamed in the future
-impl Stage5Builder {
-    pub fn try_build(&self, input: Stage4Rep, _server: &Server) -> Result<Query, QueryBuildError> {
-        let mut from = input.from.into();
-        let simplify_columns_and_tables: bool = self.is_single_table_query(&input);
+impl<'a> Stage5Builder<'a> {
+    pub fn new(input: Stage4Rep<'a>, server: &'a Server) -> Self {
+        let from = input.from.into();
 
-        let joins = input
-            .joins
-            .into_iter()
-            .map(|j| {
-                from = j.target_table.into();
+        Stage5Builder {
+            input,
+            from,
+            server,
+        }
+    }
 
-                // We always set the "from" table to the last join, and switch the join direction
-                // so it still looks good.
-                j.switch().into()
-            })
-            .collect();
+    pub fn try_build(mut self) -> Result<Query, QueryBuildError> {
+        let select = self.process_selects();
+        let joins = self.process_joins();
 
         Ok(Query {
-            input: input.input.to_owned(),
-            from,
+            input: self.input.input.to_owned(),
+            from: self.from,
             joins,
-            select: input
-                .selected_columns
-                .iter()
-                .map(|computation| {
-                    if simplify_columns_and_tables {
-                        Computation::without_table_name(computation)
-                    } else {
-                        computation.into()
-                    }
-                })
-                .collect(),
-            limit: (&input.limit).into(),
+            select,
+            limit: (&self.input.limit).into(),
         })
     }
-    fn is_single_table_query(&self, input: &Stage4Rep) -> bool {
-        input.joins.is_empty()
+
+    fn process_selects(&mut self) -> Vec<Sourced<Computation>> {
+        let simplify_columns_and_tables: bool = self.is_single_table_query();
+
+        self.input
+            .selected_columns
+            .iter()
+            .map(|computation| {
+                if simplify_columns_and_tables {
+                    Computation::without_table_name(computation)
+                } else {
+                    computation.into()
+                }
+            })
+            .collect()
+    }
+
+    fn process_joins(&mut self) -> Vec<Sourced<ExplicitJoin>> {
+        self.input
+            .joins
+            .iter()
+            .map(|j| {
+                if let Stage4Join::Explicit(j) = j {
+                    self.from = j.target_table.into();
+
+                    // We always set the "from" table to the last join, and switch the join direction
+                    // so it still looks good.
+                    j.switch().into()
+                } else {
+                    todo!()
+                }
+            })
+            .collect()
+    }
+
+    fn is_single_table_query(&self) -> bool {
+        self.input.joins.is_empty()
     }
 }
 
@@ -150,11 +177,10 @@ mod test {
 
     #[test]
     fn test_try_from_simple() {
-        let builder = Stage5Builder {};
-        let result = builder.try_build(
-            parse_to_stage4("table | s: id").unwrap(),
-            &Default::default(),
-        );
+        let server = Default::default();
+        let builder = Stage5Builder::new(parse_to_stage4("table | s: id").unwrap(), &server);
+
+        let result = builder.try_build();
 
         assert!(result.is_ok());
 

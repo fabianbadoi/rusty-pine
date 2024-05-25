@@ -9,7 +9,9 @@ use crate::engine::syntax::{JoinType, Position, Stage4ComputationInput, Stage4Re
 mod stage5;
 
 pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate::Error> {
-    Ok(stage5::Stage5Builder {}.try_build(input, server)?)
+    let builder = stage5::Stage5Builder::new(input, server);
+
+    Ok(builder.try_build()?)
 }
 
 #[derive(Error, Debug)]
