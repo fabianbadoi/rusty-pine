@@ -18,7 +18,7 @@ use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, Position, TableInput};
-use crate::engine::Sourced;
+use crate::engine::{JoinType, Sourced};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -80,14 +80,6 @@ pub struct Stage2ExplicitJoin<'a> {
     ///
     /// All column names will default to referring to the target table.
     pub target_arg: Sourced<Computation<'a>>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum JoinType {
-    Left,
-    // TODO
-    // Right,
-    // Inner,
 }
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.

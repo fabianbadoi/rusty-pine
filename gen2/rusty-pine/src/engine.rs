@@ -116,3 +116,11 @@ pub enum Limit {
     RowCount(usize),
     Range(Range<usize>),
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum JoinType {
+    Left,
+    // TODO
+    // Right,
+    // Inner,
+}

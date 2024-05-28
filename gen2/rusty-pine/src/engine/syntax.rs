@@ -30,14 +30,13 @@ mod stage3;
 mod stage4;
 
 pub use stage1::Rule;
-pub use stage2::JoinType; // TODO move?
 pub use stage3::Stage3ExplicitJoin;
 pub use stage4::{Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4Rep};
 
 use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::Stage3Rep;
-use crate::engine::{Source, Sourced};
+use crate::engine::Sourced;
 use std::ops::Range;
 
 pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
@@ -145,8 +144,10 @@ impl PartialEq<Position> for Range<usize> {
 }
 
 #[cfg(test)]
-impl PartialEq<Source> for Position {
-    fn eq(&self, other: &Source) -> bool {
+impl PartialEq<crate::engine::Source> for Position {
+    fn eq(&self, other: &crate::engine::Source) -> bool {
+        use crate::engine::Source;
+
         match other {
             Source::Implicit => false,
             Source::Input(position) => position == self,

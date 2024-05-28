@@ -2,7 +2,7 @@ use crate::engine::query_builder::{
     ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn,
     Table, TableName,
 };
-use crate::engine::syntax::JoinType;
+use crate::engine::JoinType;
 use crate::engine::{Limit, Sourced};
 use std::fmt::{Display, Formatter};
 

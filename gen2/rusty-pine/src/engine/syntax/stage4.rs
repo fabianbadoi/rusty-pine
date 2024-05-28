@@ -4,9 +4,9 @@
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
-use crate::engine::syntax::{JoinType, SqlIdentifierInput, TableInput};
-use crate::engine::Limit;
+use crate::engine::syntax::{SqlIdentifierInput, TableInput};
 use crate::engine::Sourced;
+use crate::engine::{JoinType, Limit};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,

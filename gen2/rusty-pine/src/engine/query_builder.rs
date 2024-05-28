@@ -2,8 +2,8 @@ use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
 use crate::analyze::Server;
-use crate::engine::syntax::{JoinType, Stage4ComputationInput, Stage4Rep};
-use crate::engine::{Limit, Sourced};
+use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
+use crate::engine::{JoinType, Limit, Sourced};
 
 mod stage5;
 
