@@ -116,6 +116,6 @@ impl Source {
 #[derive(Debug, Clone)]
 pub enum Limit {
     Implicit(),
-    RowCountLimit(usize),
-    RangeLimit(Range<usize>),
+    RowCount(usize),
+    Range(Range<usize>),
 }

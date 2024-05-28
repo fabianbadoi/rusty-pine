@@ -138,7 +138,7 @@ impl<'a> Stage3Iterator<'a> {
             Stage3ExplicitJoin {
                 join_type,
                 source_table: self.context.previous_table,
-                target_table: target_table,
+                target_table,
                 source_arg,
                 target_arg,
             },

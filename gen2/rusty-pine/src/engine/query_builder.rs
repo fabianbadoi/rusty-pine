@@ -90,7 +90,7 @@ impl Computation {
         match input {
             Stage4ComputationInput::Column(column) => {
                 Computation::SelectedColumn(column.map(|column| SelectedColumn {
-                    column: column.clone().column.into(),
+                    column: column.column.into(),
                     table: None,
                 }))
             }

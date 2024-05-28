@@ -1,6 +1,6 @@
 use crate::engine::syntax::stage1::Rule;
 use crate::engine::syntax::OptionalInput::{Implicit, Specified};
-use crate::engine::syntax::{ColumnInput, OptionalInput, Position, SqlIdentifierInput, TableInput};
+use crate::engine::syntax::{ColumnInput, SqlIdentifierInput, TableInput};
 use crate::engine::Sourced;
 use pest::iterators::Pair;
 
@@ -24,8 +24,6 @@ pub fn translate_column(column: Pair<Rule>) -> Sourced<ColumnInput> {
 
 fn translate_column_name(pair: Pair<Rule>) -> ColumnInput {
     assert_eq!(Rule::column_name, pair.as_rule());
-
-    let position: Position = pair.as_span().into();
 
     let mut inners = pair.into_inner();
 
@@ -88,7 +86,7 @@ fn translate_table_sql_name(pair: Pair<Rule>) -> Sourced<TableInput> {
     Sourced::from_input(
         pair.as_span(),
         TableInput {
-            database: OptionalInput::Implicit,
+            database: Implicit,
             table: translate_sql_name(pair),
         },
     )

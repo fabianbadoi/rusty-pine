@@ -4,7 +4,6 @@ pub mod querying;
 /// Structs used to represent database structure.
 pub mod structure;
 
-use crate::engine::sql::structure::Database;
 use colored::Colorize;
 use std::fmt::{Display, Formatter};
 use std::ops::Add;

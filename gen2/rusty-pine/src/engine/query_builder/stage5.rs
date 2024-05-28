@@ -74,7 +74,7 @@ impl<'a> Stage5Builder<'a> {
             .iter()
             .map(|j| {
                 // if let Stage4Join::Explicit(j) = j {
-                self.from = j.it.target_table.clone().into();
+                self.from = j.it.target_table.into();
 
                 // We always set the "from" table to the last join, and switch the join direction
                 // so it still looks good.

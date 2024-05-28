@@ -2,7 +2,7 @@
 
 use crate::engine::syntax::stage2::identifiers::translate_sql_name;
 use crate::engine::syntax::stage2::translate_computation;
-use crate::engine::syntax::{FunctionCall, Position};
+use crate::engine::syntax::FunctionCall;
 use crate::engine::Rule;
 use crate::engine::Sourced;
 use pest::iterators::Pair;
