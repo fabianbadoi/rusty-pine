@@ -6,7 +6,7 @@ use crate::engine::syntax::{
     OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
     Stage4FunctionCall, Stage4Rep, TableInput,
 };
-use crate::engine::{QueryBuildError, Source, Sourced};
+use crate::engine::{QueryBuildError, Sourced};
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
@@ -126,10 +126,7 @@ impl From<Stage4ColumnInput<'_>> for SelectedColumn {
 impl From<Stage3ExplicitJoin<'_>> for ExplicitJoin {
     fn from(value: Stage3ExplicitJoin<'_>) -> Self {
         ExplicitJoin {
-            join_type: Sourced {
-                it: value.join_type,
-                source: Source::Implicit,
-            },
+            join_type: value.join_type,
             target_table: value.target_table.into(),
             source_arg: value.source_arg.into(),
             target_arg: value.target_arg.into(),

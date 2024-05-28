@@ -18,7 +18,7 @@ use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, TableInput};
-use crate::engine::{JoinType, Position, Sourced};
+use crate::engine::{ExplicitJoinHolder, JoinType, Position, Sourced};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -67,20 +67,7 @@ pub enum Stage2Pine<'a> {
     ExplicitJoin(Sourced<Stage2ExplicitJoin<'a>>),
 }
 
-#[derive(Debug, Clone)]
-pub struct Stage2ExplicitJoin<'a> {
-    pub join_type: JoinType,
-    /// The table to join to.
-    pub target_table: Sourced<TableInput<'a>>,
-    /// The "source" of the join's ON query.
-    ///
-    /// All column names will default to referring to the previous table.
-    pub source_arg: Sourced<Computation<'a>>,
-    /// The "target" of the join's ON query.
-    ///
-    /// All column names will default to referring to the target table.
-    pub target_arg: Sourced<Computation<'a>>,
-}
+pub type Stage2ExplicitJoin<'a> = ExplicitJoinHolder<TableInput<'a>, Computation<'a>>;
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
 ///
@@ -229,7 +216,7 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
     Stage2Pine::ExplicitJoin(Sourced::from_input(
         span,
         Stage2ExplicitJoin {
-            join_type: JoinType::Left,
+            join_type: Sourced::implicit(JoinType::Left),
             target_table,
             source_arg,
             target_arg,

@@ -5,7 +5,7 @@
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
-use crate::engine::Sourced;
+use crate::engine::{ExplicitJoinHolder, Sourced};
 use crate::engine::{JoinType, Limit};
 
 pub struct Stage4Rep<'a> {
@@ -18,7 +18,7 @@ pub struct Stage4Rep<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Stage4ExplicitJoin<'a> {
-    pub join_type: JoinType,
+    pub join_type: Sourced<JoinType>,
     pub source_table: Sourced<TableInput<'a>>,
     /// The table to join to.
     pub target_table: Sourced<TableInput<'a>>,

@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::analyze::Server;
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
-use crate::engine::{JoinType, Limit, Sourced};
+use crate::engine::{ExplicitJoinHolder, Limit, Sourced};
 
 mod stage5;
 
@@ -49,20 +49,7 @@ pub struct SelectedColumn {
     pub column: Sourced<ColumnName>,
 }
 
-#[derive(Debug, Clone)]
-pub struct ExplicitJoin {
-    pub join_type: Sourced<JoinType>,
-    /// The table to join to.
-    pub target_table: Sourced<Table>,
-    /// The "source" of the join's ON query.
-    ///
-    /// All column names will default to referring to the previous table.
-    pub source_arg: Sourced<Computation>,
-    /// The "target" of the join's ON query.
-    ///
-    /// All column names will default to referring to the target table.
-    pub target_arg: Sourced<Computation>,
-}
+pub type ExplicitJoin = ExplicitJoinHolder<Table, Computation>;
 
 #[derive(Debug, Clone)]
 pub struct ColumnName(pub String);
