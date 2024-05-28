@@ -17,8 +17,8 @@
 use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
-use crate::engine::syntax::{Computation, Position, TableInput};
-use crate::engine::{JoinType, Sourced};
+use crate::engine::syntax::{Computation, TableInput};
+use crate::engine::{JoinType, Position, Sourced};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -267,8 +267,8 @@ impl From<Span<'_>> for Position {
 mod test {
     use crate::engine::syntax::stage1::parse_stage1;
     use crate::engine::syntax::stage2::{Stage2Pine, Stage2Rep};
-    use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
-    use crate::engine::{Source, Sourced};
+    use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
+    use crate::engine::{Position, Source, Sourced};
 
     // You might be asking why I write so few tests. It's because writing out the structs for these
     // stages is a PITA. In this case, I'll just write some integration tests at the end and compare

@@ -12,7 +12,7 @@ pub use syntax::Rule;
 
 use crate::engine::query_builder::build_query;
 use crate::engine::rendering::render_query;
-use crate::engine::syntax::{parse_to_stage4, Position};
+use crate::engine::syntax::parse_to_stage4;
 
 pub use query_builder::QueryBuildError;
 use std::fmt::Debug;
@@ -123,4 +123,37 @@ pub enum JoinType {
     // TODO
     // Right,
     // Inner,
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub struct Position {
+    // pub input: &'a str,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl From<Range<usize>> for Position {
+    fn from(range: Range<usize>) -> Self {
+        Position {
+            start: range.start,
+            end: range.end,
+        }
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<Source> for Position {
+    fn eq(&self, other: &Source) -> bool {
+        match other {
+            Source::Implicit => false,
+            Source::Input(position) => position == self,
+        }
+    }
+}
+
+#[cfg(test)]
+impl PartialEq<Position> for Range<usize> {
+    fn eq(&self, other: &Position) -> bool {
+        self.start == other.start && self.end == other.end
+    }
 }

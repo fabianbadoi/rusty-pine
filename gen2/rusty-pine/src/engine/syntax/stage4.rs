@@ -111,11 +111,10 @@ mod test {
     use crate::engine::syntax::stage4::Stage4Rep;
     use crate::engine::syntax::OptionalInput::{Implicit, Specified};
     use crate::engine::syntax::{
-        parse_to_stage4, OptionalInput, Position, SqlIdentifierInput, Stage4ComputationInput,
-        TableInput,
+        parse_to_stage4, OptionalInput, SqlIdentifierInput, Stage4ComputationInput, TableInput,
     };
 
-    use crate::engine::{Source, Sourced};
+    use crate::engine::{Position, Source, Sourced};
     use std::ops::Range;
 
     #[test]

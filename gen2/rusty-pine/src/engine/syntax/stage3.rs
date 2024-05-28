@@ -48,8 +48,8 @@ mod test {
     use crate::engine::syntax::stage1::parse_stage1;
     use crate::engine::syntax::stage2::Stage2Rep;
     use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep};
-    use crate::engine::syntax::{OptionalInput, Position, SqlIdentifierInput, TableInput};
-    use crate::engine::{Source, Sourced};
+    use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
+    use crate::engine::{Position, Source, Sourced};
 
     #[test]
     fn test_simple_convert() {

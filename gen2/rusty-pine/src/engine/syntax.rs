@@ -37,7 +37,6 @@ use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::Stage3Rep;
 use crate::engine::Sourced;
-use std::ops::Range;
 
 pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
     let stage1 = parse_stage1(input)?;
@@ -128,45 +127,9 @@ impl From<SqlIdentifierInput<'_>> for String {
     }
 }
 
-// TODO move to engine
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub struct Position {
-    // pub input: &'a str,
-    pub start: usize,
-    pub end: usize,
-}
-
-#[cfg(test)]
-impl PartialEq<Position> for Range<usize> {
-    fn eq(&self, other: &Position) -> bool {
-        self.start == other.start && self.end == other.end
-    }
-}
-
-#[cfg(test)]
-impl PartialEq<crate::engine::Source> for Position {
-    fn eq(&self, other: &crate::engine::Source) -> bool {
-        use crate::engine::Source;
-
-        match other {
-            Source::Implicit => false,
-            Source::Input(position) => position == self,
-        }
-    }
-}
-
 #[cfg(test)]
 impl PartialEq<str> for SqlIdentifierInput<'_> {
     fn eq(&self, other: &str) -> bool {
         self.name == other
-    }
-}
-
-impl From<Range<usize>> for Position {
-    fn from(range: Range<usize>) -> Self {
-        Position {
-            start: range.start,
-            end: range.end,
-        }
     }
 }
