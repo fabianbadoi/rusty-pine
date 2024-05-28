@@ -65,6 +65,10 @@ impl<T: Sized + Clone> Sourced<T> {
         }
     }
 
+    pub fn from_source(source: Source, it: T) -> Sourced<T> {
+        Sourced { it, source }
+    }
+
     pub fn into<D>(self) -> Sourced<D>
     where
         D: Clone + Debug + From<T>,
@@ -103,13 +107,6 @@ impl<T> Copy for Sourced<T> where T: Copy {}
 impl From<&Position> for Source {
     fn from(value: &Position) -> Self {
         Source::Input(*value)
-    }
-}
-
-impl Source {
-    // TODO delete?
-    pub fn holding<T: Debug + Clone>(self, it: T) -> Sourced<T> {
-        Sourced { it, source: self }
     }
 }
 

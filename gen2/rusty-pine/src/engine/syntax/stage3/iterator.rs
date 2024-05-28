@@ -74,7 +74,10 @@ impl<'a> Stage3Iterator<'a> {
 
         Self {
             stage2_source: stage2_pines,
-            stage3_buffer: VecDeque::from([source.holding(Stage3Pine::From { table: base_table })]),
+            stage3_buffer: VecDeque::from([Sourced::from_source(
+                source,
+                Stage3Pine::From { table: base_table },
+            )]),
             context: Context {
                 previous_table: base_table,
             },
@@ -117,7 +120,7 @@ impl<'a> Stage3Iterator<'a> {
             .map(|column| translate_computation(column, &self.context.previous_table))
             .collect();
 
-        VecDeque::from([source.holding(Stage3Pine::Select(columns))])
+        VecDeque::from([Sourced::from_source(source, Stage3Pine::Select(columns))])
     }
 
     fn process_explicit_join(
@@ -134,15 +137,19 @@ impl<'a> Stage3Iterator<'a> {
             ..
         } = join.it;
 
-        let stage3_join = source.holding(Stage3Pine::ExplicitJoin(join.source.holding(
-            Stage3ExplicitJoin {
-                join_type,
-                source_table: self.context.previous_table,
-                target_table,
-                source_arg,
-                target_arg,
-            },
-        )));
+        let stage3_join = Sourced::from_source(
+            source,
+            Stage3Pine::ExplicitJoin(Sourced::from_source(
+                join.source,
+                Stage3ExplicitJoin {
+                    join_type,
+                    source_table: self.context.previous_table,
+                    target_table,
+                    source_arg,
+                    target_arg,
+                },
+            )),
+        );
 
         // Future pines will implicitly reference this table
         self.context.previous_table = target_table;
