@@ -143,6 +143,15 @@ impl From<Stage4FunctionCall<'_>> for FunctionCall {
     }
 }
 
+impl<T> From<T> for DatabaseName
+where
+    T: AsRef<str>,
+{
+    fn from(value: T) -> Self {
+        DatabaseName(value.as_ref().to_string())
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::analyze::{Server, ServerParams};
@@ -169,14 +178,5 @@ mod test {
         let query = result.unwrap();
 
         assert_eq!(query.from.it.name.it.0, "table");
-    }
-}
-
-impl<T> From<T> for DatabaseName
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        DatabaseName(value.as_ref().to_string())
     }
 }
