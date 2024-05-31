@@ -5,7 +5,9 @@ use crate::engine::syntax::stage3::{
     Stage3ColumnInput, Stage3ComputationInput, Stage3ExplicitJoin, Stage3Pine,
 };
 use crate::engine::syntax::stage4::Stage4FunctionCall;
-use crate::engine::syntax::{ColumnInput, Computation, FunctionCall, TableInput};
+use crate::engine::syntax::{
+    ColumnInput, Computation, FunctionCall, Stage2LiteralValue, TableInput,
+};
 use crate::engine::{Source, Sourced};
 use std::collections::VecDeque;
 
@@ -167,6 +169,7 @@ fn translate_computation<'a>(
         Computation::FunctionCall(fn_call) => {
             translate_select_from_fn_call(fn_call, implicit_table)
         }
+        Computation::Value(value) => translate_value(value),
     })
 }
 
@@ -194,4 +197,8 @@ fn translate_select_from_fn_call<'a>(
                 .collect(),
         }
     }))
+}
+
+fn translate_value<'a>(value: &Sourced<Stage2LiteralValue<'a>>) -> Stage3ComputationInput<'a> {
+    Stage3ComputationInput::Value(value.map(|value| value))
 }

@@ -5,8 +5,8 @@
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
-use crate::engine::{ExplicitJoinHolder, Sourced};
 use crate::engine::{JoinType, Limit};
+use crate::engine::{LiteralValueHolder, Sourced};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
@@ -42,6 +42,7 @@ pub struct Stage4ColumnInput<'a> {
 pub enum Stage4ComputationInput<'a> {
     Column(Sourced<Stage4ColumnInput<'a>>),
     FunctionCall(Sourced<Stage4FunctionCall<'a>>),
+    Value(Sourced<Stage4LiteralValue<'a>>),
 }
 
 #[derive(Debug, Clone)]
@@ -49,6 +50,8 @@ pub struct Stage4FunctionCall<'a> {
     pub fn_name: Sourced<SqlIdentifierInput<'a>>,
     pub params: Vec<Sourced<Stage4ComputationInput<'a>>>,
 }
+
+pub type Stage4LiteralValue<'a> = LiteralValueHolder<&'a str>;
 
 impl<'a> Stage4ExplicitJoin<'a> {
     pub fn switch(self) -> Self {

@@ -2,7 +2,7 @@ use crate::engine::query_builder::{
     ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn,
     Table, TableName,
 };
-use crate::engine::JoinType;
+use crate::engine::{JoinType, LiteralValueHolder};
 use crate::engine::{Limit, Sourced};
 use std::fmt::{Display, Formatter};
 
@@ -66,6 +66,7 @@ impl Display for Computation {
         match self {
             Computation::SelectedColumn(column) => write!(f, "{}", column),
             Computation::FunctionCall(fn_call) => write!(f, "{}", fn_call),
+            Computation::Value(value) => write!(f, "{}", value),
         }
     }
 }
@@ -101,6 +102,19 @@ impl Display for FunctionCall {
         }
 
         write!(f, ")")
+    }
+}
+
+impl<T> Display for LiteralValueHolder<T>
+where
+    T: AsRef<str>,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            // We support numbers like this 1_000, but MySQL doesn't -> strip _ out
+            LiteralValueHolder::Number(number) => write!(f, "{}", number.as_ref().replace('_', "")),
+            LiteralValueHolder::String(string) => write!(f, "{}", string.as_ref()),
+        }
     }
 }
 

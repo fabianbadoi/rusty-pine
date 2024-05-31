@@ -10,7 +10,7 @@ explicit_join_pine = { ("j:" | "join:") ~ table ~ computation ~ "=" ~ computatio
 
 // Computations are either columns or function calls. They're the things you can put in SELECT or WHERE clauses
 // (and more).
-computation = { function_call | column }
+computation = { function_call | column | literal_value }
 function_call = { sql_name ~ "(" ~ computation* ~ ")"}
 
 column = { db_table_column_name | table_column_name | column_name }
@@ -21,5 +21,27 @@ db_table_column_name = { table ~ "." ~ sql_name }
 table = { db_table_name | sql_name }
 db_table_name = { sql_name ~ "." ~ sql_name }
 sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
+
+// values
+literal_value = { numeric_value | string_value }
+numeric_value = { (ASCII_DIGIT | "_")+ ~ ("." ~ (ASCII_DIGIT | "_")+)? }
+string_value  = { quote_string_value | apostrophe_string_value }
+
+// strings are expressed this way to more easily support escape characters
+quote_string_value = ${ "\"" ~ quote_string_inner ~ "\"" }
+quote_string_inner = @{ quote_string_char* }
+quote_string_char  = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+
+apostrophe_string_value = ${ "'" ~ apostrophe_string_inner ~ "'" }
+apostrophe_string_inner = @{ apostrophe_string_char* }
+apostrophe_string_char  = {
+    !("'" | "\\") ~ ANY
+    | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
 
 WHITESPACE = _{ " " | "\t" }

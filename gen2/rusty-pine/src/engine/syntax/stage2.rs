@@ -17,7 +17,7 @@
 use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
-use crate::engine::syntax::{Computation, TableInput};
+use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{ExplicitJoinHolder, JoinType, Position, Sourced};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -236,7 +236,8 @@ fn translate_computation(computation: Pair<Rule>) -> Sourced<Computation> {
         match inner.as_rule() {
             Rule::column => Computation::Column(translate_column(inner)),
             Rule::function_call => Computation::FunctionCall(translate_fn_call(inner)),
-            _ => panic!("impossible syntax"),
+            Rule::literal_value => Computation::Value(translate_value(inner)),
+            unsupported_rule => panic!("Unexpected rule: Rule::{:?}", unsupported_rule),
         },
     )
 }
@@ -248,6 +249,25 @@ impl From<Span<'_>> for Position {
             end: span.end(),
         }
     }
+}
+
+fn translate_value(pair: Pair<Rule>) -> Sourced<Stage2LiteralValue> {
+    assert_eq!(Rule::literal_value, pair.as_rule());
+
+    let span = pair.as_span();
+
+    let inner = pair
+        .into_inner()
+        .next()
+        .expect("Rule::value has inner number or string");
+
+    let value = match inner.as_rule() {
+        Rule::numeric_value => Stage2LiteralValue::Number(inner.as_str()),
+        Rule::string_value => Stage2LiteralValue::String(inner.as_str()),
+        unexpected_rule => panic!("Unexpected rule for value: Rule::{:?}", unexpected_rule),
+    };
+
+    Sourced::from_input(span, value)
 }
 
 #[cfg(test)]

@@ -31,7 +31,9 @@ mod stage4;
 
 pub use stage1::Rule;
 pub use stage3::Stage3ExplicitJoin;
-pub use stage4::{Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4Rep};
+pub use stage4::{
+    Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LiteralValue, Stage4Rep,
+};
 
 use crate::engine::syntax::stage1::parse_stage1;
 use crate::engine::syntax::stage2::Stage2Rep;
@@ -79,10 +81,13 @@ pub struct TableInput<'a> {
     pub table: Sourced<SqlIdentifierInput<'a>>,
 }
 
+pub type Stage2LiteralValue<'a> = Stage4LiteralValue<'a>;
+
 #[derive(Clone, Debug)]
 pub enum Computation<'a> {
     Column(Sourced<ColumnInput<'a>>),
     FunctionCall(Sourced<FunctionCall<'a>>),
+    Value(Sourced<Stage2LiteralValue<'a>>),
 }
 
 #[derive(Clone, Debug)]

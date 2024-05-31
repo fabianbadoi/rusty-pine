@@ -3,7 +3,7 @@ use thiserror::Error;
 
 use crate::analyze::Server;
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
-use crate::engine::{ExplicitJoinHolder, Limit, Sourced};
+use crate::engine::{ExplicitJoinHolder, Limit, LiteralValueHolder, Sourced};
 
 mod stage5;
 
@@ -35,6 +35,7 @@ pub struct Table {
 pub enum Computation {
     SelectedColumn(Sourced<SelectedColumn>),
     FunctionCall(Sourced<FunctionCall>),
+    Value(Sourced<LiteralValue>),
 }
 
 #[derive(Debug, Clone)]
@@ -50,6 +51,8 @@ pub struct SelectedColumn {
 }
 
 pub type ExplicitJoin = ExplicitJoinHolder<Table, Computation>;
+
+pub type LiteralValue = LiteralValueHolder<String>;
 
 #[derive(Debug, Clone)]
 pub struct ColumnName(pub String);
@@ -93,6 +96,7 @@ impl Computation {
                     }
                 }))
             }
+            Stage4ComputationInput::Value(value) => Computation::Value(value.into()),
         }
     }
 }

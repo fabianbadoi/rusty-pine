@@ -144,6 +144,13 @@ pub enum JoinType {
     // Inner,
 }
 
+/// A literal value like 1 or "kitten".
+#[derive(Debug, Clone)]
+pub enum LiteralValueHolder<T> {
+    Number(T),
+    String(T),
+}
+
 #[derive(PartialEq, Eq, Debug, Clone, Copy)]
 pub struct Position {
     // pub input: &'a str,
@@ -159,6 +166,8 @@ impl From<Range<usize>> for Position {
         }
     }
 }
+
+impl<T> Copy for LiteralValueHolder<T> where T: Copy {}
 
 #[cfg(test)]
 impl PartialEq<Source> for Position {

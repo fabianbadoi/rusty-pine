@@ -1,12 +1,13 @@
 use crate::analyze::Server;
 use crate::engine::query_builder::{
-    Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn, Table,
+    Computation, DatabaseName, ExplicitJoin, FunctionCall, LiteralValue, Query, SelectedColumn,
+    Table,
 };
 use crate::engine::syntax::{
     OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4FunctionCall, Stage4Rep, TableInput,
+    Stage4FunctionCall, Stage4LiteralValue, Stage4Rep, TableInput,
 };
-use crate::engine::{QueryBuildError, Sourced};
+use crate::engine::{LiteralValueHolder, QueryBuildError, Sourced};
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
@@ -61,6 +62,9 @@ impl<'a> Stage5Builder<'a> {
                             Stage4ComputationInput::FunctionCall(fn_call) => {
                                 Computation::FunctionCall(fn_call.into())
                             }
+                            Stage4ComputationInput::Value(value) => {
+                                Computation::Value(value.into())
+                            }
                         }
                     }
                 })
@@ -110,6 +114,7 @@ impl From<Stage4ComputationInput<'_>> for Computation {
             Stage4ComputationInput::FunctionCall(fn_call) => {
                 Computation::FunctionCall(fn_call.into())
             }
+            Stage4ComputationInput::Value(value) => Computation::Value(value.into()),
         }
     }
 }
@@ -149,6 +154,15 @@ where
 {
     fn from(value: T) -> Self {
         DatabaseName(value.as_ref().to_string())
+    }
+}
+
+impl From<Stage4LiteralValue<'_>> for LiteralValue {
+    fn from(value: Stage4LiteralValue<'_>) -> Self {
+        match value {
+            Stage4LiteralValue::Number(number) => LiteralValueHolder::Number(number.into()),
+            Stage4LiteralValue::String(string) => LiteralValueHolder::String(string.into()),
+        }
     }
 }
 

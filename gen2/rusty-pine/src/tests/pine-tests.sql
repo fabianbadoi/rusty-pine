@@ -21,3 +21,9 @@ LIMIT 10;
 SELECT FUNCTION(id, name, FUNCTION2(id, name))
 FROM humans
 LIMIT 10;
+
+-- Literal values
+-- Test: humans | s: "one million" 1_000_000
+SELECT "one million", 1000000
+FROM humans
+LIMIT 10;
