@@ -2,16 +2,17 @@
 root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
-pine = _{ select_pine | join_pine  }
-select_pine = { ("s:" | "select:") ~ computation+ }
-join_pine = _{ explicit_join_pine }
+pine               = _{ select_pine | join_pine  }
+select_pine        = { ("s:" | "select:") ~ selectable+ }
+join_pine          = _{ explicit_join_pine }
 explicit_join_pine = { ("j:" | "join:") ~ table ~ computation ~ "=" ~ computation }
-// todo multiple columns
 
-// Computations are either columns or function calls. They're the things you can put in SELECT or WHERE clauses
-// (and more).
-computation = { function_call | column | literal_value }
+// Selectables are columns, conditions, values or function calls. They're the things you can put in SELECT or WHERE
+// clauses (and more).
+selectable    = { condition | computation }
+computation   = { function_call | column | literal_value }
 function_call = { sql_name ~ "(" ~ computation* ~ ")"}
+condition     = { computation ~ comparison_symbol ~ computation }
 
 column = { db_table_column_name | table_column_name | column_name }
 column_name = { sql_name }
@@ -43,5 +44,7 @@ apostrophe_string_char  = {
     | "\\" ~ ("'" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
+
+comparison_symbol = { "=" | "!="  | ">" | ">=" | "<" | "<=" }
 
 WHITESPACE = _{ " " | "\t" }

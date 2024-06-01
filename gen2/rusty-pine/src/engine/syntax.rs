@@ -32,7 +32,8 @@ mod stage4;
 pub use stage1::Rule;
 pub use stage3::Stage3ExplicitJoin;
 pub use stage4::{
-    Stage4ColumnInput, Stage4ComputationInput, Stage4FunctionCall, Stage4LiteralValue, Stage4Rep,
+    Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4FunctionCall,
+    Stage4LiteralValue, Stage4Rep, Stage4Selectable,
 };
 
 use crate::engine::syntax::stage1::parse_stage1;

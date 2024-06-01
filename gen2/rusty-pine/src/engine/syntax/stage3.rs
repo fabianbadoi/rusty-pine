@@ -7,7 +7,9 @@
 //! does not have to look-backs.
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::iterator::Stage3Iterator;
-use crate::engine::syntax::stage4::{Stage4ComputationInput, Stage4ExplicitJoin};
+use crate::engine::syntax::stage4::{
+    Stage4ComputationInput, Stage4Condition, Stage4ExplicitJoin, Stage4Selectable,
+};
 use crate::engine::syntax::{Stage4ColumnInput, TableInput};
 use crate::engine::Sourced;
 
@@ -23,11 +25,13 @@ pub struct Stage3Rep<'a> {
 #[derive(Debug, Clone)]
 pub enum Stage3Pine<'a> {
     From { table: Sourced<TableInput<'a>> },
-    Select(Vec<Sourced<Stage3ComputationInput<'a>>>),
+    Select(Vec<Sourced<Stage3Selectable<'a>>>),
     ExplicitJoin(Sourced<Stage3ExplicitJoin<'a>>),
 }
 
 // shh! keep these secret
+pub type Stage3Selectable<'a> = Stage4Selectable<'a>;
+pub type Stage3Condition<'a> = Stage4Condition<'a>;
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>;
 pub type Stage3ComputationInput<'a> = Stage4ComputationInput<'a>;
 pub type Stage3ExplicitJoin<'a> = Stage4ExplicitJoin<'a>;

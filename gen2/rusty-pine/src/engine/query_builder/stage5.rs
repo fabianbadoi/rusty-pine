@@ -1,11 +1,11 @@
 use crate::analyze::Server;
 use crate::engine::query_builder::{
-    Computation, DatabaseName, ExplicitJoin, FunctionCall, LiteralValue, Query, SelectedColumn,
-    Table,
+    Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, LiteralValue, Query,
+    Selectable, SelectedColumn, Table,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4FunctionCall, Stage4LiteralValue, Stage4Rep, TableInput,
+    OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition,
+    Stage4FunctionCall, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
 };
 use crate::engine::{LiteralValueHolder, QueryBuildError, Sourced};
 
@@ -43,32 +43,12 @@ impl<'a> Stage5Builder<'a> {
         })
     }
 
-    fn process_selects(&mut self) -> Vec<Sourced<Computation>> {
-        let simplify_columns_and_tables: bool = self.is_single_table_query();
-
+    fn process_selects(&mut self) -> Vec<Sourced<Selectable>> {
         self.input
             .selected_columns
             .iter()
             .map(Clone::clone)
-            .map(|computation| {
-                computation.map(|computation| {
-                    if simplify_columns_and_tables {
-                        Computation::without_table_name(computation)
-                    } else {
-                        match computation {
-                            Stage4ComputationInput::Column(column) => {
-                                Computation::SelectedColumn(column.into())
-                            }
-                            Stage4ComputationInput::FunctionCall(fn_call) => {
-                                Computation::FunctionCall(fn_call.into())
-                            }
-                            Stage4ComputationInput::Value(value) => {
-                                Computation::Value(value.into())
-                            }
-                        }
-                    }
-                })
-            })
+            .map(|computation| computation.map(|selectable| self.process_selectable(selectable)))
             .collect()
     }
 
@@ -88,6 +68,48 @@ impl<'a> Stage5Builder<'a> {
                 // }
             })
             .collect()
+    }
+
+    fn process_selectable(&self, selectable: Stage4Selectable) -> Selectable {
+        match selectable {
+            Stage4Selectable::Condition(condition) => {
+                Selectable::Condition(condition.map(|condition| self.process_condition(condition)))
+            }
+            Stage4Selectable::Computation(computation) => Selectable::Computation(
+                computation.map(|computation| self.process_computation(computation)),
+            ),
+        }
+    }
+
+    fn process_computation(&self, computation: Stage4ComputationInput) -> Computation {
+        let simplify_columns_and_tables: bool = self.is_single_table_query();
+
+        if simplify_columns_and_tables {
+            Computation::without_table_name(computation)
+        } else {
+            match computation {
+                Stage4ComputationInput::Column(column) => {
+                    Computation::SelectedColumn(column.into())
+                }
+                Stage4ComputationInput::FunctionCall(fn_call) => {
+                    Computation::FunctionCall(fn_call.into())
+                }
+                Stage4ComputationInput::Value(value) => Computation::Value(value.into()),
+            }
+        }
+    }
+    fn process_condition(&self, computation: Stage4Condition) -> Condition {
+        let left = computation.left.map(|left| self.process_computation(left));
+        let comparison = computation.comparison;
+        let right = computation
+            .right
+            .map(|right| self.process_computation(right));
+
+        Condition {
+            left,
+            comparison,
+            right,
+        }
     }
 
     fn is_single_table_query(&self) -> bool {

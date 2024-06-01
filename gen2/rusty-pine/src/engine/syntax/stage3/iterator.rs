@@ -1,8 +1,11 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
-use crate::engine::syntax::stage2::{PestIterator, Stage2ExplicitJoin, Stage2Pine};
+use crate::engine::syntax::stage2::{
+    PestIterator, Stage2ExplicitJoin, Stage2Pine, Stage2Selectable,
+};
 use crate::engine::syntax::stage3::{
-    Stage3ColumnInput, Stage3ComputationInput, Stage3ExplicitJoin, Stage3Pine,
+    Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3ExplicitJoin, Stage3Pine,
+    Stage3Selectable,
 };
 use crate::engine::syntax::stage4::Stage4FunctionCall;
 use crate::engine::syntax::{
@@ -115,11 +118,11 @@ impl<'a> Stage3Iterator<'a> {
     fn translate_select(
         &mut self,
         source: Source,
-        columns: Vec<Sourced<Computation<'a>>>,
+        columns: Vec<Sourced<Stage2Selectable<'a>>>,
     ) -> Stage3Buffer<'a> {
         let columns = columns
             .iter()
-            .map(|column| translate_computation(column, &self.context.previous_table))
+            .map(|column| translate_selectable(column, &self.context.previous_table))
             .collect();
 
         VecDeque::from([Sourced::from_source(source, Stage3Pine::Select(columns))])
@@ -158,6 +161,25 @@ impl<'a> Stage3Iterator<'a> {
 
         VecDeque::from([stage3_join])
     }
+}
+
+fn translate_selectable<'a>(
+    selectable: &Sourced<Stage2Selectable<'a>>,
+    implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3Selectable<'a>> {
+    selectable.map_ref(|selectable| match selectable {
+        // TODO ugly?
+        Stage2Selectable::Condition(condition) => {
+            Stage3Selectable::Condition(condition.map_ref(|condition| Stage3Condition {
+                left: translate_computation(&condition.left, implicit_table),
+                comparison: condition.comparison,
+                right: translate_computation(&condition.right, implicit_table),
+            }))
+        }
+        Stage2Selectable::Computation(computation) => {
+            Stage3Selectable::Computation(translate_computation(computation, implicit_table))
+        }
+    })
 }
 
 fn translate_computation<'a>(

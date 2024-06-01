@@ -18,7 +18,9 @@ use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
-use crate::engine::{ExplicitJoinHolder, JoinType, Position, Sourced};
+use crate::engine::{
+    Comparison, ConditionHolder, ExplicitJoinHolder, JoinType, Position, SelectableHolder, Sourced,
+};
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
 
@@ -62,10 +64,13 @@ pub enum Stage2Pine<'a> {
     /// table we'll be working with.
     Base { table: Sourced<TableInput<'a>> },
     /// Selects one or more computations from the previous table.
-    Select(Vec<Sourced<Computation<'a>>>),
+    Select(Vec<Sourced<Stage2Selectable<'a>>>),
     /// Specify exactly how to join another table.
     ExplicitJoin(Sourced<Stage2ExplicitJoin<'a>>),
 }
+
+pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
+pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
 
 pub type Stage2ExplicitJoin<'a> = ExplicitJoinHolder<TableInput<'a>, Computation<'a>>;
 
@@ -183,7 +188,7 @@ fn translate_select(select: Pair<Rule>) -> Stage2Pine {
     let mut columns = Vec::new();
 
     for column_pair in select.into_inner() {
-        let column = translate_computation(column_pair);
+        let column = translate_selectable(column_pair);
         columns.push(column);
     }
 
@@ -224,6 +229,29 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
     ))
 }
 
+fn translate_selectable(selectable: Pair<Rule>) -> Sourced<Stage2Selectable> {
+    assert_eq!(Rule::selectable, selectable.as_rule());
+
+    let span = selectable.as_span();
+
+    let mut inners = selectable.into_inner();
+    let inner = inners.next().expect("Has to be valid syntax");
+    assert!(inners.next().is_none());
+
+    use SelectableHolder::{Computation, Condition};
+    Sourced::from_input(
+        span,
+        match inner.as_rule() {
+            Rule::computation => Computation(translate_computation(inner)),
+            Rule::condition => Condition(translate_condition(inner)),
+            unexpected_rule => panic!(
+                "Unexpected rule while processing selectable: Rule::{:?}",
+                unexpected_rule
+            ),
+        },
+    )
+}
+
 fn translate_computation(computation: Pair<Rule>) -> Sourced<Computation> {
     assert_eq!(Rule::computation, computation.as_rule());
 
@@ -238,6 +266,39 @@ fn translate_computation(computation: Pair<Rule>) -> Sourced<Computation> {
             Rule::function_call => Computation::FunctionCall(translate_fn_call(inner)),
             Rule::literal_value => Computation::Value(translate_value(inner)),
             unsupported_rule => panic!("Unexpected rule: Rule::{:?}", unsupported_rule),
+        },
+    )
+}
+
+fn translate_condition(condition: Pair<Rule>) -> Sourced<Stage2Condition> {
+    assert_eq!(Rule::condition, condition.as_rule());
+
+    let span = condition.as_span();
+
+    let mut inners = condition.into_inner();
+    let left = inners
+        .next()
+        .expect("Valid condition must have left operand");
+    let left = translate_computation(left);
+
+    let comparison = inners
+        .next()
+        .expect("Valid condition must have comparison operator");
+    let comparison = translate_comparison(comparison);
+
+    let right = inners
+        .next()
+        .expect("Valid condition must have right operand");
+    let right = translate_computation(right);
+
+    assert!(inners.next().is_none());
+
+    Sourced::from_input(
+        span,
+        Stage2Condition {
+            left,
+            comparison,
+            right,
         },
     )
 }
@@ -262,12 +323,31 @@ fn translate_value(pair: Pair<Rule>) -> Sourced<Stage2LiteralValue> {
         .expect("Rule::value has inner number or string");
 
     let value = match inner.as_rule() {
-        Rule::numeric_value => Stage2LiteralValue::Number(inner.as_str()),
+        Rule::numeric_value => Stage2LiteralValue::Number(inner.as_str().trim()),
         Rule::string_value => Stage2LiteralValue::String(inner.as_str()),
         unexpected_rule => panic!("Unexpected rule for value: Rule::{:?}", unexpected_rule),
     };
 
     Sourced::from_input(span, value)
+}
+
+fn translate_comparison(pair: Pair<Rule>) -> Sourced<Comparison> {
+    assert_eq!(Rule::comparison_symbol, pair.as_rule());
+
+    Sourced::from_input(
+        pair.as_span(),
+        match pair.as_str() {
+            "=" => Comparison::Equals,
+            "!=" => Comparison::NotEquals,
+            ">" => Comparison::GreaterThan,
+            ">=" => Comparison::GreaterOrEqual,
+            "<" => Comparison::LesserThan,
+            "<=" => Comparison::LesserOrEqual,
+            other_comparison_symbol => {
+                panic!("Unknown comparison symbol '{other_comparison_symbol}")
+            }
+        },
+    )
 }
 
 #[cfg(test)]

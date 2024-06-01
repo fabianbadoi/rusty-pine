@@ -3,18 +3,23 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::engine::syntax::stage3::{Stage3ComputationInput, Stage3Pine, Stage3Rep};
+use crate::engine::syntax::stage3::{
+    Stage3ComputationInput, Stage3Pine, Stage3Rep, Stage3Selectable,
+};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
-use crate::engine::{JoinType, Limit};
+use crate::engine::{ConditionHolder, JoinType, Limit, SelectableHolder};
 use crate::engine::{LiteralValueHolder, Sourced};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: Sourced<TableInput<'a>>,
     pub joins: Vec<Sourced<Stage4ExplicitJoin<'a>>>,
-    pub selected_columns: Vec<Sourced<Stage4ComputationInput<'a>>>,
+    pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
     pub limit: Sourced<Limit>,
 }
+
+pub type Stage4Selectable<'a> = SelectableHolder<Stage4Condition<'a>, Stage4ComputationInput<'a>>;
+pub type Stage4Condition<'a> = ConditionHolder<Stage4ComputationInput<'a>>;
 
 #[derive(Debug, Clone)]
 pub struct Stage4ExplicitJoin<'a> {
@@ -81,8 +86,8 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     );
                     from = Some(table);
                 }
-                Stage3Pine::Select(columns) => {
-                    select.append(&mut translate_columns(columns));
+                Stage3Pine::Select(selectables) => {
+                    select.append(&mut translate_selectables(selectables));
                 }
                 Stage3Pine::ExplicitJoin(join) => {
                     joins.push(join);
@@ -100,10 +105,10 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     }
 }
 
-fn translate_columns(
-    columns: Vec<Sourced<Stage3ComputationInput>>,
-) -> Vec<Sourced<Stage4ComputationInput>> {
-    columns.into_iter().collect()
+fn translate_selectables(
+    selectables: Vec<Sourced<Stage3Selectable>>,
+) -> Vec<Sourced<Stage4Selectable>> {
+    selectables
 }
 
 #[cfg(test)]
@@ -114,7 +119,8 @@ mod test {
     use crate::engine::syntax::stage4::Stage4Rep;
     use crate::engine::syntax::OptionalInput::{Implicit, Specified};
     use crate::engine::syntax::{
-        parse_to_stage4, OptionalInput, SqlIdentifierInput, Stage4ComputationInput, TableInput,
+        parse_to_stage4, OptionalInput, SqlIdentifierInput, Stage4ComputationInput,
+        Stage4Selectable, TableInput,
     };
 
     use crate::engine::{Position, Source, Sourced};
@@ -197,7 +203,8 @@ mod test {
             assert_eq!(1, output.selected_columns.len());
             assert!(matches!(
                 &output.selected_columns[0],
-                Sourced{ it: Stage4ComputationInput::Column(column), ..}
+                Sourced{ it: Stage4Selectable::Computation(Sourced { it:
+                    Stage4ComputationInput::Column(column), ..},), ..}
                     if column.it.column.it == expected_column && column.it.table.it == expected_table
             ));
         }

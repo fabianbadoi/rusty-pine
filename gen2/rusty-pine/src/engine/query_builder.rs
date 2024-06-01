@@ -3,7 +3,9 @@ use thiserror::Error;
 
 use crate::analyze::Server;
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
-use crate::engine::{ExplicitJoinHolder, Limit, LiteralValueHolder, Sourced};
+use crate::engine::{
+    ConditionHolder, ExplicitJoinHolder, Limit, LiteralValueHolder, SelectableHolder, Sourced,
+};
 
 mod stage5;
 
@@ -21,9 +23,12 @@ pub struct Query {
     pub input: String,
     pub from: Sourced<Table>,
     pub joins: Vec<Sourced<ExplicitJoin>>,
-    pub select: Vec<Sourced<Computation>>,
+    pub select: Vec<Sourced<Selectable>>,
     pub limit: Sourced<Limit>,
 }
+
+pub type Selectable = SelectableHolder<Condition, Computation>;
+pub type Condition = ConditionHolder<Computation>;
 
 #[derive(Debug, Clone)]
 pub struct Table {

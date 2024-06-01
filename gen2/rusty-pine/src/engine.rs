@@ -111,6 +111,16 @@ impl From<&Position> for Source {
 }
 
 #[derive(Debug, Clone)]
+pub enum SelectableHolder<Cond, Comp>
+where
+    Cond: Clone,
+    Comp: Clone,
+{
+    Condition(Sourced<Cond>),
+    Computation(Sourced<Comp>),
+}
+
+#[derive(Debug, Clone)]
 pub struct ExplicitJoinHolder<T, C>
 where
     T: Clone,
@@ -127,6 +137,26 @@ where
     ///
     /// All column names will default to referring to the target table.
     pub target_arg: Sourced<C>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConditionHolder<T>
+where
+    T: Clone + Debug,
+{
+    pub left: Sourced<T>,
+    pub comparison: Sourced<Comparison>,
+    pub right: Sourced<T>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Comparison {
+    Equals,
+    NotEquals,
+    GreaterThan,
+    GreaterOrEqual,
+    LesserThan,
+    LesserOrEqual,
 }
 
 #[derive(Debug, Clone)]

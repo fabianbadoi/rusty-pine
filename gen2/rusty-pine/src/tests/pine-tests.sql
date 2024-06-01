@@ -27,3 +27,9 @@ LIMIT 10;
 SELECT "one million", 1000000
 FROM humans
 LIMIT 10;
+
+-- Conditions
+-- Test: humans | s: 1 != FUNCTION(id) "2000" = 2_000
+SELECT 1 != FUNCTION(id), "2000" = 2000
+FROM humans
+LIMIT 10;

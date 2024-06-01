@@ -1,10 +1,10 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, SelectedColumn,
-    Table, TableName,
+    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, Selectable,
+    SelectedColumn, Table, TableName,
 };
-use crate::engine::{JoinType, LiteralValueHolder};
+use crate::engine::{Comparison, ConditionHolder, JoinType, LiteralValueHolder};
 use crate::engine::{Limit, Sourced};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
     format!("{};", query)
@@ -25,7 +25,7 @@ impl Display for Query {
     }
 }
 
-struct RenderableSelect<'a>(&'a [Sourced<Computation>]);
+struct RenderableSelect<'a>(&'a [Sourced<Selectable>]);
 
 impl Display for RenderableSelect<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -58,6 +58,15 @@ impl Display for ExplicitJoin {
             f,
             "{join_type} {target_table} ON {target_arg} = {source_arg}"
         )
+    }
+}
+
+impl Display for Selectable {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Selectable::Condition(condition) => write!(f, "{}", condition),
+            Selectable::Computation(computation) => write!(f, "{}", computation),
+        }
     }
 }
 
@@ -105,6 +114,21 @@ impl Display for FunctionCall {
     }
 }
 
+impl<T> Display for ConditionHolder<T>
+where
+    T: Display + Debug + Clone,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            left,
+            comparison,
+            right,
+        } = self;
+
+        write!(f, "{left} {comparison} {right}")
+    }
+}
+
 impl<T> Display for LiteralValueHolder<T>
 where
     T: AsRef<str>,
@@ -115,6 +139,21 @@ where
             LiteralValueHolder::Number(number) => write!(f, "{}", number.as_ref().replace('_', "")),
             LiteralValueHolder::String(string) => write!(f, "{}", string.as_ref()),
         }
+    }
+}
+
+impl Display for Comparison {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let symbol = match self {
+            Comparison::Equals => "=",
+            Comparison::NotEquals => "!=",
+            Comparison::GreaterThan => ">",
+            Comparison::GreaterOrEqual => ">=",
+            Comparison::LesserThan => "<",
+            Comparison::LesserOrEqual => "<=",
+        };
+
+        write!(f, "{symbol}")
     }
 }
 
