@@ -280,10 +280,10 @@ impl<'a> Display for TestOutcomeDiff<'a> {
         let right_lines = self.found.lines();
         let diff = GreedyZip::new(left_lines, right_lines);
 
-        let header = format!("{:^40} | {:^40}", "Expected", "Found")
+        let header = format!("{:^60} | {:^60}", "Expected", "Found")
             .blue()
             .bold();
-        let border = "-".repeat(40 + 40 + 3).blue().bold();
+        let border = "-".repeat(60 + 60 + 3).blue().bold();
 
         writeln!(f, "{header}")?;
         writeln!(f, "{border}")?;
@@ -303,10 +303,10 @@ impl<'a> Display for TestOutcomeDiff<'a> {
                 RightOnly(right) => ("", '>', right, Color::Red),
             };
 
-            let left = &left[..(40.min(left.len()))];
-            let right = &right[..(40.min(right.len()))];
+            let left = &left[..(60.min(left.len()))];
+            let right = &right[..(60.min(right.len()))];
 
-            let line = format!("{:<40} {} {:<40}", left, mid, right).color(color);
+            let line = format!("{:<60} {} {:<60}", left, mid, right).color(color);
 
             writeln!(f, "{line}")?;
         }
