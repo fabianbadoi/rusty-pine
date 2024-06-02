@@ -45,6 +45,86 @@ pub struct Sourced<T: Sized + Clone> {
     pub source: Source,
 }
 
+#[derive(Debug, Clone)]
+pub enum SelectableHolder<Cond, Comp>
+where
+    Cond: Clone,
+    Comp: Clone,
+{
+    Condition(Sourced<Cond>),
+    Computation(Sourced<Comp>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ExplicitJoinHolder<T, C>
+where
+    T: Clone,
+    C: Clone,
+{
+    pub join_type: Sourced<JoinType>,
+    /// The table to join to.
+    pub target_table: Sourced<T>,
+    pub conditions: JoinConditions<C>,
+}
+
+#[derive(Debug, Clone)]
+pub enum JoinConditions<T>
+where
+    T: Clone,
+{
+    Auto,
+    Explicit(Vec<Sourced<T>>),
+}
+
+#[derive(Debug, Clone)]
+pub struct ConditionHolder<T>
+where
+    T: Clone + Debug,
+{
+    pub left: Sourced<T>,
+    pub comparison: Sourced<Comparison>,
+    pub right: Sourced<T>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Comparison {
+    Equals,
+    NotEquals,
+    GreaterThan,
+    GreaterOrEqual,
+    LesserThan,
+    LesserOrEqual,
+}
+
+#[derive(Debug, Clone)]
+pub enum Limit {
+    Implicit(),
+    RowCount(usize),
+    Range(Range<usize>),
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum JoinType {
+    Left,
+    // TODO
+    // Right,
+    // Inner,
+}
+
+/// A literal value like 1 or "kitten".
+#[derive(Debug, Clone)]
+pub enum LiteralValueHolder<T> {
+    Number(T),
+    String(T),
+}
+
+#[derive(PartialEq, Eq, Debug, Clone, Copy)]
+pub struct Position {
+    // pub input: &'a str,
+    pub start: usize,
+    pub end: usize,
+}
+
 impl<T: Sized + Clone> Sourced<T> {
     /// Something from the source input the user provided.
     pub fn from_input<P>(position: P, it: T) -> Self
@@ -108,77 +188,6 @@ impl From<&Position> for Source {
     fn from(value: &Position) -> Self {
         Source::Input(*value)
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum SelectableHolder<Cond, Comp>
-where
-    Cond: Clone,
-    Comp: Clone,
-{
-    Condition(Sourced<Cond>),
-    Computation(Sourced<Comp>),
-}
-
-#[derive(Debug, Clone)]
-pub struct ExplicitJoinHolder<T, C>
-where
-    T: Clone,
-    C: Clone,
-{
-    pub join_type: Sourced<JoinType>,
-    /// The table to join to.
-    pub target_table: Sourced<T>,
-    pub conditions: Vec<Sourced<C>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ConditionHolder<T>
-where
-    T: Clone + Debug,
-{
-    pub left: Sourced<T>,
-    pub comparison: Sourced<Comparison>,
-    pub right: Sourced<T>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Comparison {
-    Equals,
-    NotEquals,
-    GreaterThan,
-    GreaterOrEqual,
-    LesserThan,
-    LesserOrEqual,
-}
-
-#[derive(Debug, Clone)]
-pub enum Limit {
-    Implicit(),
-    RowCount(usize),
-    Range(Range<usize>),
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum JoinType {
-    Left,
-    // TODO
-    // Right,
-    // Inner,
-}
-
-/// A literal value like 1 or "kitten".
-#[derive(Debug, Clone)]
-pub enum LiteralValueHolder<T> {
-    Number(T),
-    String(T),
-}
-
-#[derive(PartialEq, Eq, Debug, Clone, Copy)]
-pub struct Position {
-    // pub input: &'a str,
-    pub start: usize,
-    pub end: usize,
 }
 
 impl From<Range<usize>> for Position {

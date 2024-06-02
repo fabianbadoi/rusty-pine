@@ -19,7 +19,8 @@ use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
-    Comparison, ConditionHolder, ExplicitJoinHolder, JoinType, Position, SelectableHolder, Sourced,
+    Comparison, ConditionHolder, ExplicitJoinHolder, JoinConditions, JoinType, Position,
+    SelectableHolder, Sourced,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -213,6 +214,8 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
         !conditions.is_empty(),
         "Pest grammar prevents explicit joins without conditions"
     );
+
+    let conditions = JoinConditions::Explicit(conditions);
 
     Stage2Pine::ExplicitJoin(Sourced::from_input(
         span,

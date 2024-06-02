@@ -4,10 +4,10 @@ use crate::engine::query_builder::{
     Selectable, SelectedColumn, Table,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4ExplicitJoin,
-    Stage4FunctionCall, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
+    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4FunctionCall,
+    Stage4Join, Stage4JoinConditions, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
 };
-use crate::engine::{LiteralValueHolder, QueryBuildError, Sourced};
+use crate::engine::{JoinConditions, LiteralValueHolder, QueryBuildError, Sourced};
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
@@ -69,13 +69,19 @@ impl<'a> Stage5Builder<'a> {
         joins
     }
 
-    fn process_join(&self, join: &Stage4ExplicitJoin) -> ExplicitJoin {
-        let conditions = join
-            .conditions
+    fn process_join(&self, join: &Stage4Join) -> ExplicitJoin {
+        let conditions = match &join.conditions {
+            Stage4JoinConditions::Auto => {
+                todo!("will do when supporting autojoins")
+            }
+            Stage4JoinConditions::Explicit(conditions) => conditions,
+        };
+        let conditions = conditions
             .clone()
             .into_iter()
             .map(|c| c.map(|c| self.process_condition(c)))
             .collect();
+        let conditions = JoinConditions::Explicit(conditions);
 
         ExplicitJoin {
             join_type: join.join_type,

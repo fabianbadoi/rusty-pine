@@ -7,10 +7,8 @@
 //! does not have to look-backs.
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::iterator::Stage3Iterator;
-use crate::engine::syntax::stage4::{
-    Stage4ComputationInput, Stage4Condition, Stage4ExplicitJoin, Stage4Selectable,
-};
-use crate::engine::syntax::{Stage4ColumnInput, TableInput};
+use crate::engine::syntax::stage4::{Stage4ComputationInput, Stage4Condition, Stage4Selectable};
+use crate::engine::syntax::{Stage4ColumnInput, Stage4Join, TableInput};
 use crate::engine::Sourced;
 
 /// The module covers iterating over our stage2 pines and converting them into stage3 pines
@@ -34,7 +32,7 @@ pub type Stage3Selectable<'a> = Stage4Selectable<'a>;
 pub type Stage3Condition<'a> = Stage4Condition<'a>;
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>;
 pub type Stage3ComputationInput<'a> = Stage4ComputationInput<'a>;
-pub type Stage3ExplicitJoin<'a> = Stage4ExplicitJoin<'a>;
+pub type Stage3ExplicitJoin<'a> = Stage4Join<'a>;
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
     fn from(stage2: Stage2Rep<'a>) -> Self {

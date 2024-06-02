@@ -11,7 +11,7 @@ use crate::engine::syntax::stage4::Stage4FunctionCall;
 use crate::engine::syntax::{
     ColumnInput, Computation, FunctionCall, Stage2LiteralValue, TableInput,
 };
-use crate::engine::{Source, Sourced};
+use crate::engine::{JoinConditions, Source, Sourced};
 use std::collections::VecDeque;
 
 pub struct Stage3Iterator<'a> {
@@ -136,14 +136,20 @@ impl<'a> Stage3Iterator<'a> {
         let left_implicit_table = &self.context.previous_table;
         let right_implicit_table = &join.it.target_table;
 
-        let conditions = join
-            .it
-            .conditions
+        let conditions = match join.it.conditions {
+            JoinConditions::Auto => {
+                todo!("needs auto join")
+            }
+            JoinConditions::Explicit(conditions) => conditions,
+        };
+
+        let conditions = conditions
             .iter()
             .map(|condition| {
                 translate_condition(condition, left_implicit_table, right_implicit_table)
             })
             .collect();
+        let conditions = JoinConditions::Explicit(conditions);
 
         let Stage2ExplicitJoin {
             join_type,

@@ -5,13 +5,13 @@
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep, Stage3Selectable};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
-use crate::engine::{ConditionHolder, JoinType, Limit, SelectableHolder};
+use crate::engine::{ConditionHolder, JoinConditions, JoinType, Limit, SelectableHolder};
 use crate::engine::{LiteralValueHolder, Sourced};
 
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: Sourced<TableInput<'a>>,
-    pub joins: Vec<Sourced<Stage4ExplicitJoin<'a>>>,
+    pub joins: Vec<Sourced<Stage4Join<'a>>>,
     pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
     pub limit: Sourced<Limit>,
 }
@@ -19,14 +19,16 @@ pub struct Stage4Rep<'a> {
 pub type Stage4Selectable<'a> = SelectableHolder<Stage4Condition<'a>, Stage4ComputationInput<'a>>;
 pub type Stage4Condition<'a> = ConditionHolder<Stage4ComputationInput<'a>>;
 
-#[derive(Debug, Clone)]
-pub struct Stage4ExplicitJoin<'a> {
+#[derive(Clone, Debug)]
+pub struct Stage4Join<'a> {
     pub join_type: Sourced<JoinType>,
     pub source_table: Sourced<TableInput<'a>>,
     /// The table to join to.
     pub target_table: Sourced<TableInput<'a>>,
-    pub conditions: Vec<Sourced<Stage4Condition<'a>>>,
+    pub conditions: Stage4JoinConditions<'a>,
 }
+
+pub type Stage4JoinConditions<'a> = JoinConditions<Stage4Condition<'a>>;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Stage4ColumnInput<'a> {
@@ -48,16 +50,6 @@ pub struct Stage4FunctionCall<'a> {
 }
 
 pub type Stage4LiteralValue<'a> = LiteralValueHolder<&'a str>;
-
-impl<'a> Stage4ExplicitJoin<'a> {
-    pub fn switch(self) -> Self {
-        Stage4ExplicitJoin {
-            source_table: self.target_table,
-            target_table: self.source_table,
-            ..self
-        }
-    }
-}
 
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
