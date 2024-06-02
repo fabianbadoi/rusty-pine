@@ -92,6 +92,12 @@ impl<T: Into<String>> From<T> for ColumnName {
     }
 }
 
+impl AsRef<str> for ColumnName {
+    fn as_ref(&self) -> &str {
+        self.0.as_str()
+    }
+}
+
 impl<T: Into<String>> From<T> for TableName {
     fn from(name: T) -> TableName {
         TableName(name.into())

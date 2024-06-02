@@ -24,7 +24,7 @@ pub struct Stage3Rep<'a> {
 pub enum Stage3Pine<'a> {
     From { table: Sourced<TableInput<'a>> },
     Select(Vec<Sourced<Stage3Selectable<'a>>>),
-    ExplicitJoin(Sourced<Stage3ExplicitJoin<'a>>),
+    Join(Sourced<Stage3Join<'a>>),
 }
 
 // shh! keep these secret
@@ -32,7 +32,7 @@ pub type Stage3Selectable<'a> = Stage4Selectable<'a>;
 pub type Stage3Condition<'a> = Stage4Condition<'a>;
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>;
 pub type Stage3ComputationInput<'a> = Stage4ComputationInput<'a>;
-pub type Stage3ExplicitJoin<'a> = Stage4Join<'a>;
+pub type Stage3Join<'a> = Stage4Join<'a>;
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
     fn from(stage2: Stage2Rep<'a>) -> Self {

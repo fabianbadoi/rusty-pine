@@ -33,7 +33,7 @@ pub fn read_mock_server(
             hostname: "".to_string(),
             port: 0,
             user: "".to_string(),
-            default_database: "".into(),
+            default_database: "default".into(),
         },
         databases,
     })

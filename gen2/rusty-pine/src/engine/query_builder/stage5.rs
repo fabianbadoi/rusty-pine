@@ -1,17 +1,18 @@
 use crate::analyze::Server;
+use crate::engine::query_builder::sql_introspection::Introspective;
 use crate::engine::query_builder::{
     Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, LiteralValue, Query,
     Selectable, SelectedColumn, Table,
 };
 use crate::engine::syntax::{
     OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4FunctionCall,
-    Stage4Join, Stage4JoinConditions, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
+    Stage4Join, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
 };
 use crate::engine::{JoinConditions, LiteralValueHolder, QueryBuildError, Sourced};
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
-    from: Sourced<Table>,
+    from: Sourced<TableInput<'a>>,
     server: &'a Server,
 }
 
@@ -21,7 +22,7 @@ pub struct Stage5Builder<'a> {
 // This will have to be renamed in the future
 impl<'a> Stage5Builder<'a> {
     pub fn new(input: Stage4Rep<'a>, server: &'a Server) -> Self {
-        let from = input.from.into();
+        let from = input.from;
 
         Stage5Builder {
             input,
@@ -32,11 +33,11 @@ impl<'a> Stage5Builder<'a> {
 
     pub fn try_build(mut self) -> Result<Query, QueryBuildError> {
         let select = self.process_selects();
-        let joins = self.process_joins();
+        let joins = self.process_joins()?;
 
         // This makes sure we select FROM the table from the last pine.
         let from = match self.input.joins.last() {
-            None => self.from,
+            None => self.from.into(),
             Some(last_join) => last_join.it.target_table.into(),
         };
 
@@ -58,32 +59,27 @@ impl<'a> Stage5Builder<'a> {
             .collect()
     }
 
-    fn process_joins(&mut self) -> Vec<Sourced<ExplicitJoin>> {
-        let joins = self
+    fn process_joins(&mut self) -> Result<Vec<Sourced<ExplicitJoin>>, QueryBuildError> {
+        let joins: Result<Vec<_>, QueryBuildError> = self
             .input
             .joins
             .iter()
             .map(|j| j.map_ref(|j| self.process_join(j)))
+            .map(Sourced::unwrap_result)
             .collect();
 
         joins
     }
 
-    fn process_join(&self, join: &Stage4Join) -> ExplicitJoin {
+    fn process_join(&self, join: &Stage4Join) -> Result<ExplicitJoin, QueryBuildError> {
         let conditions = match &join.conditions {
-            Stage4JoinConditions::Auto => {
-                todo!("will do when supporting autojoins")
-            }
-            Stage4JoinConditions::Explicit(conditions) => conditions,
+            JoinConditions::Auto => self
+                .server
+                .join_conditions(self.from.it, join.target_table.it)?,
+            JoinConditions::Explicit(conditions) => self.process_conditions(conditions),
         };
-        let conditions = conditions
-            .clone()
-            .into_iter()
-            .map(|c| c.map(|c| self.process_condition(c)))
-            .collect();
-        let conditions = JoinConditions::Explicit(conditions);
 
-        ExplicitJoin {
+        Ok(ExplicitJoin {
             join_type: join.join_type,
             // We join to the SOURCE table because we always swap the tables of join.
             // `people | preference` should result in:
@@ -94,7 +90,7 @@ impl<'a> Stage5Builder<'a> {
             // This is just a design decision I made.
             target_table: join.source_table.into(),
             conditions,
-        }
+        })
     }
 
     fn process_selectable(&self, selectable: Stage4Selectable) -> Selectable {
@@ -137,6 +133,17 @@ impl<'a> Stage5Builder<'a> {
             comparison,
             right,
         }
+    }
+
+    fn process_conditions(
+        &self,
+        conditions: &[Sourced<Stage4Condition>],
+    ) -> Vec<Sourced<Condition>> {
+        conditions
+            .iter()
+            .map(Clone::clone)
+            .map(|c| c.map(|c| self.process_condition(c)))
+            .collect()
     }
 
     fn is_single_table_query(&self) -> bool {

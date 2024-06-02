@@ -70,7 +70,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 Stage3Pine::Select(selectables) => {
                     select.append(&mut translate_selectables(selectables));
                 }
-                Stage3Pine::ExplicitJoin(join) => {
+                Stage3Pine::Join(join) => {
                     joins.push(join);
                 }
             }
@@ -247,8 +247,8 @@ mod test {
     impl PartialEq<Source> for Range<usize> {
         fn eq(&self, other: &Source) -> bool {
             match other {
-                Source::Implicit => false,
                 Source::Input(position) => self == position,
+                _ => false,
             }
         }
     }

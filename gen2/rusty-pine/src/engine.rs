@@ -27,7 +27,11 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Source {
+    /// Things like default values are implicit.
     Implicit,
+    /// These are things that we deduced by analyzing the database structure.
+    Introspection,
+    /// We found this in the input provided by the user.
     Input(Position),
 }
 
@@ -56,7 +60,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct ExplicitJoinHolder<T, C>
+pub struct JoinHolder<T, C>
 where
     T: Clone,
     C: Clone,
@@ -149,6 +153,13 @@ impl<T: Sized + Clone> Sourced<T> {
         Sourced { it, source }
     }
 
+    pub fn from_introspection(it: T) -> Sourced<T> {
+        Sourced {
+            it,
+            source: Source::Introspection,
+        }
+    }
+
     pub fn into<D>(self) -> Sourced<D>
     where
         D: Clone + Debug + From<T>,
@@ -182,6 +193,17 @@ impl<T: Sized + Clone> Sourced<T> {
     }
 }
 
+impl<T: Sized + Clone, E: Clone> Sourced<Result<T, E>> {
+    pub fn unwrap_result(self) -> Result<Sourced<T>, E> {
+        let Sourced { it, source } = self;
+
+        match it {
+            Ok(it) => Ok(Sourced::from_source(source, it)),
+            Err(error) => Err(error),
+        }
+    }
+}
+
 impl<T> Copy for Sourced<T> where T: Copy {}
 
 impl From<&Position> for Source {
@@ -205,8 +227,8 @@ impl<T> Copy for LiteralValueHolder<T> where T: Copy {}
 impl PartialEq<Source> for Position {
     fn eq(&self, other: &Source) -> bool {
         match other {
-            Source::Implicit => false,
             Source::Input(position) => position == self,
+            _ => false,
         }
     }
 }

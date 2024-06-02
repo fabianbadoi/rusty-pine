@@ -19,8 +19,8 @@ use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
-    Comparison, ConditionHolder, ExplicitJoinHolder, JoinConditions, JoinType, Position,
-    SelectableHolder, Sourced,
+    Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType, Position, SelectableHolder,
+    Sourced,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -67,13 +67,21 @@ pub enum Stage2Pine<'a> {
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
     /// Specify exactly how to join another table.
-    ExplicitJoin(Sourced<Stage2ExplicitJoin<'a>>),
+    ExplicitJoin(Sourced<Stage2Join<'a>>),
+    /// Join a table, we'll figure out how for you.
+    ExplicitAutoJoin(Sourced<Stage2ExplicitAutoJoin<'a>>),
 }
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
 pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
 
-pub type Stage2ExplicitJoin<'a> = ExplicitJoinHolder<TableInput<'a>, Stage2Condition<'a>>;
+pub type Stage2Join<'a> = JoinHolder<TableInput<'a>, Stage2Condition<'a>>;
+
+#[derive(Debug, Clone)]
+pub struct Stage2ExplicitAutoJoin<'a> {
+    pub join_type: Sourced<JoinType>,
+    pub target_table: Sourced<TableInput<'a>>,
+}
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
 ///
@@ -175,6 +183,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
     let pine = match pair.as_rule() {
         Rule::select_pine => translate_select(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
+        Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
         // Rule::join_pine => Some(todo!()),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
@@ -219,10 +228,31 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
 
     Stage2Pine::ExplicitJoin(Sourced::from_input(
         span,
-        Stage2ExplicitJoin {
+        Stage2Join {
             join_type: Sourced::implicit(JoinType::Left),
             target_table,
             conditions,
+        },
+    ))
+}
+
+fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::explicit_auto_join_pine, join.as_rule());
+
+    let span = join.as_span();
+    let mut inners = join.into_inner();
+
+    let target_table = identifiers::translate_table(
+        inners
+            .next()
+            .expect("explicit join target table should be present because of pest syntax"),
+    );
+
+    Stage2Pine::ExplicitAutoJoin(Sourced::from_input(
+        span,
+        Stage2ExplicitAutoJoin {
+            join_type: Sourced::implicit(JoinType::Left),
+            target_table,
         },
     ))
 }

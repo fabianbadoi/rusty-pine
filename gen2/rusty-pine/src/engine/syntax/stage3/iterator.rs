@@ -1,10 +1,10 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
-    PestIterator, Stage2Condition, Stage2ExplicitJoin, Stage2Pine, Stage2Selectable,
+    PestIterator, Stage2Condition, Stage2ExplicitAutoJoin, Stage2Join, Stage2Pine, Stage2Selectable,
 };
 use crate::engine::syntax::stage3::{
-    Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3ExplicitJoin, Stage3Pine,
+    Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join, Stage3Pine,
     Stage3Selectable,
 };
 use crate::engine::syntax::stage4::Stage4FunctionCall;
@@ -110,6 +110,9 @@ impl<'a> Stage3Iterator<'a> {
             Stage2Pine::ExplicitJoin(explicit_join) => {
                 self.process_explicit_join(position, explicit_join)
             }
+            Stage2Pine::ExplicitAutoJoin(auto_join) => {
+                self.process_explicit_auto_join(position, auto_join)
+            }
         };
 
         stage3_pines
@@ -131,7 +134,7 @@ impl<'a> Stage3Iterator<'a> {
     fn process_explicit_join(
         &mut self,
         source: Source,
-        join: Sourced<Stage2ExplicitJoin<'a>>,
+        join: Sourced<Stage2Join<'a>>,
     ) -> Stage3Buffer<'a> {
         let left_implicit_table = &self.context.previous_table;
         let right_implicit_table = &join.it.target_table;
@@ -151,7 +154,7 @@ impl<'a> Stage3Iterator<'a> {
             .collect();
         let conditions = JoinConditions::Explicit(conditions);
 
-        let Stage2ExplicitJoin {
+        let Stage2Join {
             join_type,
             target_table,
             ..
@@ -159,13 +162,42 @@ impl<'a> Stage3Iterator<'a> {
 
         let stage3_join = Sourced::from_source(
             source,
-            Stage3Pine::ExplicitJoin(Sourced::from_source(
+            Stage3Pine::Join(Sourced::from_source(
                 join.source,
-                Stage3ExplicitJoin {
+                Stage3Join {
                     join_type,
                     source_table: self.context.previous_table,
                     target_table,
                     conditions,
+                },
+            )),
+        );
+
+        // Future pines will implicitly reference this table
+        self.context.previous_table = target_table;
+
+        VecDeque::from([stage3_join])
+    }
+
+    fn process_explicit_auto_join(
+        &mut self,
+        source: Source,
+        join: Sourced<Stage2ExplicitAutoJoin<'a>>,
+    ) -> Stage3Buffer<'a> {
+        let Stage2ExplicitAutoJoin {
+            join_type,
+            target_table,
+        } = join.it;
+
+        let stage3_join = Sourced::from_source(
+            source,
+            Stage3Pine::Join(Sourced::from_source(
+                join.source,
+                Stage3Join {
+                    join_type,
+                    source_table: self.context.previous_table,
+                    target_table,
+                    conditions: JoinConditions::Auto,
                 },
             )),
         );

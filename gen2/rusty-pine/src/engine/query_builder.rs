@@ -1,12 +1,14 @@
+use crate::analyze;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
-use crate::analyze::Server;
+use crate::analyze::{KeyReference, Server, ServerParams};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
 use crate::engine::{
-    ConditionHolder, ExplicitJoinHolder, Limit, LiteralValueHolder, SelectableHolder, Sourced,
+    ConditionHolder, JoinType, Limit, LiteralValueHolder, SelectableHolder, Sourced,
 };
 
+mod sql_introspection;
 mod stage5;
 
 pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate::Error> {
@@ -15,8 +17,19 @@ pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate
     Ok(builder.try_build()?)
 }
 
-#[derive(Error, Debug)]
-pub struct QueryBuildError {}
+#[derive(Error, Debug, Clone)]
+pub enum QueryBuildError {
+    DefaultDatabaseNotFound(ServerParams, analyze::TableName),
+    DatabaseNotFound(ServerParams, analyze::TableName),
+    InvalidForeignKey {
+        from: KeyReference,
+        to: KeyReference,
+    },
+    JoinNotFound {
+        from: analyze::TableName,
+        to: analyze::TableName,
+    },
+}
 
 #[derive(Debug)]
 pub struct Query {
@@ -55,7 +68,13 @@ pub struct SelectedColumn {
     pub column: Sourced<ColumnName>,
 }
 
-pub type ExplicitJoin = ExplicitJoinHolder<Table, Condition>;
+#[derive(Debug, Clone)]
+pub struct ExplicitJoin {
+    pub join_type: Sourced<JoinType>,
+    /// The table to join to.
+    pub target_table: Sourced<Table>,
+    pub conditions: Vec<Sourced<Condition>>,
+}
 
 pub type LiteralValue = LiteralValueHolder<String>;
 
@@ -69,8 +88,29 @@ pub struct TableName(pub String);
 pub struct DatabaseName(pub String);
 
 impl Display for QueryBuildError {
-    fn fmt(&self, _f: &mut Formatter<'_>) -> std::fmt::Result {
-        todo!()
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QueryBuildError::DefaultDatabaseNotFound(server, table) => {
+                write!(
+                    f,
+                    "Default database '{}' for server {} not found",
+                    server, table
+                )
+            }
+            QueryBuildError::DatabaseNotFound(server, table) => {
+                write!(f, "Database '{}' for server {} not found", server, table)
+            }
+            QueryBuildError::InvalidForeignKey { from, to } => {
+                write!(
+                    f,
+                    "Invalid foreign key found between {} and {}",
+                    from.table, to.table
+                )
+            }
+            QueryBuildError::JoinNotFound { from, to } => {
+                write!(f, "Cannot find how to join tables from {} to {}", from, to)
+            }
+        }
     }
 }
 

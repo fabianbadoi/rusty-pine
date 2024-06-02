@@ -1,8 +1,8 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, Query,
-    Selectable, SelectedColumn, Table, TableName,
+    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, Selectable,
+    SelectedColumn, Table, TableName,
 };
-use crate::engine::{Comparison, ConditionHolder, JoinConditions, JoinType, LiteralValueHolder};
+use crate::engine::{Comparison, ConditionHolder, JoinType, LiteralValueHolder};
 use crate::engine::{Limit, Sourced};
 use std::fmt::{Debug, Display, Formatter};
 
@@ -55,12 +55,6 @@ impl Display for ExplicitJoin {
 
         write!(f, "{join_type} {target_table} ON ")?;
 
-        let conditions = match conditions {
-            JoinConditions::Auto => {
-                todo!("needs auto join")
-            }
-            JoinConditions::Explicit(conditions) => conditions,
-        };
         let mut condition_iterator = conditions.iter();
 
         if let Some(condition) = condition_iterator.next() {

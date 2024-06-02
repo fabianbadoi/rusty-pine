@@ -32,6 +32,18 @@ create table `friendshipLog` (
 )
     charset = utf8mb4;
 
+create table `friendshipProperties` (
+    `id`      int auto_increment,
+    `friendA` int           not null,
+    `friendB` int           not null,
+    `tag`     varchar(64)   not null,
+    `value`   varchar(1024) null,
+    primary key (`id`),
+    constraint friendshipProperties_fk
+        foreign key (`friendA`, `friendB`) references `friendMap` (`friendA`, `friendB`)
+)
+    charset = utf8mb4;
+
 create table `preferences` (
     `id`       int auto_increment,
     `personId` int          not null,
@@ -83,4 +95,11 @@ LIMIT 10;
 SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId AND people.name = "Silvanus"
+LIMIT 10;
+
+-- Auto-join
+-- Test: friendMap | j: friendshipProperties
+SELECT *
+FROM friendshipProperties
+LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 LIMIT 10;
