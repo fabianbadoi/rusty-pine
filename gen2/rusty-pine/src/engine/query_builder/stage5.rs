@@ -4,7 +4,7 @@ use crate::engine::query_builder::{
     Selectable, SelectedColumn, Table,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage3ExplicitJoin, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition,
+    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4ExplicitJoin,
     Stage4FunctionCall, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
 };
 use crate::engine::{LiteralValueHolder, QueryBuildError, Sourced};
@@ -34,9 +34,15 @@ impl<'a> Stage5Builder<'a> {
         let select = self.process_selects();
         let joins = self.process_joins();
 
+        // This makes sure we select FROM the table from the last pine.
+        let from = match self.input.joins.last() {
+            None => self.from,
+            Some(last_join) => last_join.it.target_table.into(),
+        };
+
         Ok(Query {
             input: self.input.input.to_owned(),
-            from: self.from,
+            from,
             joins,
             select,
             limit: self.input.limit.clone(),
@@ -53,21 +59,36 @@ impl<'a> Stage5Builder<'a> {
     }
 
     fn process_joins(&mut self) -> Vec<Sourced<ExplicitJoin>> {
-        self.input
+        let joins = self
+            .input
             .joins
             .iter()
-            .map(|j| {
-                // if let Stage4Join::Explicit(j) = j {
-                self.from = j.it.target_table.into();
+            .map(|j| j.map_ref(|j| self.process_join(j)))
+            .collect();
 
-                // We always set the "from" table to the last join, and switch the join direction
-                // so it still looks good.
-                j.clone().map(|j| j.switch()).into()
-                // } else {
-                //     todo!()
-                // }
-            })
-            .collect()
+        joins
+    }
+
+    fn process_join(&self, join: &Stage4ExplicitJoin) -> ExplicitJoin {
+        let conditions = join
+            .conditions
+            .clone()
+            .into_iter()
+            .map(|c| c.map(|c| self.process_condition(c)))
+            .collect();
+
+        ExplicitJoin {
+            join_type: join.join_type,
+            // We join to the SOURCE table because we always swap the tables of join.
+            // `people | preference` should result in:
+            // SELECT FROM preference JOIN people
+            // It should not result in:
+            // SELECT FROM people JOIN preferences
+            //
+            // This is just a design decision I made.
+            target_table: join.source_table.into(),
+            conditions,
+        }
     }
 
     fn process_selectable(&self, selectable: Stage4Selectable) -> Selectable {
@@ -146,17 +167,6 @@ impl From<Stage4ColumnInput<'_>> for SelectedColumn {
         SelectedColumn {
             table: Some(value.table.into()),
             column: value.column.into(),
-        }
-    }
-}
-
-impl From<Stage3ExplicitJoin<'_>> for ExplicitJoin {
-    fn from(value: Stage3ExplicitJoin<'_>) -> Self {
-        ExplicitJoin {
-            join_type: value.join_type,
-            target_table: value.target_table.into(),
-            source_arg: value.source_arg.into(),
-            target_arg: value.target_arg.into(),
         }
     }
 }

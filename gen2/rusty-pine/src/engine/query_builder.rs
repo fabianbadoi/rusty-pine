@@ -55,7 +55,7 @@ pub struct SelectedColumn {
     pub column: Sourced<ColumnName>,
 }
 
-pub type ExplicitJoin = ExplicitJoinHolder<Table, Computation>;
+pub type ExplicitJoin = ExplicitJoinHolder<Table, Condition>;
 
 pub type LiteralValue = LiteralValueHolder<String>;
 

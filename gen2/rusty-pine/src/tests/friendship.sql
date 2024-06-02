@@ -77,3 +77,10 @@ SELECT *
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
+
+-- Join on multiple conditions
+-- Test: people | j: preferences id=personId name="Silvanus"
+SELECT *
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId AND people.name = "Silvanus"
+LIMIT 10;

@@ -3,9 +3,7 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::engine::syntax::stage3::{
-    Stage3ComputationInput, Stage3Pine, Stage3Rep, Stage3Selectable,
-};
+use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep, Stage3Selectable};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
 use crate::engine::{ConditionHolder, JoinType, Limit, SelectableHolder};
 use crate::engine::{LiteralValueHolder, Sourced};
@@ -27,14 +25,7 @@ pub struct Stage4ExplicitJoin<'a> {
     pub source_table: Sourced<TableInput<'a>>,
     /// The table to join to.
     pub target_table: Sourced<TableInput<'a>>,
-    /// The "source" of the join's ON query.
-    ///
-    /// All column names will default to referring to the previous table.
-    pub source_arg: Sourced<Stage3ComputationInput<'a>>,
-    /// The "target" of the join's ON query.
-    ///
-    /// All column names will default to referring to the target table.
-    pub target_arg: Sourced<Stage3ComputationInput<'a>>,
+    pub conditions: Vec<Sourced<Stage4Condition<'a>>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -62,10 +53,8 @@ impl<'a> Stage4ExplicitJoin<'a> {
     pub fn switch(self) -> Self {
         Stage4ExplicitJoin {
             source_table: self.target_table,
-            source_arg: self.target_arg,
             target_table: self.source_table,
-            target_arg: self.source_arg,
-            join_type: self.join_type,
+            ..self
         }
     }
 }

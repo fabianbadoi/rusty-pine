@@ -50,14 +50,22 @@ impl Display for ExplicitJoin {
         let Self {
             join_type,
             target_table,
-            source_arg,
-            target_arg,
+            conditions,
         } = self;
 
-        write!(
-            f,
-            "{join_type} {target_table} ON {target_arg} = {source_arg}"
-        )
+        write!(f, "{join_type} {target_table} ON ")?;
+
+        let mut condition_iterator = conditions.iter();
+
+        if let Some(condition) = condition_iterator.next() {
+            write!(f, "{condition}")?;
+        }
+
+        for condition in condition_iterator {
+            write!(f, " AND {condition}")?;
+        }
+
+        Ok(())
     }
 }
 

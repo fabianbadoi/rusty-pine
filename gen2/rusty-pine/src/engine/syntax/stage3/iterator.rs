@@ -1,7 +1,7 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
-    PestIterator, Stage2ExplicitJoin, Stage2Pine, Stage2Selectable,
+    PestIterator, Stage2Condition, Stage2ExplicitJoin, Stage2Pine, Stage2Selectable,
 };
 use crate::engine::syntax::stage3::{
     Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3ExplicitJoin, Stage3Pine,
@@ -133,8 +133,17 @@ impl<'a> Stage3Iterator<'a> {
         source: Source,
         join: Sourced<Stage2ExplicitJoin<'a>>,
     ) -> Stage3Buffer<'a> {
-        let source_arg = translate_computation(&join.it.source_arg, &self.context.previous_table);
-        let target_arg = translate_computation(&join.it.target_arg, &join.it.target_table);
+        let left_implicit_table = &self.context.previous_table;
+        let right_implicit_table = &join.it.target_table;
+
+        let conditions = join
+            .it
+            .conditions
+            .iter()
+            .map(|condition| {
+                translate_condition(condition, left_implicit_table, right_implicit_table)
+            })
+            .collect();
 
         let Stage2ExplicitJoin {
             join_type,
@@ -150,8 +159,7 @@ impl<'a> Stage3Iterator<'a> {
                     join_type,
                     source_table: self.context.previous_table,
                     target_table,
-                    source_arg,
-                    target_arg,
+                    conditions,
                 },
             )),
         );
@@ -169,16 +177,26 @@ fn translate_selectable<'a>(
 ) -> Sourced<Stage3Selectable<'a>> {
     selectable.map_ref(|selectable| match selectable {
         // TODO ugly?
-        Stage2Selectable::Condition(condition) => {
-            Stage3Selectable::Condition(condition.map_ref(|condition| Stage3Condition {
-                left: translate_computation(&condition.left, implicit_table),
-                comparison: condition.comparison,
-                right: translate_computation(&condition.right, implicit_table),
-            }))
-        }
+        Stage2Selectable::Condition(condition) => Stage3Selectable::Condition(translate_condition(
+            condition,
+            implicit_table,
+            implicit_table,
+        )),
         Stage2Selectable::Computation(computation) => {
             Stage3Selectable::Computation(translate_computation(computation, implicit_table))
         }
+    })
+}
+
+fn translate_condition<'a>(
+    condition: &Sourced<Stage2Condition<'a>>,
+    left_implicit_table: &Sourced<TableInput<'a>>,
+    right_implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3Condition<'a>> {
+    condition.map_ref(|condition| Stage3Condition {
+        left: translate_computation(&condition.left, left_implicit_table),
+        comparison: condition.comparison,
+        right: translate_computation(&condition.right, right_implicit_table),
     })
 }
 

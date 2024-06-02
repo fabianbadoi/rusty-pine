@@ -2,10 +2,10 @@
 root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
-pine               = _{ select_pine | join_pine  }
+pine               = _{ select_pine | join_pine }
 select_pine        = { ("s:" | "select:") ~ selectable+ }
 join_pine          = _{ explicit_join_pine }
-explicit_join_pine = { ("j:" | "join:") ~ table ~ computation ~ "=" ~ computation }
+explicit_join_pine = { ("j:" | "join:") ~ table ~ condition+ }
 
 // Selectables are columns, conditions, values or function calls. They're the things you can put in SELECT or WHERE
 // clauses (and more).

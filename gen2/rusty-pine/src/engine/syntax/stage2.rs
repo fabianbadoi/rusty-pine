@@ -72,7 +72,7 @@ pub enum Stage2Pine<'a> {
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
 pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
 
-pub type Stage2ExplicitJoin<'a> = ExplicitJoinHolder<TableInput<'a>, Computation<'a>>;
+pub type Stage2ExplicitJoin<'a> = ExplicitJoinHolder<TableInput<'a>, Stage2Condition<'a>>;
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
 ///
@@ -206,16 +206,12 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
             .next()
             .expect("explicit join target table should be present because of pest syntax"),
     );
-    let source_arg = translate_computation(
-        inners
-            .next()
-            .expect("explicit join source arg should be present because of pest syntax"),
-    );
 
-    let target_arg = translate_computation(
-        inners
-            .next()
-            .expect("explicit join source arg should be present because of pest syntax"),
+    let conditions: Vec<_> = inners.map(translate_condition).collect();
+
+    assert!(
+        !conditions.is_empty(),
+        "Pest grammar prevents explicit joins without conditions"
     );
 
     Stage2Pine::ExplicitJoin(Sourced::from_input(
@@ -223,8 +219,7 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
         Stage2ExplicitJoin {
             join_type: Sourced::implicit(JoinType::Left),
             target_table,
-            source_arg,
-            target_arg,
+            conditions,
         },
     ))
 }

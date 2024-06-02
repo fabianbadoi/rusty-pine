@@ -129,14 +129,7 @@ where
     pub join_type: Sourced<JoinType>,
     /// The table to join to.
     pub target_table: Sourced<T>,
-    /// The "source" of the join's ON query.
-    ///
-    /// All column names will default to referring to the previous table.
-    pub source_arg: Sourced<C>,
-    /// The "target" of the join's ON query.
-    ///
-    /// All column names will default to referring to the target table.
-    pub target_arg: Sourced<C>,
+    pub conditions: Vec<Sourced<C>>,
 }
 
 #[derive(Debug, Clone)]
