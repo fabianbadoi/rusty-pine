@@ -183,7 +183,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
     let pine = match pair.as_rule() {
         Rule::select_pine => translate_select(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
-        Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
+        Rule::explicit_auto_join_pine | Rule::auto_join_pine => translate_explicit_auto_join(pair),
         // Rule::join_pine => Some(todo!()),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
@@ -237,7 +237,7 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
 }
 
 fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
-    assert_eq!(Rule::explicit_auto_join_pine, join.as_rule());
+    assert!([Rule::explicit_auto_join_pine, Rule::auto_join_pine].contains(&join.as_rule()));
 
     let span = join.as_span();
     let mut inners = join.into_inner();

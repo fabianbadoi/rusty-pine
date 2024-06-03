@@ -103,3 +103,9 @@ SELECT *
 FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 LIMIT 10;
+
+-- Test: friendMap | friendshipProperties
+SELECT *
+FROM friendshipProperties
+LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
+LIMIT 10;
