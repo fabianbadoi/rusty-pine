@@ -32,8 +32,9 @@ impl<'a> Stage5Builder<'a> {
         }
     }
 
-    pub fn try_build(mut self) -> Result<Query, QueryBuildError> {
+    pub fn try_build(self) -> Result<Query, QueryBuildError> {
         let select = self.process_selects();
+        let filters = self.process_filters();
         let joins = self.process_joins()?;
 
         // This makes sure we select FROM the table from the last pine.
@@ -47,11 +48,12 @@ impl<'a> Stage5Builder<'a> {
             from,
             joins,
             select,
+            filters,
             limit: self.input.limit.clone(),
         })
     }
 
-    fn process_selects(&mut self) -> Vec<Sourced<Selectable>> {
+    fn process_selects(&self) -> Vec<Sourced<Selectable>> {
         self.input
             .selected_columns
             .iter()
@@ -60,7 +62,11 @@ impl<'a> Stage5Builder<'a> {
             .collect()
     }
 
-    fn process_joins(&mut self) -> Result<Vec<Sourced<ExplicitJoin>>, QueryBuildError> {
+    fn process_filters(&self) -> Vec<Sourced<Condition>> {
+        self.process_conditions(&self.input.filters)
+    }
+
+    fn process_joins(&self) -> Result<Vec<Sourced<ExplicitJoin>>, QueryBuildError> {
         let joins: Result<Vec<_>, QueryBuildError> = self
             .input
             .joins

@@ -108,6 +108,7 @@ impl<'a> Stage3Iterator<'a> {
         let stage3_pines = match stage2_pine.it {
             Stage2Pine::Base { .. } => panic!("This was covered in the constructor"),
             Stage2Pine::Select(columns) => self.translate_select(position, columns),
+            Stage2Pine::Filter(conditions) => self.process_filter_conditions(position, conditions),
             Stage2Pine::ExplicitJoin(explicit_join) => {
                 self.process_explicit_join(position, explicit_join)
             }
@@ -130,6 +131,25 @@ impl<'a> Stage3Iterator<'a> {
             .collect();
 
         VecDeque::from([Sourced::from_source(source, Stage3Pine::Select(columns))])
+    }
+
+    fn process_filter_conditions(
+        &self,
+        source: Source,
+        conditions: Vec<Sourced<Stage2Condition<'a>>>,
+    ) -> Stage3Buffer<'a> {
+        let conditions = conditions
+            .iter()
+            .map(|condition| {
+                translate_condition(
+                    condition,
+                    &self.context.previous_table,
+                    &self.context.previous_table,
+                )
+            })
+            .collect();
+
+        VecDeque::from([Sourced::from_source(source, Stage3Pine::Filter(conditions))])
     }
 
     fn process_explicit_join(

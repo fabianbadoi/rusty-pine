@@ -33,3 +33,10 @@ LIMIT 10;
 SELECT 1 != FUNCTION(id), "2000" = 2000
 FROM humans
 LIMIT 10;
+
+-- Filters
+-- Test: humans | where: id=1 name="Karl"
+SELECT *
+FROM humans
+WHERE id = 1 AND name = "Karl"
+LIMIT 10;

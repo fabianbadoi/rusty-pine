@@ -26,6 +26,7 @@ pub struct Stage3Rep<'a> {
 pub enum Stage3Pine<'a> {
     From { table: Sourced<TableInput<'a>> },
     Select(Vec<Sourced<Stage3Selectable<'a>>>),
+    Filter(Vec<Sourced<Stage3Condition<'a>>>),
     Join(Sourced<Stage3Join<'a>>),
 }
 

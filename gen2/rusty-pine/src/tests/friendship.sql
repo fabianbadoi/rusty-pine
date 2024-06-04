@@ -114,3 +114,10 @@ LIMIT 10;
 SELECT id, id IS NULL, id IS NOT NULL
 FROM people
 LIMIT 10;
+
+-- Test: people | j: preferences | where: id=1 personId=3
+SELECT *
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId
+WHERE preferences.id = 1 AND preferences.personId = 3
+LIMIT 10;

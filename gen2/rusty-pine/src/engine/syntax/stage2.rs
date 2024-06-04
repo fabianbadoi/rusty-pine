@@ -66,6 +66,10 @@ pub enum Stage2Pine<'a> {
     Base { table: Sourced<TableInput<'a>> },
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
+    /// "Filters" are what end up being WHERE clauses.
+    ///
+    /// We can't call them "Where" because that's a reserved keyword in Rust.
+    Filter(Vec<Sourced<Stage2Condition<'a>>>),
     /// Specify exactly how to join another table.
     ExplicitJoin(Sourced<Stage2Join<'a>>),
     /// Join a table, we'll figure out how for you.
@@ -186,7 +190,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::select_pine => translate_select(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
         Rule::explicit_auto_join_pine | Rule::auto_join_pine => translate_explicit_auto_join(pair),
-        // Rule::join_pine => Some(todo!()),
+        Rule::filter_pine => translate_filter_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -257,6 +261,19 @@ fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
             target_table,
         },
     ))
+}
+
+fn translate_filter_pine(filter_pine: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::filter_pine, filter_pine.as_rule());
+
+    let mut conditions = Vec::new();
+
+    for condition_pair in filter_pine.into_inner() {
+        let column = translate_condition(condition_pair);
+        conditions.push(column);
+    }
+
+    Stage2Pine::Filter(conditions)
 }
 
 fn translate_selectable(selectable: Pair<Rule>) -> Sourced<Stage2Selectable> {

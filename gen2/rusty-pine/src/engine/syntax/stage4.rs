@@ -3,7 +3,7 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep, Stage3Selectable};
+use crate::engine::syntax::stage3::{Stage3Condition, Stage3Pine, Stage3Rep, Stage3Selectable};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinConditions, JoinType, Limit, SelectableHolder,
@@ -14,6 +14,7 @@ use crate::engine::{LiteralValueHolder, Sourced};
 pub struct Stage4Rep<'a> {
     pub input: &'a str,
     pub from: Sourced<TableInput<'a>>,
+    pub filters: Vec<Sourced<Stage4Condition<'a>>>,
     pub joins: Vec<Sourced<Stage4Join<'a>>>,
     pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
     pub limit: Sourced<Limit>,
@@ -62,6 +63,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
         let mut from = None;
         let mut select = Vec::new();
         let mut joins = Vec::new();
+        let mut filters = Vec::new();
 
         for pine in stage3.pines {
             match pine.it {
@@ -75,6 +77,9 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 Stage3Pine::Select(selectables) => {
                     select.append(&mut translate_selectables(selectables));
                 }
+                Stage3Pine::Filter(conditions) => {
+                    filters.append(&mut translate_conditions(conditions))
+                }
                 Stage3Pine::Join(join) => {
                     joins.push(join);
                 }
@@ -84,6 +89,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
         Stage4Rep {
             input,
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
+            filters,
             joins,
             selected_columns: select,
             limit: Sourced::implicit(Limit::Implicit()),
@@ -95,6 +101,12 @@ fn translate_selectables(
     selectables: Vec<Sourced<Stage3Selectable>>,
 ) -> Vec<Sourced<Stage4Selectable>> {
     selectables
+}
+
+fn translate_conditions(
+    conditions: Vec<Sourced<Stage3Condition>>,
+) -> Vec<Sourced<Stage4Condition>> {
+    conditions
 }
 
 #[cfg(test)]

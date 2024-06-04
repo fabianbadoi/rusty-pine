@@ -1,5 +1,5 @@
 use crate::engine::query_builder::{
-    BinaryCondition, ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query,
+    ColumnName, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, Query,
     Selectable, SelectedColumn, Table, TableName,
 };
 use crate::engine::{
@@ -22,6 +22,8 @@ impl Display for Query {
             writeln!(f, "{}", join)?;
         }
 
+        write!(f, "{}", WhereClause(self.filters.as_slice()))?;
+
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
@@ -32,16 +34,36 @@ struct RenderableSelect<'a>(&'a [Sourced<Selectable>]);
 
 impl Display for RenderableSelect<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {
-            return write!(f, "*");
-        }
-
         if let Some((last, first)) = self.0.split_last() {
             for select in first {
                 write!(f, "{}, ", select)?;
             }
 
             write!(f, "{}", last)?;
+        } else {
+            write!(f, "*")?;
+        }
+
+        Ok(())
+    }
+}
+
+struct WhereClause<'a>(&'a [Sourced<Condition>]);
+
+impl Display for WhereClause<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if self.0.is_empty() {
+            return Ok(());
+        }
+
+        if let Some((first, rest)) = self.0.split_first() {
+            write!(f, "WHERE {}", first)?;
+
+            for condition in rest {
+                write!(f, " AND {}", condition)?;
+            }
+
+            writeln!(f)?;
         }
 
         Ok(())

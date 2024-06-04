@@ -2,9 +2,16 @@
 root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
 base = { ("f:" | "from:")? ~ table }
 
-pine               = _{ select_pine | join_pine }
+pine               = _{
+                        select_pine
+                         | filter_pine
+                         // Take care to always put this last. The auto_join_pine can
+                         // interfere with other matches
+                         | join_pine
+                     }
 select_pine        = { ("s:" | "select:") ~ selectable+ }
 join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | auto_join_pine }
+filter_pine        = { ("w:" | "where:") ~ condition+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
