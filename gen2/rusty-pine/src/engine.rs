@@ -81,13 +81,31 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct ConditionHolder<T>
+pub enum ConditionHolder<T>
+where
+    T: Clone + Debug,
+{
+    Unary(Sourced<UnaryConditionHolder<T>>),
+    Binary(Sourced<BinaryConditionHolder<T>>),
+}
+
+#[derive(Debug, Clone)]
+pub struct BinaryConditionHolder<T>
 where
     T: Clone + Debug,
 {
     pub left: Sourced<T>,
     pub comparison: Sourced<Comparison>,
     pub right: Sourced<T>,
+}
+
+#[derive(Debug, Clone)]
+pub enum UnaryConditionHolder<T>
+where
+    T: Clone + Debug,
+{
+    IsNull(Sourced<T>),
+    IsNotNull(Sourced<T>),
 }
 
 #[derive(Debug, Clone, Copy)]

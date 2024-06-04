@@ -5,7 +5,10 @@
 //!     - can't tell if table is missing or name is mistyped
 use crate::engine::syntax::stage3::{Stage3Pine, Stage3Rep, Stage3Selectable};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
-use crate::engine::{ConditionHolder, JoinConditions, JoinType, Limit, SelectableHolder};
+use crate::engine::{
+    BinaryConditionHolder, ConditionHolder, JoinConditions, JoinType, Limit, SelectableHolder,
+    UnaryConditionHolder,
+};
 use crate::engine::{LiteralValueHolder, Sourced};
 
 pub struct Stage4Rep<'a> {
@@ -18,6 +21,8 @@ pub struct Stage4Rep<'a> {
 
 pub type Stage4Selectable<'a> = SelectableHolder<Stage4Condition<'a>, Stage4ComputationInput<'a>>;
 pub type Stage4Condition<'a> = ConditionHolder<Stage4ComputationInput<'a>>;
+pub type Stage4BinaryCondition<'a> = BinaryConditionHolder<Stage4ComputationInput<'a>>;
+pub type Stage4UnaryCondition<'a> = UnaryConditionHolder<Stage4ComputationInput<'a>>;
 
 #[derive(Clone, Debug)]
 pub struct Stage4Join<'a> {

@@ -1,11 +1,12 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
-    PestIterator, Stage2Condition, Stage2ExplicitAutoJoin, Stage2Join, Stage2Pine, Stage2Selectable,
+    PestIterator, Stage2BinaryCondition, Stage2Condition, Stage2ExplicitAutoJoin, Stage2Join,
+    Stage2Pine, Stage2Selectable, Stage2UnaryCondition,
 };
 use crate::engine::syntax::stage3::{
-    Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join, Stage3Pine,
-    Stage3Selectable,
+    Stage3BinaryCondition, Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join,
+    Stage3Pine, Stage3Selectable, Stage3UnaryCondition,
 };
 use crate::engine::syntax::stage4::Stage4FunctionCall;
 use crate::engine::syntax::{
@@ -231,10 +232,45 @@ fn translate_condition<'a>(
     left_implicit_table: &Sourced<TableInput<'a>>,
     right_implicit_table: &Sourced<TableInput<'a>>,
 ) -> Sourced<Stage3Condition<'a>> {
-    condition.map_ref(|condition| Stage3Condition {
+    condition.map_ref(|condition| match condition {
+        Stage2Condition::Unary(unary) => {
+            Stage3Condition::Unary(translate_unary_condition(
+                unary,
+                // I flipped a coin and chose
+                left_implicit_table,
+            ))
+        }
+        Stage2Condition::Binary(binary) => Stage3Condition::Binary(translate_binary_condition(
+            binary,
+            left_implicit_table,
+            right_implicit_table,
+        )),
+    })
+}
+
+fn translate_binary_condition<'a>(
+    condition: &Sourced<Stage2BinaryCondition<'a>>,
+    left_implicit_table: &Sourced<TableInput<'a>>,
+    right_implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3BinaryCondition<'a>> {
+    condition.map_ref(|condition| Stage3BinaryCondition {
         left: translate_computation(&condition.left, left_implicit_table),
         comparison: condition.comparison,
         right: translate_computation(&condition.right, right_implicit_table),
+    })
+}
+
+fn translate_unary_condition<'a>(
+    condition: &Sourced<Stage2UnaryCondition<'a>>,
+    implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3UnaryCondition<'a>> {
+    condition.map_ref(|condition| match condition {
+        Stage2UnaryCondition::IsNull(computation) => {
+            Stage3UnaryCondition::IsNull(translate_computation(computation, implicit_table))
+        }
+        Stage2UnaryCondition::IsNotNull(computation) => {
+            Stage3UnaryCondition::IsNotNull(translate_computation(computation, implicit_table))
+        }
     })
 }
 

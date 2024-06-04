@@ -2,7 +2,7 @@ use crate::analyze::{ColumnName, Database, ForeignKey, KeyReference, Server, Tab
 use crate::engine::Comparison;
 
 use crate::engine::query_builder::{
-    Computation, Condition, QueryBuildError, SelectedColumn, Sourced,
+    BinaryCondition, Computation, Condition, QueryBuildError, SelectedColumn, Sourced,
 };
 use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
 
@@ -30,11 +30,12 @@ impl Introspective for Server {
         let column_pairs = left_columns.zip(right_columns);
 
         let conditions = column_pairs
-            .map(|(from_column, to_column)| Condition {
+            .map(|(from_column, to_column)| BinaryCondition {
                 left: selected_column(from, from_column),
                 comparison: Sourced::from_introspection(Comparison::Equals),
                 right: selected_column(to, to_column),
             })
+            .map(|cond| Condition::Binary(Sourced::from_introspection(cond)))
             .map(Sourced::from_introspection)
             .collect();
 

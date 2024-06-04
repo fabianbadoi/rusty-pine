@@ -1,8 +1,11 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, Selectable,
-    SelectedColumn, Table, TableName,
+    BinaryCondition, ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query,
+    Selectable, SelectedColumn, Table, TableName,
 };
-use crate::engine::{Comparison, ConditionHolder, JoinType, LiteralValueHolder};
+use crate::engine::{
+    BinaryConditionHolder, Comparison, ConditionHolder, JoinType, LiteralValueHolder,
+    UnaryConditionHolder,
+};
 use crate::engine::{Limit, Sourced};
 use std::fmt::{Debug, Display, Formatter};
 
@@ -127,6 +130,22 @@ where
     T: Display + Debug + Clone,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConditionHolder::Unary(condition) => {
+                write!(f, "{}", condition)
+            }
+            ConditionHolder::Binary(condition) => {
+                write!(f, "{}", condition)
+            }
+        }
+    }
+}
+
+impl<T> Display for BinaryConditionHolder<T>
+where
+    T: Display + Clone + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let Self {
             left,
             comparison,
@@ -134,6 +153,22 @@ where
         } = self;
 
         write!(f, "{left} {comparison} {right}")
+    }
+}
+
+impl<T> Display for UnaryConditionHolder<T>
+where
+    T: Display + Clone + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UnaryConditionHolder::IsNull(computation) => {
+                write!(f, "{computation} IS NULL")
+            }
+            UnaryConditionHolder::IsNotNull(computation) => {
+                write!(f, "{computation} IS NOT NULL")
+            }
+        }
     }
 }
 

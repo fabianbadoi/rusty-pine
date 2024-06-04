@@ -1,12 +1,13 @@
 use crate::analyze::Server;
 use crate::engine::query_builder::sql_introspection::Introspective;
 use crate::engine::query_builder::{
-    Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, LiteralValue, Query,
-    Selectable, SelectedColumn, Table,
+    BinaryCondition, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall,
+    LiteralValue, Query, Selectable, SelectedColumn, Table, UnaryCondition,
 };
 use crate::engine::syntax::{
-    OptionalInput, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition, Stage4FunctionCall,
-    Stage4Join, Stage4LiteralValue, Stage4Rep, Stage4Selectable, TableInput,
+    OptionalInput, Stage4BinaryCondition, Stage4ColumnInput, Stage4ComputationInput,
+    Stage4Condition, Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Rep,
+    Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
 use crate::engine::{JoinConditions, LiteralValueHolder, QueryBuildError, Sourced};
 
@@ -121,19 +122,6 @@ impl<'a> Stage5Builder<'a> {
             }
         }
     }
-    fn process_condition(&self, computation: Stage4Condition) -> Condition {
-        let left = computation.left.map(|left| self.process_computation(left));
-        let comparison = computation.comparison;
-        let right = computation
-            .right
-            .map(|right| self.process_computation(right));
-
-        Condition {
-            left,
-            comparison,
-            right,
-        }
-    }
 
     fn process_conditions(
         &self,
@@ -144,6 +132,40 @@ impl<'a> Stage5Builder<'a> {
             .map(Clone::clone)
             .map(|c| c.map(|c| self.process_condition(c)))
             .collect()
+    }
+
+    fn process_condition(&self, condition: Stage4Condition) -> Condition {
+        match condition {
+            Stage4Condition::Unary(unary) => {
+                Condition::Unary(unary.map(|unary| self.process_unary_condition(unary)))
+            }
+            Stage4Condition::Binary(binary) => {
+                Condition::Binary(binary.map(|condition| self.process_binary_condition(condition)))
+            }
+        }
+    }
+
+    fn process_binary_condition(&self, condition: Stage4BinaryCondition) -> BinaryCondition {
+        let left = condition.left.map(|left| self.process_computation(left));
+        let comparison = condition.comparison;
+        let right = condition.right.map(|right| self.process_computation(right));
+
+        BinaryCondition {
+            left,
+            comparison,
+            right,
+        }
+    }
+
+    fn process_unary_condition(&self, condition: Stage4UnaryCondition) -> UnaryCondition {
+        match condition {
+            Stage4UnaryCondition::IsNull(computation) => UnaryCondition::IsNull(
+                computation.map(|computation| self.process_computation(computation)),
+            ),
+            Stage4UnaryCondition::IsNotNull(computation) => UnaryCondition::IsNotNull(
+                computation.map(|computation| self.process_computation(computation)),
+            ),
+        }
     }
 
     fn is_single_table_query(&self) -> bool {

@@ -5,7 +5,8 @@ use thiserror::Error;
 use crate::analyze::{KeyReference, Server, ServerParams};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
 use crate::engine::{
-    ConditionHolder, JoinType, Limit, LiteralValueHolder, SelectableHolder, Sourced,
+    BinaryConditionHolder, ConditionHolder, JoinType, Limit, LiteralValueHolder, SelectableHolder,
+    Sourced, UnaryConditionHolder,
 };
 
 mod sql_introspection;
@@ -42,6 +43,8 @@ pub struct Query {
 
 pub type Selectable = SelectableHolder<Condition, Computation>;
 pub type Condition = ConditionHolder<Computation>;
+pub type BinaryCondition = BinaryConditionHolder<Computation>;
+pub type UnaryCondition = UnaryConditionHolder<Computation>;
 
 #[derive(Debug, Clone)]
 pub struct Table {

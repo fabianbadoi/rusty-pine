@@ -15,7 +15,12 @@ auto_join_pine          = { table }
 selectable    = { condition | computation }
 computation   = { function_call | column | literal_value }
 function_call = { sql_name ~ "(" ~ computation* ~ ")"}
-condition     = { computation ~ comparison_symbol ~ computation }
+
+condition             = { unary_condition | binary_condition }
+unary_condition       = { is_null_condition | is_not_null_condition }
+binary_condition      = { computation ~ comparison_symbol ~ computation }
+is_null_condition     = { computation ~ "?" }
+is_not_null_condition = { computation ~ "!?" }
 
 column = { db_table_column_name | table_column_name | column_name }
 column_name = { sql_name }

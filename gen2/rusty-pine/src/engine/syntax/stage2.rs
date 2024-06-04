@@ -19,8 +19,8 @@ use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
-    Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType, Position, SelectableHolder,
-    Sourced,
+    BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
+    Position, SelectableHolder, Sourced, UnaryConditionHolder,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -74,6 +74,8 @@ pub enum Stage2Pine<'a> {
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
 pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
+pub type Stage2BinaryCondition<'a> = BinaryConditionHolder<Computation<'a>>;
+pub type Stage2UnaryCondition<'a> = UnaryConditionHolder<Computation<'a>>;
 
 pub type Stage2Join<'a> = JoinHolder<TableInput<'a>, Stage2Condition<'a>>;
 
@@ -304,31 +306,127 @@ fn translate_condition(condition: Pair<Rule>) -> Sourced<Stage2Condition> {
     let span = condition.as_span();
 
     let mut inners = condition.into_inner();
+
+    let inner = inners
+        .next()
+        .expect("Pest syntax should make sure conditions have one inner");
+
+    assert!(
+        inners.next().is_none(),
+        "Pest syntax should make sure conditions only have one inner"
+    );
+
+    let condition = match inner.as_rule() {
+        Rule::binary_condition => Stage2Condition::Binary(translate_binary_condition(inner)),
+        Rule::unary_condition => Stage2Condition::Unary(translate_unary_condition(inner)),
+        unexpected_rule => panic!(
+            "Unexpected rule when processing condition: Rule::{:?}",
+            unexpected_rule
+        ),
+    };
+
+    Sourced::from_input(span, condition)
+}
+
+fn translate_unary_condition(condition: Pair<Rule>) -> Sourced<Stage2UnaryCondition> {
+    assert_eq!(Rule::unary_condition, condition.as_rule());
+
+    let span = condition.as_span();
+
+    let mut inners = condition.into_inner();
+    let inner = inners
+        .next()
+        .expect("Valid unary condition must have left operand");
+
+    assert!(
+        inners.next().is_none(),
+        "Pest syntax should make sure unary conditions only have one inner"
+    );
+
+    let condition = match inner.as_rule() {
+        Rule::is_null_condition => translate_is_null_condition(inner),
+        Rule::is_not_null_condition => translate_is_not_null_condition(inner),
+        unexpected => panic!(
+            "Unexpected rule when processing unary condition: Rule::{:?}",
+            unexpected
+        ),
+    };
+
+    Sourced::from_input(span, condition)
+}
+
+fn translate_binary_condition(condition: Pair<Rule>) -> Sourced<Stage2BinaryCondition> {
+    assert_eq!(Rule::binary_condition, condition.as_rule());
+
+    let span = condition.as_span();
+
+    let mut inners = condition.into_inner();
     let left = inners
         .next()
-        .expect("Valid condition must have left operand");
+        .expect("Valid binary condition must have left operand");
     let left = translate_computation(left);
 
     let comparison = inners
         .next()
-        .expect("Valid condition must have comparison operator");
+        .expect("Valid binary condition must have comparison operator");
     let comparison = translate_comparison(comparison);
 
     let right = inners
         .next()
-        .expect("Valid condition must have right operand");
+        .expect("Valid binary condition must have right operand");
     let right = translate_computation(right);
 
-    assert!(inners.next().is_none());
+    assert!(
+        inners.next().is_none(),
+        "Pest syntax should make sure binary conditions only have 3 inners"
+    );
 
     Sourced::from_input(
         span,
-        Stage2Condition {
+        Stage2BinaryCondition {
             left,
             comparison,
             right,
         },
     )
+}
+
+fn translate_is_null_condition(condition: Pair<Rule>) -> Stage2UnaryCondition {
+    assert_eq!(Rule::is_null_condition, condition.as_rule());
+
+    let span = condition.as_span();
+
+    let mut inners = condition.into_inner();
+    let inner = inners
+        .next()
+        .expect("Valid is null condition must have left operand");
+    let computation = translate_computation(inner);
+
+    assert!(
+        inners.next().is_none(),
+        "Pest syntax should make sure is null conditions only have one inner"
+    );
+
+    Stage2UnaryCondition::IsNull(computation)
+}
+
+fn translate_is_not_null_condition(condition: Pair<Rule>) -> Stage2UnaryCondition {
+    assert_eq!(Rule::is_not_null_condition, condition.as_rule());
+
+    let span = condition.as_span();
+
+    let mut inners = condition.into_inner();
+    let inner = inners
+        .next()
+        .expect("Valid is not null condition must have left operand");
+    let computation = translate_computation(inner);
+
+    assert!(
+        inners.next().is_none(),
+        "Pest syntax should make sure is not null conditions only have one inner"
+    );
+
+    Stage2UnaryCondition::IsNotNull(computation)
 }
 
 impl From<Span<'_>> for Position {

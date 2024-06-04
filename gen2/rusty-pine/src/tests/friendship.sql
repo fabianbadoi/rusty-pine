@@ -109,3 +109,8 @@ SELECT *
 FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 LIMIT 10;
+
+-- Test: people | s: id id? id!?
+SELECT id, id IS NULL, id IS NOT NULL
+FROM people
+LIMIT 10;
