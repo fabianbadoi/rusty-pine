@@ -212,7 +212,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::select_pine => translate_select(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
         Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
-        Rule::auto_join_pine => translate_auto_join(pair),
+        Rule::compound_join_pine => translate_compound_join(pair),
         Rule::filter_pine => translate_filter_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
@@ -266,7 +266,7 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
 }
 
 fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
-    assert!([Rule::explicit_auto_join_pine, Rule::auto_join_pine].contains(&join.as_rule()));
+    assert!([Rule::explicit_auto_join_pine].contains(&join.as_rule()));
 
     let span = join.as_span();
     let mut inners = join.into_inner();
@@ -286,8 +286,8 @@ fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
     ))
 }
 
-fn translate_auto_join(join: Pair<Rule>) -> Stage2Pine {
-    assert!([Rule::explicit_auto_join_pine, Rule::auto_join_pine].contains(&join.as_rule()));
+fn translate_compound_join(join: Pair<Rule>) -> Stage2Pine {
+    assert!([Rule::explicit_auto_join_pine, Rule::compound_join_pine].contains(&join.as_rule()));
 
     let span = join.as_span();
     let mut inners = join.into_inner();
@@ -458,8 +458,6 @@ fn translate_binary_condition(condition: Pair<Rule>) -> Sourced<Stage2BinaryCond
 fn translate_is_null_condition(condition: Pair<Rule>) -> Stage2UnaryCondition {
     assert_eq!(Rule::is_null_condition, condition.as_rule());
 
-    let span = condition.as_span();
-
     let mut inners = condition.into_inner();
     let inner = inners
         .next()
@@ -476,8 +474,6 @@ fn translate_is_null_condition(condition: Pair<Rule>) -> Stage2UnaryCondition {
 
 fn translate_is_not_null_condition(condition: Pair<Rule>) -> Stage2UnaryCondition {
     assert_eq!(Rule::is_not_null_condition, condition.as_rule());
-
-    let span = condition.as_span();
 
     let mut inners = condition.into_inner();
     let inner = inners

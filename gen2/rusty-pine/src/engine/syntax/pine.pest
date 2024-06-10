@@ -5,17 +5,17 @@ base = { ("f:" | "from:")? ~ table ~ condition* }
 pine               = _{
                         select_pine
                          | filter_pine
-                         // Take care to always put this last. The auto_join_pine can
+                         // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
                          | join_pine
                      }
 select_pine        = { ("s:" | "select:") ~ selectable+ }
-join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | auto_join_pine }
+join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | compound_join_pine }
 filter_pine        = { ("w:" | "where:") ~ condition+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
-auto_join_pine          = { table ~ condition* }
+compound_join_pine      = { table ~ condition* }
 
 // Selectables are columns, conditions, values or function calls. They're the things you can put in SELECT or WHERE
 // clauses (and more).
