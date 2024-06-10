@@ -5,6 +5,7 @@ base = { ("f:" | "from:")? ~ table ~ condition* }
 pine               = _{
                         select_pine
                          | filter_pine
+                         | limit_pine
                          // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
                          | join_pine
@@ -12,6 +13,7 @@ pine               = _{
 select_pine        = { ("s:" | "select:") ~ selectable+ }
 join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | compound_join_pine }
 filter_pine        = { ("w:" | "where:") ~ condition+ }
+limit_pine         = { ("limit:" | "l:") ~ literal_value ~ literal_value? }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
@@ -39,9 +41,9 @@ db_table_name = { sql_name ~ "." ~ sql_name }
 sql_name = @{ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")* }
 
 // values
-literal_value = { numeric_value | string_value }
-numeric_value = { (ASCII_DIGIT | "_")+ ~ ("." ~ (ASCII_DIGIT | "_")+)? }
-string_value  = { quote_string_value | apostrophe_string_value }
+literal_value =  { numeric_value | string_value }
+numeric_value = @{ (ASCII_DIGIT | "_")+ ~ ("." ~ (ASCII_DIGIT | "_")+)? }
+string_value  =  { quote_string_value | apostrophe_string_value }
 
 // strings are expressed this way to more easily support escape characters
 quote_string_value = ${ "\"" ~ quote_string_inner ~ "\"" }
@@ -69,4 +71,3 @@ WHITESPACE = _{ " " | "\t" }
 // unselect = { ("unselect:" | "u:") ~ operand+ }
 // group_by = { ("group:" | "g:") ~ operand+ }
 // order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
-// limit = { ("limit:" | "l:") ~ numeric_value }

@@ -17,6 +17,7 @@
 use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
+use crate::engine::syntax::stage4::Stage4Limit;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
@@ -69,6 +70,7 @@ pub enum Stage2Pine<'a> {
     },
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
+    Limit(Sourced<Stage2Limit<'a>>),
     /// "Filters" are what end up being WHERE clauses.
     ///
     /// We can't call them "Where" because that's a reserved keyword in Rust.
@@ -83,6 +85,7 @@ pub enum Stage2Pine<'a> {
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
 pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
+pub type Stage2Limit<'a> = Stage4Limit<'a>;
 pub type Stage2BinaryCondition<'a> = BinaryConditionHolder<Computation<'a>>;
 pub type Stage2UnaryCondition<'a> = UnaryConditionHolder<Computation<'a>>;
 
@@ -210,6 +213,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
     let span = pair.as_span();
     let pine = match pair.as_rule() {
         Rule::select_pine => translate_select(pair),
+        Rule::limit_pine => translate_limit(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
         Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
         Rule::compound_join_pine => translate_compound_join(pair),
@@ -232,6 +236,37 @@ fn translate_select(select: Pair<Rule>) -> Stage2Pine {
     }
 
     Stage2Pine::Select(columns)
+}
+
+fn translate_limit(limit: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::limit_pine, limit.as_rule());
+
+    let position = limit.as_span();
+
+    let mut inners = limit.into_inner();
+
+    let first_number = inners
+        .next()
+        .expect("Pest syntax assures limits have first nr.");
+    let first_number = translate_value(first_number);
+
+    match inners.next() {
+        None => Stage2Pine::Limit(Sourced::from_input(
+            position,
+            Stage2Limit::RowCount(first_number),
+        )),
+        Some(another_value) => {
+            let second_number = translate_value(another_value);
+
+            Stage2Pine::Limit(Sourced::from_input(
+                position,
+                Stage2Limit::Range {
+                    start: first_number,
+                    count: second_number,
+                },
+            ))
+        }
+    }
 }
 
 fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {

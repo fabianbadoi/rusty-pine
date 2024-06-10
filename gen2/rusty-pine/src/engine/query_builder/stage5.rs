@@ -9,7 +9,8 @@ use crate::engine::syntax::{
     Stage4Condition, Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Rep,
     Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
-use crate::engine::{JoinConditions, LiteralValueHolder, QueryBuildError, Sourced};
+use crate::engine::{JoinConditions, LimitHolder, LiteralValueHolder, QueryBuildError, Sourced};
+use std::fmt::Debug;
 
 pub struct Stage5Builder<'a> {
     input: Stage4Rep<'a>,
@@ -49,7 +50,7 @@ impl<'a> Stage5Builder<'a> {
             joins,
             select,
             filters,
-            limit: self.input.limit.clone(),
+            limit: self.input.limit.map(|limit| limit.into()),
         })
     }
 
@@ -235,6 +236,25 @@ impl From<Stage4LiteralValue<'_>> for LiteralValue {
         match value {
             Stage4LiteralValue::Number(number) => LiteralValueHolder::Number(number.into()),
             Stage4LiteralValue::String(string) => LiteralValueHolder::String(string.into()),
+        }
+    }
+}
+
+impl<S> LimitHolder<LiteralValueHolder<S>>
+where
+    S: Clone + Debug,
+{
+    fn into<D>(self) -> LimitHolder<LiteralValueHolder<D>>
+    where
+        D: From<S> + Clone + Debug,
+    {
+        match self {
+            LimitHolder::Implicit() => LimitHolder::Implicit(),
+            LimitHolder::RowCount(count) => LimitHolder::RowCount(count.map(|count| count.into())),
+            LimitHolder::Range { start, count } => LimitHolder::Range {
+                start: start.map(|start| start.into()),
+                count: count.map(|count| count.into()),
+            },
         }
     }
 }

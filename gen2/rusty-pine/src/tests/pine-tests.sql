@@ -46,3 +46,13 @@ SELECT *
 FROM humans
 WHERE id = 1 AND name = "Karl"
 LIMIT 10;
+
+-- Test: humans | l: 2
+SELECT *
+FROM humans
+LIMIT 2;
+
+-- Test: humans | l: 10 20
+SELECT *
+FROM humans
+LIMIT 10, 20;

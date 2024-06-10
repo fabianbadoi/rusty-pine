@@ -119,10 +119,16 @@ pub enum Comparison {
 }
 
 #[derive(Debug, Clone)]
-pub enum Limit {
+pub enum LimitHolder<T>
+where
+    T: Debug + Clone,
+{
     Implicit(),
-    RowCount(usize),
-    Range(Range<usize>),
+    RowCount(Sourced<T>),
+    Range {
+        start: Sourced<T>,
+        count: Sourced<T>,
+    },
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -240,6 +246,18 @@ impl From<Range<usize>> for Position {
 }
 
 impl<T> Copy for LiteralValueHolder<T> where T: Copy {}
+
+impl<T> LiteralValueHolder<T> {
+    fn into<D>(self) -> LiteralValueHolder<D>
+    where
+        D: From<T>,
+    {
+        match self {
+            LiteralValueHolder::Number(nr) => LiteralValueHolder::Number(nr.into()),
+            LiteralValueHolder::String(str) => LiteralValueHolder::String(str.into()),
+        }
+    }
+}
 
 #[cfg(test)]
 impl PartialEq<Source> for Position {

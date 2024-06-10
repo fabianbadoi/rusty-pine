@@ -6,7 +6,7 @@ use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinType, LiteralValueHolder,
     UnaryConditionHolder,
 };
-use crate::engine::{Limit, Sourced};
+use crate::engine::{LimitHolder, Sourced};
 use std::fmt::{Debug, Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
@@ -222,12 +222,15 @@ impl Display for Comparison {
     }
 }
 
-impl Display for Limit {
+impl<T> Display for LimitHolder<T>
+where
+    T: Display + Debug + Clone,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Limit::Implicit() => write!(f, "10"), // default
-            Limit::RowCount(max_rows) => write!(f, "{}", max_rows),
-            Limit::Range(range) => write!(f, "{}, {}", range.start, range.end),
+            LimitHolder::Implicit() => write!(f, "10"), // default
+            LimitHolder::RowCount(max_rows) => write!(f, "{}", max_rows),
+            LimitHolder::Range { start, count } => write!(f, "{}, {}", start, count),
         }
     }
 }

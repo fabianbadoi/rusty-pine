@@ -2,7 +2,8 @@
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
     PestIterator, Stage2BinaryCondition, Stage2CompoundJoin, Stage2Condition,
-    Stage2ExplicitAutoJoin, Stage2Join, Stage2Pine, Stage2Selectable, Stage2UnaryCondition,
+    Stage2ExplicitAutoJoin, Stage2Join, Stage2Limit, Stage2Pine, Stage2Selectable,
+    Stage2UnaryCondition,
 };
 use crate::engine::syntax::stage3::{
     Stage3BinaryCondition, Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join,
@@ -117,6 +118,7 @@ impl<'a> Stage3Iterator<'a> {
             Stage2Pine::Base { .. } => panic!("This was covered in the constructor"),
             Stage2Pine::Select(columns) => self.translate_select(position, columns),
             Stage2Pine::Filter(conditions) => self.process_filter_conditions(position, conditions),
+            Stage2Pine::Limit(limit) => self.process_limit(position, limit),
             Stage2Pine::ExplicitJoin(explicit_join) => {
                 self.process_explicit_join(position, explicit_join)
             }
@@ -140,6 +142,14 @@ impl<'a> Stage3Iterator<'a> {
             .collect();
 
         VecDeque::from([Sourced::from_source(source, Stage3Pine::Select(columns))])
+    }
+
+    fn process_limit(
+        &mut self,
+        source: Source,
+        limit: Sourced<Stage2Limit<'a>>,
+    ) -> Stage3Buffer<'a> {
+        VecDeque::from([Sourced::from_source(source, Stage3Pine::Limit(limit))])
     }
 
     fn process_filter_conditions(

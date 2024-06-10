@@ -5,8 +5,8 @@ use thiserror::Error;
 use crate::analyze::{KeyReference, Server, ServerParams};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
 use crate::engine::{
-    BinaryConditionHolder, ConditionHolder, JoinType, Limit, LiteralValueHolder, SelectableHolder,
-    Sourced, UnaryConditionHolder,
+    BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder,
+    SelectableHolder, Sourced, UnaryConditionHolder,
 };
 
 mod sql_introspection;
@@ -39,7 +39,7 @@ pub struct Query {
     pub filters: Vec<Sourced<Condition>>,
     pub joins: Vec<Sourced<ExplicitJoin>>,
     pub select: Vec<Sourced<Selectable>>,
-    pub limit: Sourced<Limit>,
+    pub limit: Sourced<LimitHolder<LiteralValue>>,
 }
 
 pub type Selectable = SelectableHolder<Condition, Computation>;
