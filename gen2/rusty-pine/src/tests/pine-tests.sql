@@ -11,6 +11,12 @@ SELECT id, name
 FROM humans
 LIMIT 10;
 
+-- Test: humans id=1
+SELECT *
+FROM humans
+WHERE id = 1
+LIMIT 10;
+
 -- TODO scalars in select
 -- Test: humans | s: call()
 SELECT call()

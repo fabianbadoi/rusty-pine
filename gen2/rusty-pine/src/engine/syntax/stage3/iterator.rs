@@ -72,17 +72,25 @@ impl<'a> Stage3Iterator<'a> {
         let base = stage2_pines.next().expect("things must always have a base");
         let source = base.source;
 
-        let base_table = match base.it {
-            Stage2Pine::Base { table } => table,
+        let (base_table, conditions) = match base.it {
+            Stage2Pine::Base { table, conditions } => (table, conditions),
             // Same as above, the grammar should guarantee this panic! never happens.
             _ => panic!("Unknown starting pine, expected base"),
         };
+
+        let conditions = conditions
+            .iter()
+            .map(|condition| translate_condition(condition, &base_table, &base_table))
+            .collect();
 
         Self {
             stage2_source: stage2_pines,
             stage3_buffer: VecDeque::from([Sourced::from_source(
                 source,
-                Stage3Pine::From { table: base_table },
+                Stage3Pine::From {
+                    table: base_table,
+                    conditions,
+                },
             )]),
             context: Context {
                 previous_table: base_table,

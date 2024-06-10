@@ -63,7 +63,10 @@ pub struct Stage2Rep<'a> {
 pub enum Stage2Pine<'a> {
     /// All pines start with a base pine that can never repeat. This specified the original
     /// table we'll be working with.
-    Base { table: Sourced<TableInput<'a>> },
+    Base {
+        table: Sourced<TableInput<'a>>,
+        conditions: Vec<Sourced<Stage2Condition<'a>>>,
+    },
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
     /// "Filters" are what end up being WHERE clauses.
@@ -175,9 +178,19 @@ fn translate_base(base_pair: Pair<Rule>) -> Sourced<Stage2Pine> {
     assert_eq!(Rule::base, base_pair.as_rule());
 
     let span = base_pair.as_span();
-    let table_name = identifiers::translate_table(base_pair.into_inner().next().unwrap());
+    let mut inners = base_pair.into_inner();
 
-    Sourced::from_input(span, Stage2Pine::Base { table: table_name })
+    let table_name = identifiers::translate_table(inners.next().expect("Base must have a table"));
+
+    let conditions = inners.map(translate_condition).collect();
+
+    Sourced::from_input(
+        span,
+        Stage2Pine::Base {
+            table: table_name,
+            conditions,
+        },
+    )
 }
 
 fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
@@ -525,7 +538,8 @@ mod test {
                         },
                     },
                     source: Source::Input(Position { start: 0, end: 4 })
-                }
+                },
+                ..
             }
         ));
 

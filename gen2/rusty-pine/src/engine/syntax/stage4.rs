@@ -67,12 +67,13 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
 
         for pine in stage3.pines {
             match pine.it {
-                Stage3Pine::From { table } => {
+                Stage3Pine::From { table, conditions } => {
                     assert!(
                         from.is_none(),
                         "Our pest syntax forbids multiple from statements"
                     );
                     from = Some(table);
+                    filters.append(&mut translate_conditions(conditions));
                 }
                 Stage3Pine::Select(selectables) => {
                     select.append(&mut translate_selectables(selectables));

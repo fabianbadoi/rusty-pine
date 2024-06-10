@@ -72,13 +72,13 @@ mod tests {
 
         assert_eq!(
             r#"Invalid syntax, failed to parse:
- --> 1:6
+ --> 1:9
   |
 1 | test 012-test
-  |      ^---
+  |         ^---
   |
-  = expected"#,
-            &format!("{}", error)[0..94]
+  = expected comparison_symbol"#,
+            &format!("{}", error)
         );
     }
 }

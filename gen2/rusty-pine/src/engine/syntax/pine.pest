@@ -1,6 +1,6 @@
 // pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
 root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
-base = { ("f:" | "from:")? ~ table }
+base = { ("f:" | "from:")? ~ table ~ condition* }
 
 pine               = _{
                         select_pine
@@ -63,3 +63,10 @@ apostrophe_string_char  = {
 comparison_symbol = { "=" | "!="  | ">" | ">=" | "<" | "<=" }
 
 WHITESPACE = _{ " " | "\t" }
+
+
+// TODO
+// unselect = { ("unselect:" | "u:") ~ operand+ }
+// group_by = { ("group:" | "g:") ~ operand+ }
+// order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
+// limit = { ("limit:" | "l:") ~ numeric_value }
