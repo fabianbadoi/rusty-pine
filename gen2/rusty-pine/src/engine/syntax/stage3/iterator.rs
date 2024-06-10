@@ -1,8 +1,8 @@
 /// Walk through our stage 2 pines and convert them to stage3.
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
-    PestIterator, Stage2BinaryCondition, Stage2Condition, Stage2ExplicitAutoJoin, Stage2Join,
-    Stage2Pine, Stage2Selectable, Stage2UnaryCondition,
+    PestIterator, Stage2BinaryCondition, Stage2CompoundJoin, Stage2Condition,
+    Stage2ExplicitAutoJoin, Stage2Join, Stage2Pine, Stage2Selectable, Stage2UnaryCondition,
 };
 use crate::engine::syntax::stage3::{
     Stage3BinaryCondition, Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join,
@@ -123,6 +123,7 @@ impl<'a> Stage3Iterator<'a> {
             Stage2Pine::ExplicitAutoJoin(auto_join) => {
                 self.process_explicit_auto_join(position, auto_join)
             }
+            Stage2Pine::CompoundJoin(auto_join) => self.process_auto_join(position, auto_join),
         };
 
         stage3_pines
@@ -236,6 +237,21 @@ impl<'a> Stage3Iterator<'a> {
 
         VecDeque::from([stage3_join])
     }
+
+    fn process_auto_join(
+        &mut self,
+        source: Source,
+        join: Sourced<Stage2CompoundJoin<'a>>,
+    ) -> Stage3Buffer<'a> {
+        // This is an example of stage 2 pine leading to multiple stage 3 pines.
+        // The compound join (... | table_name conditions*) is treated like
+        // (... | join: table_name | where: conditions*).
+        let mut result = self.process_explicit_auto_join(source, join.map_ref(|join| join.into()));
+
+        result.append(&mut self.process_filter_conditions(source, join.it.where_conditions));
+
+        result
+    }
 }
 
 fn translate_selectable<'a>(
@@ -343,4 +359,15 @@ fn translate_select_from_fn_call<'a>(
 
 fn translate_value<'a>(value: &Sourced<Stage2LiteralValue<'a>>) -> Stage3ComputationInput<'a> {
     Stage3ComputationInput::Value(value.map(|value| value))
+}
+
+// This weird From impl allows us to treat Stage2CompoundJoins as explicit autos, and simplifies
+// our logic. Check process_auto_join::process_auto_join()
+impl<'a> From<&'_ Stage2CompoundJoin<'a>> for Stage2ExplicitAutoJoin<'a> {
+    fn from(value: &'_ Stage2CompoundJoin<'a>) -> Self {
+        Self {
+            join_type: value.join_type,
+            target_table: value.target_table,
+        }
+    }
 }

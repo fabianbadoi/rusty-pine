@@ -77,6 +77,8 @@ pub enum Stage2Pine<'a> {
     ExplicitJoin(Sourced<Stage2Join<'a>>),
     /// Join a table, we'll figure out how for you.
     ExplicitAutoJoin(Sourced<Stage2ExplicitAutoJoin<'a>>),
+    /// We'll figure out the table, this acts as a join: + where:
+    CompoundJoin(Sourced<Stage2CompoundJoin<'a>>),
 }
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
@@ -90,6 +92,13 @@ pub type Stage2Join<'a> = JoinHolder<TableInput<'a>, Stage2Condition<'a>>;
 pub struct Stage2ExplicitAutoJoin<'a> {
     pub join_type: Sourced<JoinType>,
     pub target_table: Sourced<TableInput<'a>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Stage2CompoundJoin<'a> {
+    pub join_type: Sourced<JoinType>,
+    pub target_table: Sourced<TableInput<'a>>,
+    pub where_conditions: Vec<Sourced<Stage2Condition<'a>>>,
 }
 
 /// The From implementation allows us to write stage1_rep.into() to get a stage2 rep.
@@ -202,7 +211,8 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
     let pine = match pair.as_rule() {
         Rule::select_pine => translate_select(pair),
         Rule::explicit_join_pine => translate_explicit_join(pair),
-        Rule::explicit_auto_join_pine | Rule::auto_join_pine => translate_explicit_auto_join(pair),
+        Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
+        Rule::auto_join_pine => translate_auto_join(pair),
         Rule::filter_pine => translate_filter_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
@@ -272,6 +282,30 @@ fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
         Stage2ExplicitAutoJoin {
             join_type: Sourced::implicit(JoinType::Left),
             target_table,
+        },
+    ))
+}
+
+fn translate_auto_join(join: Pair<Rule>) -> Stage2Pine {
+    assert!([Rule::explicit_auto_join_pine, Rule::auto_join_pine].contains(&join.as_rule()));
+
+    let span = join.as_span();
+    let mut inners = join.into_inner();
+
+    let target_table = identifiers::translate_table(
+        inners
+            .next()
+            .expect("explicit join target table should be present because of pest syntax"),
+    );
+
+    let where_conditions = inners.map(translate_condition).collect();
+
+    Stage2Pine::CompoundJoin(Sourced::from_input(
+        span,
+        Stage2CompoundJoin {
+            join_type: Sourced::implicit(JoinType::Left),
+            target_table,
+            where_conditions,
         },
     ))
 }

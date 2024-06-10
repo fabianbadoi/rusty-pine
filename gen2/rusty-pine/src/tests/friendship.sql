@@ -121,3 +121,10 @@ FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 WHERE preferences.id = 1 AND preferences.personId = 3
 LIMIT 10;
+
+-- Test: friendMap | friendshipProperties tag="test"
+SELECT *
+FROM friendshipProperties
+LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
+WHERE friendshipProperties.tag = "test"
+LIMIT 10;

@@ -15,7 +15,7 @@ filter_pine        = { ("w:" | "where:") ~ condition+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
-auto_join_pine          = { table }
+auto_join_pine          = { table ~ condition* }
 
 // Selectables are columns, conditions, values or function calls. They're the things you can put in SELECT or WHERE
 // clauses (and more).
