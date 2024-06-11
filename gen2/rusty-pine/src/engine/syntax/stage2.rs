@@ -72,6 +72,7 @@ pub enum Stage2Pine<'a> {
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
     Limit(Sourced<Stage2Limit<'a>>),
     Order(Vec<Sourced<Stage2Order<'a>>>),
+    GroupBy(Vec<Sourced<Stage2Selectable<'a>>>),
     /// "Filters" are what end up being WHERE clauses.
     ///
     /// We can't call them "Where" because that's a reserved keyword in Rust.
@@ -221,6 +222,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::compound_join_pine => translate_compound_join(pair),
         Rule::filter_pine => translate_filter_pine(pair),
         Rule::order_pine => translate_order_pine(pair),
+        Rule::group_pine => translate_group_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -367,6 +369,14 @@ fn translate_order_pine(order: Pair<Rule>) -> Stage2Pine {
     let orders = order.into_inner().map(translate_order).collect();
 
     Stage2Pine::Order(orders)
+}
+
+fn translate_group_pine(group: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::group_pine, group.as_rule());
+
+    let selectables = group.into_inner().map(translate_selectable).collect();
+
+    Stage2Pine::GroupBy(selectables)
 }
 
 fn translate_order(order: Pair<Rule>) -> Sourced<Stage2Order> {

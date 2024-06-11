@@ -62,3 +62,16 @@ SELECT *
 FROM humans
 ORDER BY id = 2 DESC
 LIMIT 10;
+
+-- Test: humans | g: id 2 "test"=4
+SELECT id, 2, "test" = 4, *
+FROM humans
+GROUP BY id, 2, "test" = 4
+LIMIT 10;
+
+-- selects: after a group: (which adds an implicit select *) removes the implicit select *
+-- Test: humans | g: name | s: count(1)
+SELECT name, count(1)
+FROM humans
+GROUP BY name
+LIMIT 10;

@@ -40,6 +40,7 @@ impl<'a> Stage5Builder<'a> {
         let filters = self.process_filters();
         let joins = self.process_joins()?;
         let orders = self.process_orders();
+        let group_by = self.process_group_by();
 
         // This makes sure we select FROM the table from the last pine.
         let from = match self.input.joins.last() {
@@ -54,6 +55,7 @@ impl<'a> Stage5Builder<'a> {
             select,
             filters,
             orders,
+            group_by,
             limit: self.input.limit.map(|limit| limit.into()),
         })
     }
@@ -63,7 +65,7 @@ impl<'a> Stage5Builder<'a> {
             .selected_columns
             .iter()
             .map(Clone::clone)
-            .map(|computation| computation.map(|selectable| self.process_selectable(selectable)))
+            .map(|selectable| selectable.map(|selectable| self.process_selectable(selectable)))
             .collect()
     }
 
@@ -83,6 +85,15 @@ impl<'a> Stage5Builder<'a> {
                     direction: order.direction,
                 })
             })
+            .collect()
+    }
+
+    fn process_group_by(&self) -> Vec<Sourced<Selectable>> {
+        self.input
+            .group_by
+            .iter()
+            .map(Clone::clone)
+            .map(|selectable| selectable.map(|selectable| self.process_selectable(selectable)))
             .collect()
     }
 

@@ -134,3 +134,10 @@ SELECT *
 FROM people
 ORDER BY id DESC, name, dateOfBirth DESC
 LIMIT 10;
+
+-- Test: people | preferences | g: id 2 "test"=4
+SELECT preferences.id, 2, "test" = 4, preferences.*
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId
+GROUP BY preferences.id, 2, "test" = 4
+LIMIT 10;

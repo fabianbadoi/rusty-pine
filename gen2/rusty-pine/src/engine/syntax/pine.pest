@@ -7,6 +7,7 @@ pine               = _{
                          | filter_pine
                          | limit_pine
                          | order_pine
+                         | group_pine
                          // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
                          | join_pine
@@ -16,6 +17,7 @@ join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | compound_
 filter_pine        = { ("w:" | "where:") ~ condition+ }
 limit_pine         = { ("limit:" | "l:") ~ literal_value ~ literal_value? }
 order_pine         = { ("order:" | "o:") ~ order+ }
+group_pine         = { ("group:" | "g:") ~ selectable+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
@@ -77,4 +79,3 @@ WHITESPACE = _{ " " | "\t" }
 
 // TODO
 // unselect = { ("unselect:" | "u:") ~ operand+ }
-// group_by = { ("group:" | "g:") ~ operand+ }

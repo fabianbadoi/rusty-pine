@@ -34,6 +34,7 @@ pub enum Stage3Pine<'a> {
     Filter(Vec<Sourced<Stage3Condition<'a>>>),
     Join(Sourced<Stage3Join<'a>>),
     Order(Vec<Sourced<Stage3Order<'a>>>),
+    GroupBy(Vec<Sourced<Stage3Selectable<'a>>>),
     Limit(Sourced<Stage3Limit<'a>>),
 }
 

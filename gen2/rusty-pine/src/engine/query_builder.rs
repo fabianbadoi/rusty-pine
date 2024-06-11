@@ -40,6 +40,7 @@ pub struct Query {
     pub joins: Vec<Sourced<ExplicitJoin>>,
     pub select: Vec<Sourced<Selectable>>,
     pub orders: Vec<Sourced<OrderHolder<Selectable>>>,
+    pub group_by: Vec<Sourced<Selectable>>,
     pub limit: Sourced<LimitHolder<LiteralValue>>,
 }
 

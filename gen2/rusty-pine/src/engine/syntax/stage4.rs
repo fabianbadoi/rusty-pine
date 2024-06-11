@@ -20,6 +20,7 @@ pub struct Stage4Rep<'a> {
     pub joins: Vec<Sourced<Stage4Join<'a>>>,
     pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
     pub orders: Vec<Sourced<Stage4Order<'a>>>,
+    pub group_by: Vec<Sourced<Stage4Selectable<'a>>>,
     pub limit: Sourced<Stage4Limit<'a>>,
 }
 
@@ -66,10 +67,12 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
         let input = stage3.input;
         let mut from = None;
+        let mut last_table = None;
         let mut selected_columns = Vec::new();
         let mut joins = Vec::new();
         let mut filters = Vec::new();
         let mut orders = Vec::new();
+        let mut group_by = Vec::new();
         let mut limit = Sourced::implicit(LimitHolder::Implicit());
 
         for pine in stage3.pines {
@@ -80,19 +83,43 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                         "Our pest syntax forbids multiple from statements"
                     );
                     from = Some(table);
+                    last_table = Some(table);
                     filters.append(&mut translate_conditions(conditions));
                 }
                 Stage3Pine::Select(selectables) => {
+                    // If we add a select, we drop any implicit wildcards so far. This is just
+                    // what I find convenient.
+                    purge_implicit_wildcards(
+                        &mut selected_columns,
+                        last_table.expect("Should have a table before any selects"),
+                    );
+
                     selected_columns.append(&mut translate_selectables(selectables));
                 }
                 Stage3Pine::Limit(new_limit) => limit = new_limit.into(),
                 Stage3Pine::Order(new_orders) => {
                     orders.append(&mut translate_orders(new_orders));
                 }
+                Stage3Pine::GroupBy(selectables) => {
+                    let mut selectables = translate_selectables(selectables);
+                    let mut group_selectables = selectables.clone();
+
+                    if selected_columns.is_empty() {
+                        // We add an implicit * wildcard select because I think it's convenient.
+                        // This is just what I find convenient.
+                        selectables.push(implicit_wildcard_select(
+                            last_table.expect("pines must start with a from: pine"),
+                        ))
+                    }
+
+                    selected_columns.append(&mut selectables);
+                    group_by.append(&mut group_selectables);
+                }
                 Stage3Pine::Filter(conditions) => {
                     filters.append(&mut translate_conditions(conditions))
                 }
                 Stage3Pine::Join(join) => {
+                    last_table = Some(join.it.target_table);
                     joins.push(join);
                 }
             }
@@ -105,9 +132,38 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             joins,
             selected_columns,
             orders,
+            group_by,
             limit,
         }
     }
+}
+
+fn implicit_wildcard_select(last_table: Sourced<TableInput>) -> Sourced<Stage4Selectable> {
+    Sourced::implicit(Stage4Selectable::Computation(Sourced::implicit(
+        Stage4ComputationInput::Column(Sourced::implicit(Stage4ColumnInput {
+            table: last_table,
+            column: Sourced::implicit(SqlIdentifierInput { name: "*" }),
+        })),
+    )))
+}
+
+fn purge_implicit_wildcards(
+    selectables: &mut Vec<Sourced<Stage4Selectable>>,
+    implicit_table: Sourced<TableInput>,
+) {
+    selectables.retain(|selectable| {
+        let comp = match &selectable.it {
+            Stage4Selectable::Computation(comp) => comp,
+            _ => return true,
+        };
+
+        let column = match comp.it {
+            Stage4ComputationInput::Column(column) => column,
+            _ => return true,
+        };
+
+        !(column.it.table == implicit_table && column.it.column.it.name == "*")
+    })
 }
 
 fn translate_selectables(

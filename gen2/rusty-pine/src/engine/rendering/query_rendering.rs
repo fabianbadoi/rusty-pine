@@ -24,6 +24,7 @@ impl Display for Query {
 
         write!(f, "{}", WhereClause(self.filters.as_slice()))?;
         write!(f, "{}", OrderClause(self.orders.as_slice()))?;
+        write!(f, "{}", GroupByClause(self.group_by.as_slice()))?;
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
@@ -57,6 +58,24 @@ impl Display for WhereClause<'_> {
 
             for condition in rest {
                 write!(f, " AND {}", condition)?;
+            }
+
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+struct GroupByClause<'a>(&'a [Sourced<Selectable>]);
+
+impl Display for GroupByClause<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some((first, rest)) = self.0.split_first() {
+            write!(f, "GROUP BY {}", first)?;
+
+            for condition in rest {
+                write!(f, ", {}", condition)?;
             }
 
             writeln!(f)?;
