@@ -1,6 +1,6 @@
 use crate::engine::query_builder::{
-    ColumnName, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall, Query,
-    Selectable, SelectedColumn, Table, TableName,
+    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, Selectable,
+    SelectedColumn, Table, TableName,
 };
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinType, LiteralValueHolder,
@@ -22,9 +22,9 @@ impl Display for Query {
             writeln!(f, "{}", join)?;
         }
 
-        write!(f, "{}", WhereClause(self.filters.as_slice()))?;
-        write!(f, "{}", OrderClause(self.orders.as_slice()))?;
-        write!(f, "{}", GroupByClause(self.group_by.as_slice()))?;
+        write!(f, "{}", OptionalClause::filter(self.filters.as_slice()))?;
+        write!(f, "{}", OptionalClause::order_by(self.orders.as_slice()))?;
+        write!(f, "{}", OptionalClause::group_by(self.group_by.as_slice()))?;
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
@@ -49,51 +49,56 @@ impl Display for RenderableSelect<'_> {
     }
 }
 
-struct WhereClause<'a>(&'a [Sourced<Condition>]);
+struct OptionalClause<'a, T> {
+    intro: &'a str,
+    ligature: &'a str,
+    items: &'a [T],
+}
 
-impl Display for WhereClause<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some((first, rest)) = self.0.split_first() {
-            write!(f, "WHERE {}", first)?;
-
-            for condition in rest {
-                write!(f, " AND {}", condition)?;
-            }
-
-            writeln!(f)?;
+impl<'a, T> OptionalClause<'a, T> {
+    fn group_by(items: &'a [T]) -> Self {
+        OptionalClause {
+            intro: "GROUP BY",
+            ligature: ",",
+            items,
         }
+    }
 
-        Ok(())
+    fn order_by(items: &'a [T]) -> Self {
+        OptionalClause {
+            intro: "ORDER BY",
+            ligature: ",",
+            items,
+        }
+    }
+
+    fn filter(items: &'a [T]) -> Self {
+        OptionalClause {
+            intro: "WHERE",
+            ligature: " AND",
+            items,
+        }
     }
 }
 
-struct GroupByClause<'a>(&'a [Sourced<Selectable>]);
-
-impl Display for GroupByClause<'_> {
+/// Displays things like "WHERE x AND Y AND Z", "GROUP BY 1, 2, 3", and "ORDER BY 1, 2, 3".
+/// These are all optional fields that have a ligature between each element.
+impl<'a, T> Display for OptionalClause<'a, T>
+where
+    T: Display,
+{
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some((first, rest)) = self.0.split_first() {
-            write!(f, "GROUP BY {}", first)?;
+        let Self {
+            intro,
+            ligature,
+            items,
+        } = self;
+
+        if let Some((first, rest)) = items.split_first() {
+            write!(f, "{intro} {first}")?;
 
             for condition in rest {
-                write!(f, ", {}", condition)?;
-            }
-
-            writeln!(f)?;
-        }
-
-        Ok(())
-    }
-}
-
-struct OrderClause<'a>(&'a [Sourced<OrderHolder<Selectable>>]);
-
-impl Display for OrderClause<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some((first, rest)) = self.0.split_first() {
-            write!(f, "ORDER BY {}", first)?;
-
-            for order in rest {
-                write!(f, ", {}", order)?;
+                write!(f, "{ligature} {condition}")?;
             }
 
             writeln!(f)?;
