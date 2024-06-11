@@ -128,3 +128,9 @@ FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 WHERE friendshipProperties.tag = "test"
 LIMIT 10;
+
+-- Test: people | o: id- name+ dateOfBirth
+SELECT *
+FROM people
+ORDER BY id DESC, name, dateOfBirth DESC
+LIMIT 10;

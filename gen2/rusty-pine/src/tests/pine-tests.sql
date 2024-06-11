@@ -56,3 +56,9 @@ LIMIT 2;
 SELECT *
 FROM humans
 LIMIT 10, 20;
+
+-- Test: humans | o: id = 2
+SELECT *
+FROM humans
+ORDER BY id = 2 DESC
+LIMIT 10;

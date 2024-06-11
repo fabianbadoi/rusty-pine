@@ -3,10 +3,12 @@
 //! to the actual state of the database:
 //!     - how do to joins
 //!     - can't tell if table is missing or name is mistyped
-use crate::engine::syntax::stage3::{Stage3Condition, Stage3Pine, Stage3Rep, Stage3Selectable};
+use crate::engine::syntax::stage3::{
+    Stage3Condition, Stage3Order, Stage3Pine, Stage3Rep, Stage3Selectable,
+};
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
 use crate::engine::{
-    BinaryConditionHolder, ConditionHolder, JoinConditions, JoinType, LimitHolder,
+    BinaryConditionHolder, ConditionHolder, JoinConditions, JoinType, LimitHolder, OrderHolder,
     SelectableHolder, UnaryConditionHolder,
 };
 use crate::engine::{LiteralValueHolder, Sourced};
@@ -17,6 +19,7 @@ pub struct Stage4Rep<'a> {
     pub filters: Vec<Sourced<Stage4Condition<'a>>>,
     pub joins: Vec<Sourced<Stage4Join<'a>>>,
     pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
+    pub orders: Vec<Sourced<Stage4Order<'a>>>,
     pub limit: Sourced<Stage4Limit<'a>>,
 }
 
@@ -24,6 +27,7 @@ pub type Stage4Selectable<'a> = SelectableHolder<Stage4Condition<'a>, Stage4Comp
 pub type Stage4Condition<'a> = ConditionHolder<Stage4ComputationInput<'a>>;
 pub type Stage4BinaryCondition<'a> = BinaryConditionHolder<Stage4ComputationInput<'a>>;
 pub type Stage4UnaryCondition<'a> = UnaryConditionHolder<Stage4ComputationInput<'a>>;
+pub type Stage4Order<'a> = OrderHolder<Stage4Selectable<'a>>;
 pub type Stage4Limit<'a> = LimitHolder<Stage4LiteralValue<'a>>;
 
 #[derive(Clone, Debug)]
@@ -62,9 +66,10 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
         let input = stage3.input;
         let mut from = None;
-        let mut select = Vec::new();
+        let mut selected_columns = Vec::new();
         let mut joins = Vec::new();
         let mut filters = Vec::new();
+        let mut orders = Vec::new();
         let mut limit = Sourced::implicit(LimitHolder::Implicit());
 
         for pine in stage3.pines {
@@ -78,9 +83,12 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     filters.append(&mut translate_conditions(conditions));
                 }
                 Stage3Pine::Select(selectables) => {
-                    select.append(&mut translate_selectables(selectables));
+                    selected_columns.append(&mut translate_selectables(selectables));
                 }
                 Stage3Pine::Limit(new_limit) => limit = new_limit.into(),
+                Stage3Pine::Order(new_orders) => {
+                    orders.append(&mut translate_orders(new_orders));
+                }
                 Stage3Pine::Filter(conditions) => {
                     filters.append(&mut translate_conditions(conditions))
                 }
@@ -95,7 +103,8 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
             filters,
             joins,
-            selected_columns: select,
+            selected_columns,
+            orders,
             limit,
         }
     }
@@ -110,6 +119,10 @@ fn translate_selectables(
 fn translate_conditions(
     conditions: Vec<Sourced<Stage3Condition>>,
 ) -> Vec<Sourced<Stage4Condition>> {
+    conditions
+}
+
+fn translate_orders(conditions: Vec<Sourced<Stage3Order>>) -> Vec<Sourced<Stage4Order>> {
     conditions
 }
 

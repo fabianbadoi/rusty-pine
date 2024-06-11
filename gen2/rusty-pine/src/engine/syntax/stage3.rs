@@ -8,7 +8,7 @@
 use crate::engine::syntax::stage2::Stage2Rep;
 use crate::engine::syntax::stage3::iterator::Stage3Iterator;
 use crate::engine::syntax::stage4::{
-    Stage4ComputationInput, Stage4Condition, Stage4Limit, Stage4Selectable,
+    Stage4ComputationInput, Stage4Condition, Stage4Limit, Stage4Order, Stage4Selectable,
 };
 use crate::engine::syntax::{
     Stage4BinaryCondition, Stage4ColumnInput, Stage4Join, Stage4UnaryCondition, TableInput,
@@ -33,6 +33,7 @@ pub enum Stage3Pine<'a> {
     Select(Vec<Sourced<Stage3Selectable<'a>>>),
     Filter(Vec<Sourced<Stage3Condition<'a>>>),
     Join(Sourced<Stage3Join<'a>>),
+    Order(Vec<Sourced<Stage3Order<'a>>>),
     Limit(Sourced<Stage3Limit<'a>>),
 }
 
@@ -44,6 +45,7 @@ pub type Stage3UnaryCondition<'a> = Stage4UnaryCondition<'a>;
 pub type Stage3ColumnInput<'a> = Stage4ColumnInput<'a>;
 pub type Stage3ComputationInput<'a> = Stage4ComputationInput<'a>;
 pub type Stage3Join<'a> = Stage4Join<'a>;
+pub type Stage3Order<'a> = Stage4Order<'a>;
 pub type Stage3Limit<'a> = Stage4Limit<'a>;
 
 impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {

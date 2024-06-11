@@ -131,6 +131,21 @@ where
     },
 }
 
+#[derive(Debug, Clone)]
+pub struct OrderHolder<T>
+where
+    T: Debug + Clone,
+{
+    selectable: Sourced<T>,
+    direction: Sourced<OrderDirection>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OrderDirection {
+    Ascending,
+    Descending,
+}
+
 #[derive(Debug, Copy, Clone)]
 pub enum JoinType {
     Left,

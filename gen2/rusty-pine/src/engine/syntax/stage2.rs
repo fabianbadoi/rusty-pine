@@ -21,7 +21,7 @@ use crate::engine::syntax::stage4::Stage4Limit;
 use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
-    Position, SelectableHolder, Sourced, UnaryConditionHolder,
+    OrderDirection, OrderHolder, Position, SelectableHolder, Sourced, UnaryConditionHolder,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -71,6 +71,7 @@ pub enum Stage2Pine<'a> {
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
     Limit(Sourced<Stage2Limit<'a>>),
+    Order(Vec<Sourced<Stage2Order<'a>>>),
     /// "Filters" are what end up being WHERE clauses.
     ///
     /// We can't call them "Where" because that's a reserved keyword in Rust.
@@ -86,6 +87,7 @@ pub enum Stage2Pine<'a> {
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
 pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
 pub type Stage2Limit<'a> = Stage4Limit<'a>;
+pub type Stage2Order<'a> = OrderHolder<Stage2Selectable<'a>>;
 pub type Stage2BinaryCondition<'a> = BinaryConditionHolder<Computation<'a>>;
 pub type Stage2UnaryCondition<'a> = UnaryConditionHolder<Computation<'a>>;
 
@@ -218,6 +220,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::explicit_auto_join_pine => translate_explicit_auto_join(pair),
         Rule::compound_join_pine => translate_compound_join(pair),
         Rule::filter_pine => translate_filter_pine(pair),
+        Rule::order_pine => translate_order_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -356,6 +359,46 @@ fn translate_filter_pine(filter_pine: Pair<Rule>) -> Stage2Pine {
     }
 
     Stage2Pine::Filter(conditions)
+}
+
+fn translate_order_pine(order: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::order_pine, order.as_rule());
+
+    let orders = order.into_inner().map(translate_order).collect();
+
+    Stage2Pine::Order(orders)
+}
+
+fn translate_order(order: Pair<Rule>) -> Sourced<Stage2Order> {
+    assert_eq!(Rule::order, order.as_rule());
+
+    let position = order.as_span();
+
+    let mut inners = order.into_inner();
+    let selectable = inners
+        .next()
+        .expect("Pest syntax ensures order selectable exists");
+    let selectable = translate_selectable(selectable);
+
+    let direction = match inners.next() {
+        None => Sourced::implicit(OrderDirection::Descending),
+        Some(direction) => Sourced::from_input(
+            direction.as_span(),
+            match direction.as_rule() {
+                Rule::order_descending => OrderDirection::Descending,
+                Rule::order_ascending => OrderDirection::Ascending,
+                invalid => panic!("Invalid order: Rule::{:?}", invalid),
+            },
+        ),
+    };
+
+    Sourced::from_input(
+        position,
+        Stage2Order {
+            selectable,
+            direction,
+        },
+    )
 }
 
 fn translate_selectable(selectable: Pair<Rule>) -> Sourced<Stage2Selectable> {

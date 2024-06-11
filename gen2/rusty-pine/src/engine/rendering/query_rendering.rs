@@ -4,7 +4,7 @@ use crate::engine::query_builder::{
 };
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinType, LiteralValueHolder,
-    UnaryConditionHolder,
+    OrderDirection, OrderHolder, UnaryConditionHolder,
 };
 use crate::engine::{LimitHolder, Sourced};
 use std::fmt::{Debug, Display, Formatter};
@@ -23,7 +23,7 @@ impl Display for Query {
         }
 
         write!(f, "{}", WhereClause(self.filters.as_slice()))?;
-
+        write!(f, "{}", OrderClause(self.orders.as_slice()))?;
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())
@@ -52,10 +52,6 @@ struct WhereClause<'a>(&'a [Sourced<Condition>]);
 
 impl Display for WhereClause<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if self.0.is_empty() {
-            return Ok(());
-        }
-
         if let Some((first, rest)) = self.0.split_first() {
             write!(f, "WHERE {}", first)?;
 
@@ -64,6 +60,39 @@ impl Display for WhereClause<'_> {
             }
 
             writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+struct OrderClause<'a>(&'a [Sourced<OrderHolder<Selectable>>]);
+
+impl Display for OrderClause<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some((first, rest)) = self.0.split_first() {
+            write!(f, "ORDER BY {}", first)?;
+
+            for order in rest {
+                write!(f, ", {}", order)?;
+            }
+
+            writeln!(f)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T> Display for OrderHolder<T>
+where
+    T: Display + Clone + Debug,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.selectable)?;
+
+        if self.direction.it == OrderDirection::Descending {
+            write!(f, " DESC")?;
         }
 
         Ok(())

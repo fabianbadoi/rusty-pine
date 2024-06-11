@@ -9,7 +9,9 @@ use crate::engine::syntax::{
     Stage4Condition, Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Rep,
     Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
-use crate::engine::{JoinConditions, LimitHolder, LiteralValueHolder, QueryBuildError, Sourced};
+use crate::engine::{
+    JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError, Sourced,
+};
 use std::fmt::Debug;
 
 pub struct Stage5Builder<'a> {
@@ -37,6 +39,7 @@ impl<'a> Stage5Builder<'a> {
         let select = self.process_selects();
         let filters = self.process_filters();
         let joins = self.process_joins()?;
+        let orders = self.process_orders();
 
         // This makes sure we select FROM the table from the last pine.
         let from = match self.input.joins.last() {
@@ -50,6 +53,7 @@ impl<'a> Stage5Builder<'a> {
             joins,
             select,
             filters,
+            orders,
             limit: self.input.limit.map(|limit| limit.into()),
         })
     }
@@ -65,6 +69,21 @@ impl<'a> Stage5Builder<'a> {
 
     fn process_filters(&self) -> Vec<Sourced<Condition>> {
         self.process_conditions(&self.input.filters)
+    }
+
+    fn process_orders(&self) -> Vec<Sourced<OrderHolder<Selectable>>> {
+        self.input
+            .orders
+            .iter()
+            .map(|order| {
+                order.map_ref(|order| OrderHolder {
+                    selectable: order
+                        .selectable
+                        .map_ref(|comp| self.process_selectable(comp.clone())),
+                    direction: order.direction,
+                })
+            })
+            .collect()
     }
 
     fn process_joins(&self) -> Result<Vec<Sourced<ExplicitJoin>>, QueryBuildError> {

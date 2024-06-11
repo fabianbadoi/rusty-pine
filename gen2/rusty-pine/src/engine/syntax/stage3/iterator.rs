@@ -2,12 +2,12 @@
 /// See more info about the stage 3 rep. in the parent module.
 use crate::engine::syntax::stage2::{
     PestIterator, Stage2BinaryCondition, Stage2CompoundJoin, Stage2Condition,
-    Stage2ExplicitAutoJoin, Stage2Join, Stage2Limit, Stage2Pine, Stage2Selectable,
+    Stage2ExplicitAutoJoin, Stage2Join, Stage2Limit, Stage2Order, Stage2Pine, Stage2Selectable,
     Stage2UnaryCondition,
 };
 use crate::engine::syntax::stage3::{
     Stage3BinaryCondition, Stage3ColumnInput, Stage3ComputationInput, Stage3Condition, Stage3Join,
-    Stage3Pine, Stage3Selectable, Stage3UnaryCondition,
+    Stage3Order, Stage3Pine, Stage3Selectable, Stage3UnaryCondition,
 };
 use crate::engine::syntax::stage4::Stage4FunctionCall;
 use crate::engine::syntax::{
@@ -119,6 +119,7 @@ impl<'a> Stage3Iterator<'a> {
             Stage2Pine::Select(columns) => self.translate_select(position, columns),
             Stage2Pine::Filter(conditions) => self.process_filter_conditions(position, conditions),
             Stage2Pine::Limit(limit) => self.process_limit(position, limit),
+            Stage2Pine::Order(orders) => self.process_orders(position, orders),
             Stage2Pine::ExplicitJoin(explicit_join) => {
                 self.process_explicit_join(position, explicit_join)
             }
@@ -150,6 +151,19 @@ impl<'a> Stage3Iterator<'a> {
         limit: Sourced<Stage2Limit<'a>>,
     ) -> Stage3Buffer<'a> {
         VecDeque::from([Sourced::from_source(source, Stage3Pine::Limit(limit))])
+    }
+
+    fn process_orders(
+        &mut self,
+        source: Source,
+        orders: Vec<Sourced<Stage2Order<'a>>>,
+    ) -> Stage3Buffer<'a> {
+        let orders = orders
+            .into_iter()
+            .map(|order| translate_order(order, &self.context.previous_table))
+            .collect();
+
+        VecDeque::from([Sourced::from_source(source, Stage3Pine::Order(orders))])
     }
 
     fn process_filter_conditions(
@@ -278,6 +292,16 @@ fn translate_selectable<'a>(
         Stage2Selectable::Computation(computation) => {
             Stage3Selectable::Computation(translate_computation(computation, implicit_table))
         }
+    })
+}
+
+fn translate_order<'a>(
+    order: Sourced<Stage2Order<'a>>,
+    implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3Order<'a>> {
+    order.map(|order| Stage3Order {
+        selectable: translate_selectable(&order.selectable, implicit_table),
+        direction: order.direction,
     })
 }
 

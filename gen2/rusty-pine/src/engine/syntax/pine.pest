@@ -6,6 +6,7 @@ pine               = _{
                         select_pine
                          | filter_pine
                          | limit_pine
+                         | order_pine
                          // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
                          | join_pine
@@ -14,6 +15,7 @@ select_pine        = { ("s:" | "select:") ~ selectable+ }
 join_pine          = _{ explicit_join_pine | explicit_auto_join_pine | compound_join_pine }
 filter_pine        = { ("w:" | "where:") ~ condition+ }
 limit_pine         = { ("limit:" | "l:") ~ literal_value ~ literal_value? }
+order_pine         = { ("order:" | "o:") ~ order+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
@@ -25,11 +27,17 @@ selectable    = { condition | computation }
 computation   = { function_call | column | literal_value }
 function_call = { sql_name ~ "(" ~ computation* ~ ")"}
 
-condition             = { unary_condition | binary_condition }
-unary_condition       = { is_null_condition | is_not_null_condition }
+// The condition rule has a "!". This makes it always accept whitespace, even if in the "order"
+// rule where we disable whitespace for the "+" and "-".
+condition             = !{ unary_condition | binary_condition }
 binary_condition      = { computation ~ comparison_symbol ~ computation }
+unary_condition       = { is_null_condition | is_not_null_condition }
 is_null_condition     = { computation ~ "?" }
 is_not_null_condition = { computation ~ "!?" }
+
+order = ${selectable ~ (order_descending | order_ascending)?}
+order_descending = { "-" }
+order_ascending  = { "+" }
 
 column = { db_table_column_name | table_column_name | column_name }
 column_name = { sql_name }
@@ -70,4 +78,3 @@ WHITESPACE = _{ " " | "\t" }
 // TODO
 // unselect = { ("unselect:" | "u:") ~ operand+ }
 // group_by = { ("group:" | "g:") ~ operand+ }
-// order = { ("order:" | "o:") ~ ordering ~ ("," ~ ordering)* }
