@@ -66,6 +66,12 @@ pub type Stage4LiteralValue<'a> = LiteralValueHolder<&'a str>;
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
         let input = stage3.input;
+
+        // In most cases we add an implicit "select *". The situations where we don't do that
+        // is when the user uses a manual "select: x".
+        // If we didn't do this, you would either always select EVERYTHING and become overwhelmed,
+        // or you would have to manually select everything, and be disappointed.
+        let mut add_implicit_select = true;
         let mut from = None;
         let mut last_table = None;
         let mut selected_columns = Vec::new();
@@ -87,14 +93,11 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     filters.append(&mut translate_conditions(conditions));
                 }
                 Stage3Pine::Select(selectables) => {
-                    // If we add a select, we drop any implicit wildcards so far. This is just
-                    // what I find convenient.
-                    purge_implicit_wildcards(
-                        &mut selected_columns,
-                        last_table.expect("Should have a table before any selects"),
-                    );
-
                     selected_columns.append(&mut translate_selectables(selectables));
+
+                    // If the user manually selects something, we only want them to see those things
+                    // they selected.
+                    add_implicit_select = false;
                 }
                 Stage3Pine::Limit(new_limit) => limit = new_limit.into(),
                 Stage3Pine::Order(new_orders) => {
@@ -103,14 +106,6 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 Stage3Pine::GroupBy(selectables) => {
                     let mut selectables = translate_selectables(selectables);
                     let mut group_selectables = selectables.clone();
-
-                    if selected_columns.is_empty() {
-                        // We add an implicit * wildcard select because I think it's convenient.
-                        // This is just what I find convenient.
-                        selectables.push(implicit_wildcard_select(
-                            last_table.expect("pines must start with a from: pine"),
-                        ))
-                    }
 
                     selected_columns.append(&mut selectables);
                     group_by.append(&mut group_selectables);
@@ -121,8 +116,21 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 Stage3Pine::Join(join) => {
                     last_table = Some(join.it.target_table);
                     joins.push(join);
+
+                    // If the user joins another table after manually selecting something, we make
+                    // sure the new table gets a "select new_table.*".
+                    // For example "table1 | s: id | j: table2" will select "table1.id, table2.*"
+                    add_implicit_select = true;
                 }
             }
+        }
+
+        // We add the implicit selects at the add, this seems more natural to me.
+        // This ensures we have "select a, b, c.*" instead of "select c.*, a, b".
+        if add_implicit_select {
+            selected_columns.push(implicit_wildcard_select(
+                last_table.expect("It's not possible to have pines without from:s or joins"),
+            ));
         }
 
         Stage4Rep {
@@ -145,25 +153,6 @@ fn implicit_wildcard_select(last_table: Sourced<TableInput>) -> Sourced<Stage4Se
             column: Sourced::implicit(SqlIdentifierInput { name: "*" }),
         })),
     )))
-}
-
-fn purge_implicit_wildcards(
-    selectables: &mut Vec<Sourced<Stage4Selectable>>,
-    implicit_table: Sourced<TableInput>,
-) {
-    selectables.retain(|selectable| {
-        let comp = match &selectable.it {
-            Stage4Selectable::Computation(comp) => comp,
-            _ => return true,
-        };
-
-        let column = match comp.it {
-            Stage4ComputationInput::Column(column) => column,
-            _ => return true,
-        };
-
-        !(column.it.table == implicit_table && column.it.column.it.name == "*")
-    })
 }
 
 fn translate_selectables(

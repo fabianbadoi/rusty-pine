@@ -67,45 +67,45 @@ create table `preferenceHistory` (
 
 -- Tests below
 -- Test: people | j: preferences people.id = preferences.personId
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
 
 -- Test: people | j: preferences people.id = personId
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
 
 -- Test: people | j: preferences id = preferences.personId
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
 
 -- Test: people | j: preferences id = personId
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
 
 -- Join on multiple conditions
 -- Test: people | j: preferences id=personId name="Silvanus"
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId AND people.name = "Silvanus"
 LIMIT 10;
 
 -- Auto-join
 -- Test: friendMap | j: friendshipProperties
-SELECT *
+SELECT friendshipProperties.*
 FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 LIMIT 10;
 
 -- Test: friendMap | friendshipProperties
-SELECT *
+SELECT friendshipProperties.*
 FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 LIMIT 10;
@@ -116,14 +116,14 @@ FROM people
 LIMIT 10;
 
 -- Test: people | j: preferences | where: id=1 personId=3
-SELECT *
+SELECT preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 WHERE preferences.id = 1 AND preferences.personId = 3
 LIMIT 10;
 
 -- Test: friendMap | friendshipProperties tag="test"
-SELECT *
+SELECT friendshipProperties.*
 FROM friendshipProperties
 LEFT JOIN friendMap ON friendMap.friendA = friendshipProperties.friendA AND friendMap.friendB = friendshipProperties.friendB
 WHERE friendshipProperties.tag = "test"
@@ -140,4 +140,23 @@ SELECT preferences.id, 2, "test" = 4, preferences.*
 FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 GROUP BY preferences.id, 2, "test" = 4
+LIMIT 10;
+
+-- Test: people | s: id | preferences
+SELECT people.id, preferences.*
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId
+LIMIT 10;
+
+-- Test: people | s: id | g: name
+SELECT id, name
+FROM people
+GROUP BY name
+LIMIT 10;
+
+-- Test: people | s: id | g: name | preferences
+SELECT people.id, people.name, preferences.*
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId
+GROUP BY people.name
 LIMIT 10;
