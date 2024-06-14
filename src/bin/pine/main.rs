@@ -15,7 +15,7 @@ fn main() {
         Command::UseContext { name } => use_context(name).unwrap(),
         Command::ListContexts => list_contexts().unwrap(),
         Command::Analyze => commands::analyze::analyze().unwrap(),
-        Command::PineServer => commands::pine_server::run().unwrap(),
+        Command::PineServer => commands::pine_server::run(),
     }
 }
 
