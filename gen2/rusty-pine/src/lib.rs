@@ -1,9 +1,7 @@
 pub mod cache;
+pub mod context;
 mod engine;
 mod error;
-pub mod lsp;
-
-pub mod context;
 
 pub mod analyze {
     pub use crate::engine::sql::querying::{
