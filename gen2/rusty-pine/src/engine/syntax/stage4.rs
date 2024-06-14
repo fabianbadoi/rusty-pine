@@ -19,6 +19,7 @@ pub struct Stage4Rep<'a> {
     pub filters: Vec<Sourced<Stage4Condition<'a>>>,
     pub joins: Vec<Sourced<Stage4Join<'a>>>,
     pub selected_columns: Vec<Sourced<Stage4Selectable<'a>>>,
+    pub unselected_columns: Vec<Sourced<Stage4ColumnInput<'a>>>,
     pub orders: Vec<Sourced<Stage4Order<'a>>>,
     pub group_by: Vec<Sourced<Stage4Selectable<'a>>>,
     pub limit: Sourced<Stage4Limit<'a>>,
@@ -75,6 +76,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
         let mut from = None;
         let mut last_table = None;
         let mut selected_columns = Vec::new();
+        let mut unselected_columns = Vec::new();
         let mut joins = Vec::new();
         let mut filters = Vec::new();
         let mut orders = Vec::new();
@@ -98,6 +100,9 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     // If the user manually selects something, we only want them to see those things
                     // they selected.
                     add_implicit_select = false;
+                }
+                Stage3Pine::Unselect(mut columns) => {
+                    unselected_columns.append(&mut columns);
                 }
                 Stage3Pine::Limit(new_limit) => limit = new_limit.into(),
                 Stage3Pine::Order(new_orders) => {
@@ -139,6 +144,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             filters,
             joins,
             selected_columns,
+            unselected_columns,
             orders,
             group_by,
             limit,

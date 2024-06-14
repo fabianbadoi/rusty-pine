@@ -1,4 +1,4 @@
-use crate::analyze::{ColumnName, Database, ForeignKey, KeyReference, Server, TableName};
+use crate::analyze::{Column, ColumnName, Database, ForeignKey, KeyReference, Server, TableName};
 use crate::engine::Comparison;
 
 use crate::engine::query_builder::{
@@ -10,6 +10,7 @@ type Result<T> = std::result::Result<T, QueryBuildError>;
 
 pub trait Introspective {
     fn join_conditions(&self, from: TableInput, to: TableInput) -> Result<Vec<Sourced<Condition>>>;
+    fn columns(&self, table: TableInput) -> Result<&[Column]>;
 }
 
 impl Introspective for Server {
@@ -40,6 +41,21 @@ impl Introspective for Server {
             .collect();
 
         Ok(conditions)
+    }
+
+    fn columns(&self, table: TableInput) -> Result<&[Column]> {
+        let database = match table.database {
+            OptionalInput::Implicit => self.default_database()?,
+            OptionalInput::Specified(name) => self.database(name.it)?,
+        };
+
+        let table_name = TableName(table.table.it.name.to_string());
+        let table = database
+            .tables
+            .get(&table_name)
+            .ok_or_else(|| QueryBuildError::TableNotFound(self.params.clone(), table_name))?;
+
+        Ok(table.columns.as_slice())
     }
 }
 
@@ -92,14 +108,16 @@ impl Server {
     ) -> Result<&Database> {
         match db_or_none {
             OptionalInput::Implicit => self.default_database(),
-            OptionalInput::Specified(db_name) => {
-                let table = TableName(db_name.it.name.to_string());
-
-                self.databases
-                    .get(&table)
-                    .ok_or_else(|| QueryBuildError::DatabaseNotFound(self.params.clone(), table))
-            }
+            OptionalInput::Specified(db_name) => self.database(db_name.it),
         }
+    }
+
+    fn database<T: AsRef<str>>(&self, name: T) -> Result<&Database> {
+        let table = TableName(name.as_ref().to_string());
+
+        self.databases
+            .get(&table)
+            .ok_or_else(|| QueryBuildError::DatabaseNotFound(self.params.clone(), table))
     }
 }
 

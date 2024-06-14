@@ -31,6 +31,7 @@ pub enum Stage3Pine<'a> {
         conditions: Vec<Sourced<Stage3Condition<'a>>>,
     },
     Select(Vec<Sourced<Stage3Selectable<'a>>>),
+    Unselect(Vec<Sourced<Stage3ColumnInput<'a>>>),
     Filter(Vec<Sourced<Stage3Condition<'a>>>),
     Join(Sourced<Stage3Join<'a>>),
     Order(Vec<Sourced<Stage3Order<'a>>>),

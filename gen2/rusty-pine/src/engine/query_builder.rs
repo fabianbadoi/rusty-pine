@@ -22,6 +22,7 @@ pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate
 pub enum QueryBuildError {
     DefaultDatabaseNotFound(ServerParams, analyze::TableName),
     DatabaseNotFound(ServerParams, analyze::TableName),
+    TableNotFound(ServerParams, analyze::TableName),
     InvalidForeignKey {
         from: KeyReference,
         to: KeyReference,
@@ -103,8 +104,11 @@ impl Display for QueryBuildError {
                     server, table
                 )
             }
-            QueryBuildError::DatabaseNotFound(server, table) => {
-                write!(f, "Database '{}' for server {} not found", server, table)
+            QueryBuildError::DatabaseNotFound(server, database) => {
+                write!(f, "Database '{database}' for server {server} not found")
+            }
+            QueryBuildError::TableNotFound(server, table) => {
+                write!(f, "Table '{table}' for server {server} not found")
             }
             QueryBuildError::InvalidForeignKey { from, to } => {
                 write!(

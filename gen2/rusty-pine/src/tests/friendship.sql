@@ -160,3 +160,8 @@ FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 GROUP BY people.name
 LIMIT 10;
+
+-- Test: people | u: id
+SELECT name, dateOfBirth, placeOfBirth
+FROM people
+LIMIT 10;

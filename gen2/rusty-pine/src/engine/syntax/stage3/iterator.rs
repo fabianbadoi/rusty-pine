@@ -121,6 +121,7 @@ impl<'a> Stage3Iterator<'a> {
             Stage2Pine::Limit(limit) => self.process_limit(position, limit),
             Stage2Pine::Order(orders) => self.process_orders(position, orders),
             Stage2Pine::GroupBy(groups) => self.process_group_by(position, groups),
+            Stage2Pine::Unselect(columns) => self.process_unselect(position, columns),
             Stage2Pine::ExplicitJoin(explicit_join) => {
                 self.process_explicit_join(position, explicit_join)
             }
@@ -181,6 +182,19 @@ impl<'a> Stage3Iterator<'a> {
             source,
             Stage3Pine::GroupBy(selectables),
         )])
+    }
+
+    fn process_unselect(
+        &mut self,
+        source: Source,
+        columns: Vec<Sourced<ColumnInput<'a>>>,
+    ) -> Stage3Buffer<'a> {
+        let columns = columns
+            .iter()
+            .map(|column| translate_column_input(column, &self.context.previous_table))
+            .collect();
+
+        VecDeque::from([Sourced::from_source(source, Stage3Pine::Unselect(columns))])
     }
 
     fn process_filter_conditions(
@@ -374,7 +388,7 @@ fn translate_computation<'a>(
     implicit_table: &Sourced<TableInput<'a>>,
 ) -> Sourced<Stage3ComputationInput<'a>> {
     computation.map_ref(|computation| match computation {
-        Computation::Column(column) => translate_select_from_column(column, implicit_table),
+        Computation::Column(column) => translate_computation_from_column(column, implicit_table),
         Computation::FunctionCall(fn_call) => {
             translate_select_from_fn_call(fn_call, implicit_table)
         }
@@ -382,14 +396,21 @@ fn translate_computation<'a>(
     })
 }
 
-fn translate_select_from_column<'a>(
+fn translate_computation_from_column<'a>(
     column: &Sourced<ColumnInput<'a>>,
     implicit_table: &Sourced<TableInput<'a>>,
 ) -> Stage3ComputationInput<'a> {
-    Stage3ComputationInput::Column(column.map_ref(|column| Stage3ColumnInput {
+    Stage3ComputationInput::Column(translate_column_input(column, implicit_table))
+}
+
+fn translate_column_input<'a>(
+    column: &Sourced<ColumnInput<'a>>,
+    implicit_table: &Sourced<TableInput<'a>>,
+) -> Sourced<Stage3ColumnInput<'a>> {
+    column.map_ref(|column| Stage3ColumnInput {
         column: column.column,
         table: column.table.or(*implicit_table),
-    }))
+    })
 }
 
 fn translate_select_from_fn_call<'a>(

@@ -8,6 +8,7 @@ pine               = _{
                          | limit_pine
                          | order_pine
                          | group_pine
+                         | unselect_pine
                          // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
                          | join_pine
@@ -18,6 +19,7 @@ filter_pine        = { ("w:" | "where:") ~ condition+ }
 limit_pine         = { ("limit:" | "l:") ~ literal_value ~ literal_value? }
 order_pine         = { ("order:" | "o:") ~ order+ }
 group_pine         = { ("group:" | "g:") ~ selectable+ }
+unselect_pine      = { ("unselect:" | "u:") ~ column+ }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
@@ -75,7 +77,3 @@ apostrophe_string_char  = {
 comparison_symbol = { "=" | "!="  | ">" | ">=" | "<" | "<=" }
 
 WHITESPACE = _{ " " | "\t" }
-
-
-// TODO
-// unselect = { ("unselect:" | "u:") ~ operand+ }

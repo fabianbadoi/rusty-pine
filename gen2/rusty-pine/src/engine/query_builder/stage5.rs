@@ -1,4 +1,4 @@
-use crate::analyze::Server;
+use crate::analyze::{Column, Server};
 use crate::engine::query_builder::sql_introspection::Introspective;
 use crate::engine::query_builder::{
     BinaryCondition, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall,
@@ -10,7 +10,8 @@ use crate::engine::syntax::{
     Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
 use crate::engine::{
-    JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError, Sourced,
+    JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError,
+    SelectableHolder, Sourced,
 };
 use std::fmt::Debug;
 
@@ -37,6 +38,7 @@ impl<'a> Stage5Builder<'a> {
 
     pub fn try_build(self) -> Result<Query, QueryBuildError> {
         let select = self.process_selects();
+        let select = self.process_unselects(select)?;
         let filters = self.process_filters();
         let joins = self.process_joins()?;
         let orders = self.process_orders();
@@ -67,6 +69,46 @@ impl<'a> Stage5Builder<'a> {
             .map(Clone::clone)
             .map(|selectable| selectable.map(|selectable| self.process_selectable(selectable)))
             .collect()
+    }
+
+    /// Processes "unselects".
+    ///
+    /// Take the following example:
+    /// ```text
+    /// people | u: name
+    /// ```
+    ///
+    /// The first sub-pine would lead to a "SELECT *". In this case we need to make sure the
+    /// unselection works.
+    /// In this case, I've opted to expand the wildcard "*" into all the columns, and then remove the
+    /// columns that are unselected.
+    ///
+    /// We will know what columns the table has base on the information we have from analyzing the
+    /// server beforehand.
+    fn process_unselects(
+        &self,
+        selects: Vec<Sourced<Selectable>>,
+    ) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
+        self.input
+            .unselected_columns
+            .iter()
+            // Naively, we'd just use a filter/map or for loop. However, we need to expand the list
+            // of selects whenever we come across a wildcard select ("*") that matches.
+            // In the case of filter/map, this is not possible. In the case of a loop, it would mean
+            // adding to the source iter while iterating, which is not possible.
+            // Fold is actually the natural mechanism to achieve what we want.
+            .try_fold(selects, |selects, unselect| {
+                // This "*" to "column1, column2, ..." if the unselect matches.
+                let expanded_selects: Vec<_> = self.expand_unselect(&unselect.it, selects)?;
+
+                // This removes unselected columns
+                let filtered_selects = expanded_selects
+                    .into_iter()
+                    .filter(|select| unselect.it != select.it)
+                    .collect::<Vec<_>>();
+
+                Ok(filtered_selects)
+            })
     }
 
     fn process_filters(&self) -> Vec<Sourced<Condition>> {
@@ -205,8 +247,105 @@ impl<'a> Stage5Builder<'a> {
         }
     }
 
+    fn expand_unselect(
+        &self,
+        unselect: &Stage4ColumnInput,
+        selects: Vec<Sourced<Selectable>>,
+    ) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
+        selects
+            .into_iter()
+            .try_fold(Vec::new(), |mut new_selects, selectable| {
+                if let Some(select) = selectable.it.as_selected_column() {
+                    if unselect_matches_wildcard(unselect, select) {
+                        let mut wildcard_expansion = self.select_table_columns(unselect.table)?;
+
+                        new_selects.append(&mut wildcard_expansion);
+                    }
+                } else {
+                    new_selects.push(selectable);
+                }
+
+                Ok(new_selects)
+            })
+    }
+
+    fn select_table_columns(
+        &self,
+        table: Sourced<TableInput>,
+    ) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
+        let selected_columns = self
+            .server
+            .columns(table.it)?
+            .iter()
+            .map(|column| self.as_selectable(column, table))
+            .collect();
+
+        Ok(selected_columns)
+    }
+
+    fn as_selectable(&self, column: &Column, table: Sourced<TableInput>) -> Sourced<Selectable> {
+        let table = if self.is_single_table_query() {
+            None
+        } else {
+            Some(table.into())
+        };
+        let column = Sourced::from_introspection(column.name.clone().into());
+
+        let computation = Sourced::from_introspection(SelectedColumn { table, column });
+
+        Sourced::from_introspection(Selectable::Computation(Sourced::from_introspection(
+            Computation::SelectedColumn(computation),
+        )))
+    }
+
     fn is_single_table_query(&self) -> bool {
         self.input.joins.is_empty()
+    }
+}
+
+fn unselect_matches_wildcard(unselect: &Stage4ColumnInput, select: &SelectedColumn) -> bool {
+    if select.column.it.0 != "*" {
+        // hardcoded wildcard char, oh yeaaah!
+        return false;
+    }
+
+    match &select.table {
+        None => true, // implicit match
+        Some(table) => table.it == unselect.table.it,
+    }
+}
+
+impl PartialEq<Selectable> for Stage4ColumnInput<'_> {
+    fn eq(&self, other: &Selectable) -> bool {
+        match other.as_selected_column() {
+            None => false,
+            Some(column) => self == column,
+        }
+    }
+}
+
+impl PartialEq<SelectedColumn> for Stage4ColumnInput<'_> {
+    fn eq(&self, other: &SelectedColumn) -> bool {
+        let table_matches = match &other.table {
+            None => true,
+            Some(table) => table.it == self.table.it,
+        };
+
+        table_matches && self.column.it.name == other.column.it.0
+    }
+}
+
+impl PartialEq<TableInput<'_>> for Table {
+    fn eq(&self, other: &TableInput<'_>) -> bool {
+        if self.name.it.0 != other.table.it.name {
+            return false;
+        }
+
+        match (&self.db, other.database) {
+            (None, OptionalInput::Implicit) => true,
+            (Some(self_db), OptionalInput::Specified(other_db)) => self_db.it.0 == other_db.it.name,
+            _ => false,
+        }
     }
 }
 
@@ -285,6 +424,33 @@ where
                 start: start.map(|start| start.into()),
                 count: count.map(|count| count.into()),
             },
+        }
+    }
+}
+
+impl<T> SelectableHolder<T, Computation>
+where
+    T: Clone,
+{
+    pub fn as_selected_column(&self) -> Option<&SelectedColumn> {
+        let computation = if let SelectableHolder::Computation(comp) = self {
+            &comp.it
+        } else {
+            return None;
+        };
+
+        match computation {
+            Computation::SelectedColumn(column) => Some(&column.it),
+            _ => None,
+        }
+    }
+}
+
+impl PartialEq<Option<Sourced<Table>>> for Sourced<TableInput<'_>> {
+    fn eq(&self, other: &Option<Sourced<Table>>) -> bool {
+        match other {
+            None => true, // because it's implicit TODO this is garbage
+            Some(table) => table.it == self.it,
         }
     }
 }

@@ -18,7 +18,7 @@ use crate::engine::syntax::stage1::{Rule, Stage1Rep};
 use crate::engine::syntax::stage2::fn_calls::translate_fn_call;
 use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::stage4::Stage4Limit;
-use crate::engine::syntax::{Computation, Stage2LiteralValue, TableInput};
+use crate::engine::syntax::{ColumnInput, Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
     OrderDirection, OrderHolder, Position, SelectableHolder, Sourced, UnaryConditionHolder,
@@ -70,6 +70,7 @@ pub enum Stage2Pine<'a> {
     },
     /// Selects one or more computations from the previous table.
     Select(Vec<Sourced<Stage2Selectable<'a>>>),
+    Unselect(Vec<Sourced<ColumnInput<'a>>>),
     Limit(Sourced<Stage2Limit<'a>>),
     Order(Vec<Sourced<Stage2Order<'a>>>),
     GroupBy(Vec<Sourced<Stage2Selectable<'a>>>),
@@ -223,6 +224,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::filter_pine => translate_filter_pine(pair),
         Rule::order_pine => translate_order_pine(pair),
         Rule::group_pine => translate_group_pine(pair),
+        Rule::unselect_pine => translate_unselect_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -377,6 +379,14 @@ fn translate_group_pine(group: Pair<Rule>) -> Stage2Pine {
     let selectables = group.into_inner().map(translate_selectable).collect();
 
     Stage2Pine::GroupBy(selectables)
+}
+
+fn translate_unselect_pine(group: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::unselect_pine, group.as_rule());
+
+    let columns = group.into_inner().map(translate_column).collect();
+
+    Stage2Pine::Unselect(columns)
 }
 
 fn translate_order(order: Pair<Rule>) -> Sourced<Stage2Order> {
