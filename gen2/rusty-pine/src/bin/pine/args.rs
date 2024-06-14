@@ -23,6 +23,8 @@ pub enum Command {
     /// Analyzes the database of the current context, updating the known structure used when
     /// analyzing pines.
     Analyze,
+    /// Runs a pine server that can be used with https://try.pine-lang.org/
+    PineServer,
 }
 
 #[derive(clap::Args, Debug)]
