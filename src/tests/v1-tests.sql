@@ -95,3 +95,37 @@ FROM people
 WHERE id > 3 AND id < 3 AND id = 3 AND id != 3 AND id <= 3 AND id >= 3
 LIMIT 10;
 
+-- Test: people | s: count(id) name
+SELECT count(id), name
+FROM people
+LIMIT 10;
+
+-- Test: people | s: count(id) name | g: name
+SELECT count(id), name
+FROM people
+GROUP BY name
+LIMIT 10;
+
+-- Test: people | g: name | s: count(id)
+SELECT name, count(id)
+FROM people
+GROUP BY name
+LIMIT 10;
+
+-- Test: people | g: count(id)
+SELECT count(id), *
+FROM people
+GROUP BY count(id)
+LIMIT 10;
+
+-- Test: people | w: id > count(id)
+SELECT *
+FROM people
+WHERE id > count(id)
+LIMIT 10;
+
+-- Test: people | s: count(1)
+SELECT count(1)
+FROM people
+LIMIT 10;
+
