@@ -165,3 +165,8 @@ LIMIT 10;
 SELECT name, dateOfBirth, placeOfBirth
 FROM people
 LIMIT 10;
+
+-- Test: people | u: id name
+SELECT dateOfBirth, placeOfBirth
+FROM people
+LIMIT 10;

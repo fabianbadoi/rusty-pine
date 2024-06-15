@@ -384,10 +384,10 @@ fn translate_group_pine(group: Pair<Rule>) -> Stage2Pine {
     Stage2Pine::GroupBy(selectables)
 }
 
-fn translate_unselect_pine(group: Pair<Rule>) -> Stage2Pine {
-    assert_eq!(Rule::unselect_pine, group.as_rule());
+fn translate_unselect_pine(unselect: Pair<Rule>) -> Stage2Pine {
+    assert_eq!(Rule::unselect_pine, unselect.as_rule());
 
-    let columns = group.into_inner().map(translate_column).collect();
+    let columns = unselect.into_inner().map(translate_column).collect();
 
     Stage2Pine::Unselect(columns)
 }

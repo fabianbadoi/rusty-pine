@@ -256,10 +256,12 @@ impl<'a> Stage5Builder<'a> {
                         let mut wildcard_expansion = self.select_table_columns(unselect.table)?;
 
                         new_selects.append(&mut wildcard_expansion);
+
+                        return Ok(new_selects);
                     }
-                } else {
-                    new_selects.push(selectable);
                 }
+
+                new_selects.push(selectable);
 
                 Ok(new_selects)
             })

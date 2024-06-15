@@ -1,6 +1,6 @@
 use rusty_pine::analyze::Server;
 use rusty_pine::context::{Context, ContextName};
-use rusty_pine::{cache, render, Error};
+use rusty_pine::{cache, render};
 use std::process::exit;
 
 pub mod analyze;
