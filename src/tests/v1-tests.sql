@@ -124,6 +124,13 @@ FROM people
 WHERE id > count(id)
 LIMIT 10;
 
+-- Test: people | friendshipLog |
+/*
+Foreign keys to:
+  people.id using .friendA
+  people.id using .friendB
+*/--
+
 -- Test: people | s: count(1)
 SELECT count(1)
 FROM people

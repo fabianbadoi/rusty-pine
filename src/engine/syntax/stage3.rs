@@ -37,6 +37,7 @@ pub enum Stage3Pine<'a> {
     Order(Vec<Sourced<Stage3Order<'a>>>),
     GroupBy(Vec<Sourced<Stage3Selectable<'a>>>),
     Limit(Sourced<Stage3Limit<'a>>),
+    ShowNeighbors(Sourced<TableInput<'a>>),
 }
 
 // shh! keep these secret

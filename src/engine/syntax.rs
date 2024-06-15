@@ -32,7 +32,7 @@ mod stage4;
 pub use stage1::Rule;
 pub use stage4::{
     Stage4BinaryCondition, Stage4ColumnInput, Stage4ComputationInput, Stage4Condition,
-    Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Rep, Stage4Selectable,
+    Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Query, Stage4Rep, Stage4Selectable,
     Stage4UnaryCondition,
 };
 

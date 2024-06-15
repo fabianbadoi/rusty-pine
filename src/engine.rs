@@ -10,9 +10,9 @@ mod tests;
 use crate::analyze::Server;
 pub use syntax::Rule;
 
-use crate::engine::query_builder::build_query;
-use crate::engine::rendering::render_query;
-use crate::engine::syntax::parse_to_stage4;
+use crate::engine::query_builder::{build_query, get_neighbors};
+use crate::engine::rendering::{render_neighbors, render_query};
+use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
 pub use query_builder::QueryBuildError;
 use std::fmt::Debug;
@@ -20,9 +20,19 @@ use std::ops::Range;
 
 pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Error> {
     let pine = parse_to_stage4(input)?;
-    let query = build_query(pine, server);
 
-    Ok(render_query(query?))
+    match pine {
+        Stage4Rep::Query(query) => {
+            let query = build_query(query, server);
+
+            Ok(render_query(query?))
+        }
+        Stage4Rep::ShowNeighbors(for_table) => {
+            let neighbors = get_neighbors(for_table, server)?;
+
+            Ok(render_neighbors(neighbors))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq)]

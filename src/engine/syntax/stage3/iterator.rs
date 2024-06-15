@@ -129,6 +129,7 @@ impl<'a> Stage3Iterator<'a> {
                 self.process_explicit_auto_join(position, auto_join)
             }
             Stage2Pine::CompoundJoin(auto_join) => self.process_auto_join(position, auto_join),
+            Stage2Pine::ShowNeighbors(source) => self.process_show_neighbors(source),
         };
 
         stage3_pines
@@ -306,6 +307,13 @@ impl<'a> Stage3Iterator<'a> {
         result.append(&mut self.process_filter_conditions(source, join.it.where_conditions));
 
         result
+    }
+
+    fn process_show_neighbors(&self, source: Source) -> Stage3Buffer<'a> {
+        VecDeque::from([Sourced::from_source(
+            source,
+            Stage3Pine::ShowNeighbors(self.context.previous_table),
+        )])
     }
 }
 

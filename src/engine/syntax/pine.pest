@@ -1,5 +1,5 @@
 // pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
-root = { SOI ~ base ~ ( "|" ~ pine)* ~ EOI }
+root = { SOI ~ base ~ ( "|" ~ pine)* ~ meta_pine? ~ EOI }
 base = { ("f:" | "from:")? ~ table ~ condition* }
 
 pine               = _{
@@ -20,6 +20,11 @@ limit_pine         = { ("limit:" | "l:") ~ literal_value ~ literal_value? }
 order_pine         = { ("order:" | "o:") ~ order+ }
 group_pine         = { ("group:" | "g:") ~ selectable+ }
 unselect_pine      = { ("unselect:" | "u:") ~ column+ }
+
+// Meta-pines are just used to query the structure of the database.
+// They do not result in queries.
+meta_pine           = _{ show_neighbors_pine }
+show_neighbors_pine =  { "|" }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }

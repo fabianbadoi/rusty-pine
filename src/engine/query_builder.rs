@@ -2,20 +2,30 @@ use crate::analyze;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
-use crate::analyze::{KeyReference, Server, ServerParams};
-use crate::engine::syntax::{Stage4ComputationInput, Stage4Rep};
+use crate::analyze::{ForeignKey, KeyReference, Server, ServerParams};
+use crate::engine::syntax::{Stage4ComputationInput, Stage4Query, TableInput};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder, OrderHolder,
     SelectableHolder, Sourced, UnaryConditionHolder,
 };
+use sql_introspection::Introspective;
 
 mod sql_introspection;
 mod stage5;
 
-pub fn build_query(input: Stage4Rep<'_>, server: &Server) -> Result<Query, crate::Error> {
+pub fn build_query(input: Stage4Query<'_>, server: &Server) -> Result<Query, crate::Error> {
     let builder = stage5::Stage5Builder::new(input, server);
 
     Ok(builder.try_build()?)
+}
+
+pub fn get_neighbors(
+    for_table: Sourced<TableInput>,
+    server: &Server,
+) -> Result<Vec<ForeignKey>, QueryBuildError> {
+    let neighboring_tables = server.neighbors(for_table.it)?;
+
+    Ok(neighboring_tables)
 }
 
 #[derive(Error, Debug, Clone)]

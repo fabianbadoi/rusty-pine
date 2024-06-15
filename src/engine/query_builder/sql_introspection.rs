@@ -14,6 +14,7 @@ type Result<T> = std::result::Result<T, QueryBuildError>;
 pub trait Introspective {
     fn join_conditions(&self, from: TableInput, to: TableInput) -> Result<Vec<Sourced<Condition>>>;
     fn columns(&self, table: TableInput) -> Result<&[Column]>;
+    fn neighbors(&self, table: TableInput) -> Result<Vec<ForeignKey>>;
 }
 
 impl Introspective for Server {
@@ -50,6 +51,26 @@ impl Introspective for Server {
         let table = self.table(table)?;
 
         Ok(table.columns.as_slice())
+    }
+
+    fn neighbors(&self, table: TableInput) -> Result<Vec<ForeignKey>> {
+        let direct_joins = self.table(table)?.foreign_keys.iter();
+        let reverse_joins = self
+            .database_or_default(table.database)?
+            .tables
+            .iter()
+            .flat_map(|(_, other)| {
+                other
+                    .foreign_keys
+                    .iter()
+                    .find(|other_table| other_table.to.table == table.table.it)
+            });
+
+        let mut all_joins: Vec<_> = direct_joins.chain(reverse_joins).cloned().collect();
+
+        all_joins.dedup_by(|a, b| a == b);
+
+        Ok(all_joins)
     }
 }
 

@@ -21,7 +21,7 @@ use crate::engine::syntax::stage4::Stage4Limit;
 use crate::engine::syntax::{ColumnInput, Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
     BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
-    OrderDirection, OrderHolder, Position, SelectableHolder, Sourced, UnaryConditionHolder,
+    OrderDirection, OrderHolder, Position, SelectableHolder, Source, Sourced, UnaryConditionHolder,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -82,8 +82,10 @@ pub enum Stage2Pine<'a> {
     ExplicitJoin(Sourced<Stage2Join<'a>>),
     /// Join a table, we'll figure out how for you.
     ExplicitAutoJoin(Sourced<Stage2ExplicitAutoJoin<'a>>),
-    /// We'll figure out the table, this acts as a join: + where:
+    /// We'll figure out the table, this acts as a join: + where:.
     CompoundJoin(Sourced<Stage2CompoundJoin<'a>>),
+    /// Show all the tables I can directly join from the previous table.
+    ShowNeighbors(Source),
 }
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
@@ -225,6 +227,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::order_pine => translate_order_pine(pair),
         Rule::group_pine => translate_group_pine(pair),
         Rule::unselect_pine => translate_unselect_pine(pair),
+        Rule::show_neighbors_pine => translate_show_neighbors_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -387,6 +390,12 @@ fn translate_unselect_pine(group: Pair<Rule>) -> Stage2Pine {
     let columns = group.into_inner().map(translate_column).collect();
 
     Stage2Pine::Unselect(columns)
+}
+
+fn translate_show_neighbors_pine(pine: Pair<Rule>) -> Stage2Pine<'static> {
+    assert_eq!(Rule::show_neighbors_pine, pine.as_rule());
+
+    Stage2Pine::ShowNeighbors(Source::Input(pine.as_span().into()))
 }
 
 fn translate_order(order: Pair<Rule>) -> Sourced<Stage2Order> {

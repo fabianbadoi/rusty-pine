@@ -6,7 +6,7 @@ use crate::engine::query_builder::{
 };
 use crate::engine::syntax::{
     OptionalInput, Stage4BinaryCondition, Stage4ColumnInput, Stage4ComputationInput,
-    Stage4Condition, Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Rep,
+    Stage4Condition, Stage4FunctionCall, Stage4Join, Stage4LiteralValue, Stage4Query,
     Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
 use crate::engine::{
@@ -16,17 +16,13 @@ use crate::engine::{
 use std::fmt::Debug;
 
 pub struct Stage5Builder<'a> {
-    input: Stage4Rep<'a>,
+    input: Stage4Query<'a>,
     from: Sourced<TableInput<'a>>,
     server: &'a Server,
 }
 
-// TODO this isn't really done yet.
-// We're missing some stages before this where we do joins and automatically adding sum/count
-// for groups.
-// This will have to be renamed in the future
 impl<'a> Stage5Builder<'a> {
-    pub fn new(input: Stage4Rep<'a>, server: &'a Server) -> Self {
+    pub fn new(input: Stage4Query<'a>, server: &'a Server) -> Self {
         let from = input.from;
 
         Stage5Builder {
@@ -459,7 +455,7 @@ impl PartialEq<Option<Sourced<Table>>> for Sourced<TableInput<'_>> {
 mod test {
     use crate::analyze::{Server, ServerParams};
     use crate::engine::query_builder::stage5::Stage5Builder;
-    use crate::engine::syntax::parse_to_stage4;
+    use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
     #[test]
     fn test_try_from_simple() {
@@ -472,7 +468,13 @@ mod test {
             },
             databases: Default::default(),
         };
-        let builder = Stage5Builder::new(parse_to_stage4("table | s: id").unwrap(), &server);
+
+        let stage4 = parse_to_stage4("table | s: id").unwrap();
+
+        let builder = match stage4 {
+            Stage4Rep::Query(query) => Stage5Builder::new(query, &server),
+            Stage4Rep::ShowNeighbors(_) => panic!("this must be a query"),
+        };
 
         let result = builder.try_build();
 

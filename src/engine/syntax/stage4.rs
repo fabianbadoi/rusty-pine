@@ -13,7 +13,12 @@ use crate::engine::{
 };
 use crate::engine::{LiteralValueHolder, Sourced};
 
-pub struct Stage4Rep<'a> {
+pub enum Stage4Rep<'a> {
+    Query(Stage4Query<'a>),
+    ShowNeighbors(Sourced<TableInput<'a>>),
+}
+
+pub struct Stage4Query<'a> {
     pub input: &'a str,
     pub from: Sourced<TableInput<'a>>,
     pub filters: Vec<Sourced<Stage4Condition<'a>>>,
@@ -127,6 +132,9 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     // For example "table1 | s: id | j: table2" will select "table1.id, table2.*"
                     add_implicit_select = true;
                 }
+                Stage3Pine::ShowNeighbors(for_table) => {
+                    return Stage4Rep::ShowNeighbors(for_table.into())
+                }
             }
         }
 
@@ -140,7 +148,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
 
         selected_columns.dedup_by(|a, b| a.it == b.it);
 
-        Stage4Rep {
+        Stage4Rep::Query(Stage4Query {
             input,
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
             filters,
@@ -150,7 +158,7 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
             orders,
             group_by,
             limit,
-        }
+        })
     }
 }
 
@@ -199,12 +207,16 @@ mod test {
         let stage2: Stage2Rep = parse_stage1("table").unwrap().into();
         let stage3: Stage3Rep = stage2.into();
         let stage4: Stage4Rep = stage3.into();
+        let query = match stage4 {
+            Stage4Rep::Query(query) => query,
+            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+        };
 
-        assert_eq!("table", stage4.input);
-        assert_eq!(0..5, stage4.from.source);
-        assert_eq!(0..5, stage4.from.source);
-        assert_eq!("table", stage4.from.it.table.it.name);
-        assert!(matches!(stage4.from.it.database, OptionalInput::Implicit));
+        assert_eq!("table", query.input);
+        assert_eq!(0..5, query.from.source);
+        assert_eq!(0..5, query.from.source);
+        assert_eq!("table", query.from.it.table.it.name);
+        assert!(matches!(query.from.it.database, OptionalInput::Implicit));
     }
 
     #[test]
@@ -212,14 +224,18 @@ mod test {
         let stage2: Stage2Rep = parse_stage1("database.table").unwrap().into();
         let stage3: Stage3Rep = stage2.into();
         let stage4: Stage4Rep = stage3.into();
+        let query = match stage4 {
+            Stage4Rep::Query(query) => query,
+            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+        };
 
-        assert_eq!("database.table", stage4.input);
-        assert_eq!(0..14, stage4.from.source);
-        assert_eq!(0..14, stage4.from.source);
-        assert_eq!("table", stage4.from.it.table.it.name);
-        assert_eq!(Position { start: 9, end: 14 }, stage4.from.it.table.source);
-        assert_eq!("database", stage4.from.it.database.unwrap().it.name);
-        assert_eq!(0..8, stage4.from.it.database.unwrap().source);
+        assert_eq!("database.table", query.input);
+        assert_eq!(0..14, query.from.source);
+        assert_eq!(0..14, query.from.source);
+        assert_eq!("table", query.from.it.table.it.name);
+        assert_eq!(Position { start: 9, end: 14 }, query.from.it.table.source);
+        assert_eq!("database", query.from.it.database.unwrap().it.name);
+        assert_eq!(0..8, query.from.it.database.unwrap().source);
     }
 
     #[test]
@@ -266,11 +282,15 @@ mod test {
                 expected_column,
                 expected_table,
             } = example;
-            let output = parse_to_stage4(input).unwrap();
+            let stage4 = parse_to_stage4(input).unwrap();
+            let query = match stage4 {
+                Stage4Rep::Query(query) => query,
+                Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            };
 
-            assert_eq!(1, output.selected_columns.len());
+            assert_eq!(1, query.selected_columns.len());
             assert!(matches!(
-                &output.selected_columns[0],
+                &query.selected_columns[0],
                 Sourced{ it: Stage4Selectable::Computation(Sourced { it:
                     Stage4ComputationInput::Column(column), ..},), ..}
                     if column.it.column.it == expected_column && column.it.table.it == expected_table
@@ -290,8 +310,13 @@ mod test {
         ];
 
         for (input, expected_table, expected_db) in examples {
-            let output = parse_to_stage4(input).unwrap();
-            let from = output.from;
+            let stage4 = parse_to_stage4(input).unwrap();
+            let query = match stage4 {
+                Stage4Rep::Query(query) => query,
+                Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            };
+
+            let from = query.from;
 
             assert_eq!(expected_table, from.it.table.it.name, "Parsing: {}", input);
             assert_eq!(expected_db, from.it.database, "Parsing: {}", input);
@@ -300,16 +325,24 @@ mod test {
 
     #[test]
     fn test_multiple_selects() {
-        let output = parse_to_stage4("table | s: id | s: id2").unwrap();
+        let stage4 = parse_to_stage4("table | s: id | s: id2").unwrap();
+        let query = match stage4 {
+            Stage4Rep::Query(query) => query,
+            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+        };
 
-        assert_eq!(2, output.selected_columns.len());
+        assert_eq!(2, query.selected_columns.len());
     }
 
     #[test]
     fn test_selecting_multiple_columns() {
-        let output = parse_to_stage4("table | s: id id2").unwrap();
+        let stage4 = parse_to_stage4("table | s: id id2").unwrap();
+        let query = match stage4 {
+            Stage4Rep::Query(query) => query,
+            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+        };
 
-        assert_eq!(2, output.selected_columns.len());
+        assert_eq!(2, query.selected_columns.len());
     }
 
     impl PartialEq<OptionalInput<Sourced<SqlIdentifierInput<'_>>>> for &str {
