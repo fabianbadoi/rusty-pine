@@ -89,3 +89,9 @@ LEFT JOIN preferences ON preferences.personId = friendshipLog.friendA
 LEFT JOIN people ON people.id = preferences.personId
 LIMIT 10;
 
+-- Test: people | w: id > 3 id < 3 id = 3 id != 3 id <= 3 id >= 3
+SELECT *
+FROM people
+WHERE id > 3 AND id < 3 AND id = 3 AND id != 3 AND id <= 3 AND id >= 3
+LIMIT 10;
+

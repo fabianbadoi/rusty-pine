@@ -50,26 +50,26 @@ pub type Condition = ConditionHolder<Computation>;
 pub type BinaryCondition = BinaryConditionHolder<Computation>;
 pub type UnaryCondition = UnaryConditionHolder<Computation>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Table {
     pub name: Sourced<TableName>,
     pub db: Option<Sourced<DatabaseName>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Computation {
     SelectedColumn(Sourced<SelectedColumn>),
     FunctionCall(Sourced<FunctionCall>),
     Value(Sourced<LiteralValue>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct FunctionCall {
     pub fn_name: Sourced<String>,
     pub params: Vec<Sourced<Computation>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SelectedColumn {
     pub table: Option<Sourced<Table>>,
     pub column: Sourced<ColumnName>,
@@ -85,13 +85,13 @@ pub struct ExplicitJoin {
 
 pub type LiteralValue = LiteralValueHolder<String>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ColumnName(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TableName(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DatabaseName(pub String);
 
 impl Display for QueryBuildError {

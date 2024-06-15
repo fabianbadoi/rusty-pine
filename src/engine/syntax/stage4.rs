@@ -43,20 +43,20 @@ pub struct Stage4Join<'a> {
 
 pub type Stage4JoinConditions<'a> = JoinConditions<Stage4Condition<'a>>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stage4ColumnInput<'a> {
     pub table: Sourced<TableInput<'a>>, // we always know it because of SYNTAX
     pub column: Sourced<SqlIdentifierInput<'a>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum Stage4ComputationInput<'a> {
     Column(Sourced<Stage4ColumnInput<'a>>),
     FunctionCall(Sourced<Stage4FunctionCall<'a>>),
     Value(Sourced<Stage4LiteralValue<'a>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Stage4FunctionCall<'a> {
     pub fn_name: Sourced<SqlIdentifierInput<'a>>,
     pub params: Vec<Sourced<Stage4ComputationInput<'a>>>,
@@ -137,6 +137,8 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                 last_table.expect("It's not possible to have pines without from:s or joins"),
             ));
         }
+
+        selected_columns.dedup_by(|a, b| a.it == b.it);
 
         Stage4Rep {
             input,

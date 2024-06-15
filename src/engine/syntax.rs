@@ -49,7 +49,7 @@ pub fn parse_to_stage4(input: &str) -> Result<Stage4Rep, crate::error::Error> {
     Ok(stage3.into())
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum OptionalInput<T> {
     #[default]
     Implicit,
@@ -76,7 +76,7 @@ impl<T> OptionalInput<T> {
     }
 }
 
-#[derive(Clone, Debug, Copy, PartialEq)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq)]
 pub struct TableInput<'a> {
     pub database: OptionalInput<Sourced<SqlIdentifierInput<'a>>>,
     pub table: Sourced<SqlIdentifierInput<'a>>,
@@ -84,20 +84,20 @@ pub struct TableInput<'a> {
 
 pub type Stage2LiteralValue<'a> = Stage4LiteralValue<'a>;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Computation<'a> {
     Column(Sourced<ColumnInput<'a>>),
     FunctionCall(Sourced<FunctionCall<'a>>),
     Value(Sourced<Stage2LiteralValue<'a>>),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ColumnInput<'a> {
     pub table: OptionalInput<Sourced<TableInput<'a>>>, // we always know it because of SYNTAX
     pub column: Sourced<SqlIdentifierInput<'a>>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FunctionCall<'a> {
     pub fn_name: Sourced<SqlIdentifierInput<'a>>,
     /// Params for the function call.

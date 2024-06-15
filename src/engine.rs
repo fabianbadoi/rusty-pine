@@ -25,7 +25,7 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
     Ok(render_query(query?))
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq)]
 pub enum Source {
     /// Things like default values are implicit.
     Implicit,
@@ -33,6 +33,13 @@ pub enum Source {
     Introspection,
     /// We found this in the input provided by the user.
     Input(Position),
+}
+
+impl PartialEq for Source {
+    fn eq(&self, _: &Self) -> bool {
+        // Doing this makes comparing things deduplicating items much easier.
+        true
+    }
 }
 
 /// Holds a reference to where we got something from.
@@ -43,13 +50,13 @@ pub enum Source {
 ///                 ^-- Sourced<':', &input pos 15>
 ///                 \- I can point to the invalid character because of Sourced<>
 /// ```
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Sourced<T: Sized + Clone> {
     pub it: T,
     pub source: Source,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SelectableHolder<Cond, Comp>
 where
     Cond: Clone,
@@ -80,7 +87,7 @@ where
     Explicit(Vec<Sourced<T>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ConditionHolder<T>
 where
     T: Clone + Debug,
@@ -89,7 +96,7 @@ where
     Binary(Sourced<BinaryConditionHolder<T>>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct BinaryConditionHolder<T>
 where
     T: Clone + Debug,
@@ -99,7 +106,7 @@ where
     pub right: Sourced<T>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum UnaryConditionHolder<T>
 where
     T: Clone + Debug,
@@ -108,7 +115,7 @@ where
     IsNotNull(Sourced<T>),
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Comparison {
     Equals,
     NotEquals,
@@ -155,7 +162,7 @@ pub enum JoinType {
 }
 
 /// A literal value like 1 or "kitten".
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LiteralValueHolder<T> {
     Number(T),
     String(T),
