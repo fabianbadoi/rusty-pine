@@ -155,7 +155,7 @@ impl<'a> Stage5Builder<'a> {
         let conditions = match &join.conditions {
             JoinConditions::Auto => self
                 .server
-                .join_conditions(self.from.it, join.target_table.it)?,
+                .join_conditions(join.source_table.it, join.target_table.it)?,
             JoinConditions::Explicit(conditions) => self.process_conditions(conditions),
         };
 

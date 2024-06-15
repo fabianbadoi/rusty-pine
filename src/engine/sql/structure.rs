@@ -60,7 +60,7 @@ pub struct KeyReference {
     pub key: Key,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Ord, PartialOrd, Hash)]
 pub struct ColumnName(pub String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -71,6 +71,24 @@ impl Table {
         self.foreign_keys
             .iter()
             .find(|foreign_key| foreign_key.to.table == to_table)
+    }
+}
+
+impl ForeignKey {
+    pub fn key_pairs(&self) -> Vec<(&ColumnName, &ColumnName)> {
+        self.from
+            .key
+            .columns
+            .iter()
+            .zip(&self.to.key.columns)
+            .collect()
+    }
+
+    pub fn invert(&self) -> ForeignKey {
+        ForeignKey {
+            from: self.to.clone(),
+            to: self.from.clone(),
+        }
     }
 }
 
