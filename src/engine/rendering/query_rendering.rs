@@ -18,7 +18,9 @@ impl Display for Query {
         writeln!(f, "SELECT {}", RenderableSelect(self.select.as_slice()))?;
         writeln!(f, "FROM {}", self.from)?;
 
-        for join in &self.joins {
+        // We reverse the order of joins so that the most recent pine is the first JOIN.
+        // This is just something I find more natural.
+        for join in self.joins.iter().rev() {
             writeln!(f, "{}", join)?;
         }
 
