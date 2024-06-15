@@ -11,7 +11,7 @@ use crate::engine::{LimitHolder, Sourced};
 use std::fmt::{Debug, Display, Formatter};
 
 pub fn render_query(query: Query) -> String {
-    format!("{};", query)
+    format!("{}", query)
 }
 
 impl Display for Query {

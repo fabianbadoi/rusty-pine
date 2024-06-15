@@ -16,6 +16,7 @@ fn main() {
         Command::ListContexts => list_contexts().unwrap(),
         Command::Analyze => commands::analyze::analyze().unwrap(),
         Command::PineServer => commands::pine_server::run(),
+        Command::TranslateOne { input } => commands::translate_one(input),
     }
 }
 

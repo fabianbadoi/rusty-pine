@@ -100,7 +100,10 @@ fn run_single_test(test: &Test, server: &Server) -> Outcome {
         return Outcome::Error(error.into());
     }
 
-    let found_output = found_output.unwrap();
+    let mut found_output = found_output.unwrap();
+
+    // I'm adding this here just so we can keep the integration test .sql files 100% valid SQL.
+    found_output.push_str(";");
 
     if test.expected() == found_output {
         Outcome::Success

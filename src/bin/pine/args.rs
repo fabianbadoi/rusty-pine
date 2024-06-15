@@ -25,6 +25,8 @@ pub enum Command {
     Analyze,
     /// Runs a pine server that can be used with https://try.pine-lang.org/
     PineServer,
+    /// Translates a single pine to SQL using the current context.
+    TranslateOne { input: String },
 }
 
 #[derive(clap::Args, Debug)]

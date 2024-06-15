@@ -127,9 +127,9 @@ LIMIT 10;
 -- Test: people | friendshipLog |
 /*
 Foreign keys to:
-  people.id using .friendA
-  people.id using .friendB
-*/--
+  friendshipLog.friendA using .id
+  friendshipLog.friendB using .id
+*/--;
 
 -- Test: people | s: count(1)
 SELECT count(1)

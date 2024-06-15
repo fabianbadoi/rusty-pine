@@ -3,6 +3,8 @@ pub mod context;
 mod engine;
 mod error;
 
+pub use engine::render;
+
 pub mod analyze {
     pub use crate::engine::sql::querying::{
         describe_table, list_databases, list_tables, SchemaObjectName,
