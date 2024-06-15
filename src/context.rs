@@ -39,6 +39,12 @@ impl From<ContextName> for String {
     }
 }
 
+impl AsRef<str> for ContextName {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
 impl Display for ContextName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
