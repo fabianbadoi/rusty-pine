@@ -16,6 +16,7 @@ use crate::engine::{LiteralValueHolder, Sourced};
 pub enum Stage4Rep<'a> {
     Query(Stage4Query<'a>),
     ShowNeighbors(Sourced<TableInput<'a>>),
+    ShowColumns(Sourced<TableInput<'a>>),
 }
 
 pub struct Stage4Query<'a> {
@@ -133,7 +134,10 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
                     add_implicit_select = true;
                 }
                 Stage3Pine::ShowNeighbors(for_table) => {
-                    return Stage4Rep::ShowNeighbors(for_table.into())
+                    return Stage4Rep::ShowNeighbors(for_table.into());
+                }
+                Stage3Pine::ShowColumns(for_table) => {
+                    return Stage4Rep::ShowColumns(for_table.into());
                 }
             }
         }
@@ -209,7 +213,7 @@ mod test {
         let stage4: Stage4Rep = stage3.into();
         let query = match stage4 {
             Stage4Rep::Query(query) => query,
-            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            _ => panic!("must be a query"),
         };
 
         assert_eq!("table", query.input);
@@ -226,7 +230,7 @@ mod test {
         let stage4: Stage4Rep = stage3.into();
         let query = match stage4 {
             Stage4Rep::Query(query) => query,
-            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            _ => panic!("must be a query"),
         };
 
         assert_eq!("database.table", query.input);
@@ -285,7 +289,7 @@ mod test {
             let stage4 = parse_to_stage4(input).unwrap();
             let query = match stage4 {
                 Stage4Rep::Query(query) => query,
-                Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+                _ => panic!("must be a query"),
             };
 
             assert_eq!(1, query.selected_columns.len());
@@ -313,7 +317,7 @@ mod test {
             let stage4 = parse_to_stage4(input).unwrap();
             let query = match stage4 {
                 Stage4Rep::Query(query) => query,
-                Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+                _ => panic!("must be a query"),
             };
 
             let from = query.from;
@@ -328,7 +332,7 @@ mod test {
         let stage4 = parse_to_stage4("table | s: id | s: id2").unwrap();
         let query = match stage4 {
             Stage4Rep::Query(query) => query,
-            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            _ => panic!("must be a query"),
         };
 
         assert_eq!(2, query.selected_columns.len());
@@ -339,7 +343,7 @@ mod test {
         let stage4 = parse_to_stage4("table | s: id id2").unwrap();
         let query = match stage4 {
             Stage4Rep::Query(query) => query,
-            Stage4Rep::ShowNeighbors(_) => panic!("must be a query"),
+            _ => panic!("must be a query"),
         };
 
         assert_eq!(2, query.selected_columns.len());

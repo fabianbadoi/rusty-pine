@@ -11,6 +11,7 @@ pine               = _{
                          | unselect_pine
                          // Take care to always put this last. The compound_join_pine can
                          // interfere with other matches
+                         | show_columns_pine
                          | join_pine
                      }
 select_pine        = { ("s:" | "select:") ~ selectable+ }
@@ -25,6 +26,8 @@ unselect_pine      = { ("unselect:" | "u:") ~ column+ }
 // They do not result in queries.
 meta_pine           = _{ show_neighbors_pine }
 show_neighbors_pine =  { "|" }
+// I'd normally put this in "meta_pine", but it conflicts with join_pines.
+show_columns_pine   =  { "c?" }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }

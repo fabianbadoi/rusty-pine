@@ -1,7 +1,9 @@
+pub use columns::render_columns;
 pub use neighbors::render_neighbors;
 pub use query_rendering::render_query;
 use std::fmt::{Display, Formatter};
 
+mod columns;
 mod neighbors;
 mod query_rendering;
 

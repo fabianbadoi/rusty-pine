@@ -10,8 +10,8 @@ mod tests;
 use crate::analyze::Server;
 pub use syntax::Rule;
 
-use crate::engine::query_builder::{build_query, get_neighbors};
-use crate::engine::rendering::{render_neighbors, render_query};
+use crate::engine::query_builder::{build_query, get_columns, get_neighbors};
+use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
 pub use query_builder::QueryBuildError;
@@ -31,6 +31,11 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
             let neighbors = get_neighbors(for_table, server)?;
 
             Ok(render_neighbors(neighbors))
+        }
+        Stage4Rep::ShowColumns(for_table) => {
+            let columns = get_columns(for_table, server)?;
+
+            Ok(render_columns(for_table.it, columns))
         }
     }
 }

@@ -130,6 +130,7 @@ impl<'a> Stage3Iterator<'a> {
             }
             Stage2Pine::CompoundJoin(auto_join) => self.process_auto_join(position, auto_join),
             Stage2Pine::ShowNeighbors(source) => self.process_show_neighbors(source),
+            Stage2Pine::ShowColumns(source) => self.process_show_columns(source),
         };
 
         stage3_pines
@@ -313,6 +314,13 @@ impl<'a> Stage3Iterator<'a> {
         VecDeque::from([Sourced::from_source(
             source,
             Stage3Pine::ShowNeighbors(self.context.previous_table),
+        )])
+    }
+
+    fn process_show_columns(&self, source: Source) -> Stage3Buffer<'a> {
+        VecDeque::from([Sourced::from_source(
+            source,
+            Stage3Pine::ShowColumns(self.context.previous_table),
         )])
     }
 }

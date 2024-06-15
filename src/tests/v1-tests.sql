@@ -136,3 +136,11 @@ SELECT count(1)
 FROM people
 LIMIT 10;
 
+-- Test: people | c?
+/*
+Columns for `people`:
+  id
+  name
+  dateOfBirth
+  placeOfBirth
+*/--;

@@ -2,7 +2,7 @@ use crate::analyze;
 use std::fmt::{Debug, Display, Formatter};
 use thiserror::Error;
 
-use crate::analyze::{ForeignKey, KeyReference, Server, ServerParams};
+use crate::analyze::{Column, ForeignKey, KeyReference, Server, ServerParams};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Query, TableInput};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder, OrderHolder,
@@ -26,6 +26,13 @@ pub fn get_neighbors(
     let neighboring_tables = server.neighbors(for_table.it)?;
 
     Ok(neighboring_tables)
+}
+
+pub fn get_columns<'a>(
+    for_table: Sourced<TableInput>,
+    server: &'a Server,
+) -> Result<&'a [Column], QueryBuildError> {
+    server.columns(for_table.it)
 }
 
 #[derive(Error, Debug, Clone)]

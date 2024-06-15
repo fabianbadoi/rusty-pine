@@ -475,7 +475,7 @@ mod test {
 
         let builder = match stage4 {
             Stage4Rep::Query(query) => Stage5Builder::new(query, &server),
-            Stage4Rep::ShowNeighbors(_) => panic!("this must be a query"),
+            _ => panic!("this must be a query"),
         };
 
         let result = builder.try_build();

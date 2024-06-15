@@ -86,6 +86,8 @@ pub enum Stage2Pine<'a> {
     CompoundJoin(Sourced<Stage2CompoundJoin<'a>>),
     /// Show all the tables I can directly join from the previous table.
     ShowNeighbors(Source),
+    /// Show all the columns from the last table.
+    ShowColumns(Source),
 }
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
@@ -228,6 +230,7 @@ fn translate_pine(pair: Pair<Rule>) -> Option<Sourced<Stage2Pine>> {
         Rule::group_pine => translate_group_pine(pair),
         Rule::unselect_pine => translate_unselect_pine(pair),
         Rule::show_neighbors_pine => translate_show_neighbors_pine(pair),
+        Rule::show_columns_pine => show_columns_pine(pair),
         Rule::EOI => return None, // EOI is End Of Input
         _ => panic!("Unknown pine {:#?}", pair),
     };
@@ -396,6 +399,12 @@ fn translate_show_neighbors_pine(pine: Pair<Rule>) -> Stage2Pine<'static> {
     assert_eq!(Rule::show_neighbors_pine, pine.as_rule());
 
     Stage2Pine::ShowNeighbors(Source::Input(pine.as_span().into()))
+}
+
+fn show_columns_pine(pine: Pair<Rule>) -> Stage2Pine<'static> {
+    assert_eq!(Rule::show_columns_pine, pine.as_rule());
+
+    Stage2Pine::ShowColumns(Source::Input(pine.as_span().into()))
 }
 
 fn translate_order(order: Pair<Rule>) -> Sourced<Stage2Order> {
