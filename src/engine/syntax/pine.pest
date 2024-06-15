@@ -74,6 +74,6 @@ apostrophe_string_char  = {
     | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
 }
 
-comparison_symbol = { "=" | "!="  | ">" | ">=" | "<" | "<=" }
+comparison_symbol = { ">=" | ">" | "!=" | "=" | "<=" | "<"  }
 
 WHITESPACE = _{ " " | "\t" }
