@@ -1,0 +1,47 @@
+#!/bin/bash
+
+# Takes a pine query from STDIN, translates it, runs it, prints the results.
+# The output format is this:
+# <original pine>     <-- This your "hot" line in vim, you keep editing it while exploring.
+# <pine copy>         <-- While the hot line changes, this does not. It's your input history.
+# ---------------     <-- This is purely cosmetic.
+# <query line 1>      <-- In case you want to copy your query and share it.
+# <query line 2>
+# <query line 3>;
+# <result line 1>
+# <result line 1>
+# <result line 1>
+# <result line 1>
+
+# Input comes from STDIN.
+input="$(cat)"
+# Param 1: which server to query.
+database_server="$1"
+# Param 2: (optiona) use another query terminator. Default ';'.
+# For example, using '\G' structures the output of mysql differently.
+query_terminator="${2:-;}"
+
+# Make sure that the working directory is the root dir
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR/.."
+
+query="$(./target/release/pine translate "$input" 2>&1)"
+
+if [ "$?" -ne 0 ]; then
+    echo "$input"
+    echo $(echo "$input" | sed 's/./=/g')
+    echo "$query"
+    exit 1
+fi
+
+query="$query${query_terminator}"
+
+echo "$input"
+echo "$input"
+echo $(echo "$input" | sed 's/./-/g')
+echo "$query"
+
+result=$(echo "$query" | mysql -h "$database_server" --table 2>&1)
+echo "${result};"
+echo ""
+echo ""

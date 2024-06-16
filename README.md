@@ -58,6 +58,40 @@ You will be asked to pick which tables you want analyzed.
 ./target/release/pine translate "users email='spam@office.com'"
 ```
 
+Using `stdin-to-query`
+======================
+
+I use this tool with vim, here's how. Let's say I have this pine I want to run:
+
+```
+users | userPreferences
+```
+
+1. With the cursor on that it, I enter visual line mode (Esc, V), this selects the entire line.
+2. I hit my magic key-bind: `ctr+p` or `ctr+l`.
+
+```text
+" This is how I set it up.
+" This is ctr+p, it prints results in a table.
+:vmap <C-P><C-P> :'<,'>! /Users/fabianbadoi/projects/personal/rusty-pine/scripts/stdin-to-query 'db.hostname.com' <CR><CR><Esc>k$
+" This is ctr+l, it prints results as objects.
+:vmap <C-L><C-L> :'<,'>! /Users/fabianbadoi/projects/personal/rusty-pine/scripts/stdin-to-query 'db.hostname.com' '\G'<CR><CR><Esc>k$
+```
+
+3. I then get output like this.
+
+```text
+users | userPreferences   # <-- I keep editing this line, then hit the keybinding
+=======================
+users | userPreferences   # <-- I have records of all the pines I ran, in case I want to go back to it
+-----------------------
+SELECT userPreferences.*  # <-- Sometimes it's useful to see the query
+FROM userPreferences
+LEFT JOIN users ON users.id = userPreferences.userId
+LIMIT 10;
+< results here>
+```
+
 Mission Statement
 -----------------
 
