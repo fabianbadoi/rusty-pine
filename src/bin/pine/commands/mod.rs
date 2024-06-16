@@ -1,3 +1,4 @@
+use colored::Colorize;
 use rusty_pine::analyze::Server;
 use rusty_pine::context::{Context, ContextName};
 use rusty_pine::{cache, render};
@@ -15,11 +16,8 @@ pub fn translate_one(input: String) {
     match result {
         Ok(output) => println!("{output}"),
         Err(error) => {
-            eprintln!("{error}");
-
+            eprintln!("{intro}: {error}", intro = "error".bold().red(),);
             exit(1);
         }
     }
 }
-
-// TODO better errors?

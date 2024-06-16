@@ -1,5 +1,6 @@
 use crate::engine::sql::DbStructureParseError;
 use crate::engine::QueryBuildError;
+use colored::Colorize;
 use mysql::Error as MySqlError;
 use std::env::VarError;
 use std::fmt::{Display, Formatter};
@@ -22,24 +23,24 @@ where
 #[allow(clippy::enum_variant_names)]
 pub enum ErrorKind {
     /// Errors originating from the Pest library
-    #[error("Invalid syntax, failed to parse:\n{0}")]
+    #[error("{}\n{0}", "Invalid syntax, failed to parse".bold())]
     SyntaxError(#[from] PestError),
     /// Errors originating from the MySQL library
-    #[error("Error trying to query database:\n{0}")]
+    #[error("{}\n{0}", "Error trying to query database".bold())]
     MySqlError(#[from] MySqlError),
-    #[error("Internal error:\n{0}")]
+    #[error("{}\n{0}", "Internal error".bold())]
     InternalError(#[from] InternalError),
-    #[error("Error parsing database structure:\n{0}")]
+    #[error("{}\n{0}", "Error parsing database structure".bold())]
     DbStructureParseError(#[from] DbStructureParseError),
-    #[error("Error building query:\n{0}")]
+    #[error("{}\n{0}", "Error building query".bold())]
     QueryBuildingError(#[from] QueryBuildError),
-    #[error("Could not find environment variable: \n{0}")]
+    #[error("{}\n{0}", "Could not find environment variable".bold())]
     EnvVarError(#[from] VarError),
-    #[error("IO error:\n{0}")]
+    #[error("{}\n{0}", "IO error".bold())]
     IoError(#[from] std::io::Error),
-    #[error("JSON error:\n{0}")]
+    #[error("{}\n{0}", "JSON error".bold())]
     JsonError(#[from] serde_json::Error),
-    #[error("Error reading data from stdin")]
+    #[error("{}\n{0}", "Error reading data from stdin".bold())]
     DialogueError(#[from] dialoguer::Error),
 }
 
