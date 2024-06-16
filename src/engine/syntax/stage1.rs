@@ -71,13 +71,9 @@ mod tests {
         let error = parse_stage1("test 012-test").unwrap_err();
 
         assert_eq!(
-            r#"Invalid syntax, failed to parse:
- --> 1:9
-  |
-1 | test 012-test
-  |         ^---
-  |
-  = expected comparison_symbol"#,
+            "\u{1b}[1mInvalid syntax, failed to parse\u{1b}[0m\ntest 012-test\n\
+            \u{1b}[1;31m        ^\u{1b}[0m \u{1b}[1;31mexpected comparison_symbol\u{1b}[0m\n\
+            ",
             &format!("{}", error)
         );
     }
