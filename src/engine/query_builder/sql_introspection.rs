@@ -54,7 +54,7 @@ impl Introspective for Server {
     }
 
     fn neighbors(&self, table: TableInput) -> Result<Vec<ForeignKey>> {
-        let direct_joins = self.table(table)?.foreign_keys.iter();
+        let direct_joins = self.table(table)?.foreign_keys.iter().cloned();
         let reverse_joins = self
             .database_or_default(table.database)?
             .tables
@@ -64,9 +64,10 @@ impl Introspective for Server {
                     .foreign_keys
                     .iter()
                     .find(|other_table| other_table.to.table == table.table.it)
-            });
+            })
+            .map(|fk| fk.invert());
 
-        let mut all_joins: Vec<_> = direct_joins.chain(reverse_joins).cloned().collect();
+        let mut all_joins: Vec<_> = direct_joins.chain(reverse_joins).collect();
 
         all_joins.dedup_by(|a, b| a == b);
 

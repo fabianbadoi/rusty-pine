@@ -10,8 +10,8 @@ pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
     for fk in neighbors {
         let intro = format!(
             "{}.{} using",
-            fk.from.table.0.as_str(),
-            fk.from
+            fk.to.table.0.as_str(),
+            fk.to
                 .key
                 .columns
                 .iter()
@@ -20,7 +20,13 @@ pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
                 .join("+")
         );
 
-        let columns: Vec<_> = fk.to.key.columns.iter().map(|c| format!(".{c}")).collect();
+        let columns: Vec<_> = fk
+            .from
+            .key
+            .columns
+            .iter()
+            .map(|c| format!(".{c}"))
+            .collect();
 
         let key = OptionalClause {
             intro: intro.as_str(),
