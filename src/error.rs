@@ -1,7 +1,7 @@
 mod pest;
 
 use crate::engine::sql::DbStructureParseError;
-use crate::engine::QueryBuildError;
+use crate::engine::RenderingError;
 use crate::error::pest::WrappedPestError;
 use colored::Colorize;
 use mysql::Error as MySqlError;
@@ -35,8 +35,8 @@ pub enum ErrorKind {
     InternalError(#[from] InternalError),
     #[error("{}\n{0}", "Error parsing database structure".bold())]
     DbStructureParseError(#[from] DbStructureParseError),
-    QueryBuildingError(#[from] QueryBuildError),
     #[error("{}\n{0}", "Error rendering query".bold())]
+    QueryBuildingError(#[from] RenderingError),
     #[error("{}\n{0}", "Could not find environment variable".bold())]
     EnvVarError(#[from] VarError),
     #[error("{}\n{0}", "IO error".bold())]

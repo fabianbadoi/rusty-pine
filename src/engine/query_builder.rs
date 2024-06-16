@@ -13,7 +13,7 @@ use sql_introspection::Introspective;
 mod sql_introspection;
 mod stage5;
 
-pub fn build_query(input: Stage4Query<'_>, server: &Server) -> Result<Query, crate::Error> {
+pub fn build_query(input: Stage4Query<'_>, server: &Server) -> Result<Query, QueryBuildError> {
     let builder = stage5::Stage5Builder::new(input, server);
 
     Ok(builder.try_build()?)

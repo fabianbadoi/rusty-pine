@@ -15,29 +15,55 @@ use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
 pub use query_builder::QueryBuildError;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
+use thiserror::Error;
 
 pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Error> {
     let pine = parse_to_stage4(input)?;
 
     match pine {
         Stage4Rep::Query(query) => {
-            let query = build_query(query, server);
+            let query = map_err(input, build_query(query, server))?;
 
-            Ok(render_query(query?))
+            Ok(render_query(query))
         }
         Stage4Rep::ShowNeighbors(for_table) => {
-            let neighbors = get_neighbors(for_table, server)?;
+            let neighbors = map_err(input, get_neighbors(for_table, server))?;
 
             Ok(render_neighbors(neighbors))
         }
         Stage4Rep::ShowColumns(for_table) => {
-            let columns = get_columns(for_table, server)?;
+            let columns = map_err(input, get_columns(for_table, server))?;
 
             Ok(render_columns(for_table.it, columns))
         }
     }
+}
+
+#[derive(Debug, Error)]
+pub struct RenderingError {
+    input: String,
+    build_error: QueryBuildError,
+}
+
+// TODO move
+impl Display for RenderingError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{input}\n{error}",
+            input = self.input,
+            error = self.build_error,
+        )
+    }
+}
+
+fn map_err<T>(input: &str, result: Result<T, QueryBuildError>) -> Result<T, RenderingError> {
+    result.map_err(|build_error| RenderingError {
+        input: input.to_string(),
+        build_error,
+    })
 }
 
 #[derive(Debug, Clone, Copy, Eq)]
