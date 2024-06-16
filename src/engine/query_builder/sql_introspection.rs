@@ -3,6 +3,7 @@ use crate::analyze::{
 };
 use crate::engine::Comparison;
 use std::collections::HashSet;
+use std::fmt::Debug;
 
 use crate::engine::query_builder::{
     BinaryCondition, Computation, Condition, QueryBuildError, SelectedColumn, Sourced,
@@ -12,20 +13,28 @@ use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
 type Result<T> = std::result::Result<T, QueryBuildError>;
 
 pub trait Introspective {
-    fn join_conditions(&self, from: TableInput, to: TableInput) -> Result<Vec<Sourced<Condition>>>;
-    fn columns(&self, table: TableInput) -> Result<&[Column]>;
-    fn neighbors(&self, table: TableInput) -> Result<Vec<ForeignKey>>;
+    fn join_conditions(
+        &self,
+        from: Sourced<TableInput>,
+        to: Sourced<TableInput>,
+    ) -> Result<Vec<Sourced<Condition>>>;
+    fn columns(&self, table: Sourced<TableInput>) -> Result<&[Column]>;
+    fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>>;
 }
 
 impl Introspective for Server {
-    fn join_conditions(&self, from: TableInput, to: TableInput) -> Result<Vec<Sourced<Condition>>> {
+    fn join_conditions(
+        &self,
+        from: Sourced<TableInput>,
+        to: Sourced<TableInput>,
+    ) -> Result<Vec<Sourced<Condition>>> {
         let join = self.find_join(from, to)?;
 
         if join.from.key.columns.len() != join.to.key.columns.len() {
             // This should never happen.
             return Err(QueryBuildError::InvalidForeignKey {
-                from: join.from.clone(),
-                to: join.to.clone(),
+                from: from.it.table.into(),
+                to: to.it.table.into(),
             });
         }
 
@@ -36,9 +45,9 @@ impl Introspective for Server {
 
         let conditions = column_pairs
             .map(|(from_column, to_column)| BinaryCondition {
-                left: selected_column(from, from_column),
+                left: selected_column(from.it, from_column),
                 comparison: Sourced::from_introspection(Comparison::Equals),
-                right: selected_column(to, to_column),
+                right: selected_column(to.it, to_column),
             })
             .map(|cond| Condition::Binary(Sourced::from_introspection(cond)))
             .map(Sourced::from_introspection)
@@ -47,23 +56,23 @@ impl Introspective for Server {
         Ok(conditions)
     }
 
-    fn columns(&self, table: TableInput) -> Result<&[Column]> {
+    fn columns(&self, table: Sourced<TableInput>) -> Result<&[Column]> {
         let table = self.table(table)?;
 
         Ok(table.columns.as_slice())
     }
 
-    fn neighbors(&self, table: TableInput) -> Result<Vec<ForeignKey>> {
+    fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>> {
         let direct_joins = self.table(table)?.foreign_keys.iter().cloned();
         let reverse_joins = self
-            .database_or_default(table.database)?
+            .database_or_default(table.it.database)?
             .tables
             .iter()
             .flat_map(|(_, other)| {
                 other
                     .foreign_keys
                     .iter()
-                    .find(|other_table| other_table.to.table == table.table.it)
+                    .find(|other_table| other_table.to.table == table.it.table.it)
             })
             .map(|fk| fk.invert());
 
@@ -76,7 +85,7 @@ impl Introspective for Server {
 }
 
 impl Server {
-    fn find_join(&self, from: TableInput, to: TableInput) -> Result<ForeignKey> {
+    fn find_join(&self, from: Sourced<TableInput>, to: Sourced<TableInput>) -> Result<ForeignKey> {
         if let Some(direct_join) = self.find_direct_join(from, to)? {
             return Ok(direct_join.clone());
         }
@@ -93,17 +102,21 @@ impl Server {
         }
 
         Err(QueryBuildError::JoinNotFound {
-            from: from.table.it.into(),
-            to: to.table.it.into(),
+            from: from.it.table.into(),
+            to: to.it.table.into(),
         })
     }
 
-    fn find_direct_join(&self, from: TableInput, to: TableInput) -> Result<Option<&ForeignKey>> {
+    fn find_direct_join(
+        &self,
+        from: Sourced<TableInput>,
+        to: Sourced<TableInput>,
+    ) -> Result<Option<&ForeignKey>> {
         let mut matching_keys = self
             .table(from)?
             .foreign_keys
             .iter()
-            .filter(|fk| fk.to.table == to.table.it);
+            .filter(|fk| fk.to.table == to.it.table.it);
 
         // auto joins get the first possible way to join, even if multiple are available
         Ok(matching_keys.next())
@@ -116,7 +129,11 @@ impl Server {
     ///
     /// For example, the userSettings and userLogs tables might both have a
     /// foreign key to the users table. We can then join on userId.
-    fn find_incidental_join(&self, from: TableInput, to: TableInput) -> Result<Option<ForeignKey>> {
+    fn find_incidental_join(
+        &self,
+        from: Sourced<TableInput>,
+        to: Sourced<TableInput>,
+    ) -> Result<Option<ForeignKey>> {
         let from = self.table(from)?;
         let to = self.table(to)?;
 
@@ -193,17 +210,17 @@ impl Server {
         Ok(first_common.next())
     }
 
-    fn table(&self, table: TableInput) -> Result<&Table> {
-        let database = match table.database {
+    fn table(&self, name: Sourced<TableInput>) -> Result<&Table> {
+        let database = match name.it.database {
             OptionalInput::Implicit => self.default_database()?,
-            OptionalInput::Specified(name) => self.database(name.it)?,
+            OptionalInput::Specified(name) => self.database(name)?,
         };
 
-        let table_name = TableName(table.table.it.name.to_string());
+        let table_name = TableName(name.it.table.it.name.to_string());
         let table = database
             .tables
             .get(&table_name)
-            .ok_or_else(|| QueryBuildError::TableNotFound(self.params.clone(), table_name))?;
+            .ok_or_else(|| QueryBuildError::TableNotFound(name.map(|_| table_name)))?;
 
         Ok(table)
     }
@@ -211,12 +228,7 @@ impl Server {
     fn default_database(&self) -> Result<&Database> {
         self.databases
             .get(&self.params.default_database)
-            .ok_or_else(|| {
-                QueryBuildError::DefaultDatabaseNotFound(
-                    self.params.clone(),
-                    self.params.default_database.clone(),
-                )
-            })
+            .ok_or_else(|| QueryBuildError::DefaultDatabaseNotFound(self.params.clone()))
     }
 
     fn database_or_default(
@@ -225,16 +237,16 @@ impl Server {
     ) -> Result<&Database> {
         match db_or_none {
             OptionalInput::Implicit => self.default_database(),
-            OptionalInput::Specified(db_name) => self.database(db_name.it),
+            OptionalInput::Specified(db_name) => self.database(db_name),
         }
     }
 
-    fn database<T: AsRef<str>>(&self, name: T) -> Result<&Database> {
-        let table = TableName(name.as_ref().to_string());
+    fn database<T: AsRef<str> + Clone + Debug>(&self, name: Sourced<T>) -> Result<&Database> {
+        let table = TableName(name.it.as_ref().to_string());
 
         self.databases
             .get(&table)
-            .ok_or_else(|| QueryBuildError::DatabaseNotFound(self.params.clone(), table))
+            .ok_or_else(|| QueryBuildError::DatabaseNotFound(name.map(|_| table)))
     }
 }
 

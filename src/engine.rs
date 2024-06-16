@@ -15,7 +15,7 @@ use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
 pub use query_builder::QueryBuildError;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use std::ops::Range;
 use thiserror::Error;
 
@@ -43,26 +43,15 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
 
 #[derive(Debug, Error)]
 pub struct RenderingError {
-    input: String,
-    build_error: QueryBuildError,
-}
-
-// TODO move
-impl Display for RenderingError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{input}\n{error}",
-            input = self.input,
-            error = self.build_error,
-        )
-    }
+    pub input: String,
+    // Using Box<> here because QueryBuildError is kind of large, and clippy was complaining.
+    pub build_error: Box<QueryBuildError>,
 }
 
 fn map_err<T>(input: &str, result: Result<T, QueryBuildError>) -> Result<T, RenderingError> {
     result.map_err(|build_error| RenderingError {
         input: input.to_string(),
-        build_error,
+        build_error: Box::new(build_error),
     })
 }
 

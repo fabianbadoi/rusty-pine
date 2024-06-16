@@ -1,4 +1,5 @@
 mod pest;
+mod rendering;
 
 use crate::engine::sql::DbStructureParseError;
 use crate::engine::RenderingError;

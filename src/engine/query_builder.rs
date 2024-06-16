@@ -1,8 +1,8 @@
 use crate::analyze;
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::analyze::{Column, ForeignKey, KeyReference, Server, ServerParams};
+use crate::analyze::{Column, ForeignKey, Server, ServerParams};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Query, TableInput};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder, OrderHolder,
@@ -16,14 +16,14 @@ mod stage5;
 pub fn build_query(input: Stage4Query<'_>, server: &Server) -> Result<Query, QueryBuildError> {
     let builder = stage5::Stage5Builder::new(input, server);
 
-    Ok(builder.try_build()?)
+    builder.try_build()
 }
 
 pub fn get_neighbors(
     for_table: Sourced<TableInput>,
     server: &Server,
 ) -> Result<Vec<ForeignKey>, QueryBuildError> {
-    let neighboring_tables = server.neighbors(for_table.it)?;
+    let neighboring_tables = server.neighbors(for_table)?;
 
     Ok(neighboring_tables)
 }
@@ -32,21 +32,21 @@ pub fn get_columns<'a>(
     for_table: Sourced<TableInput>,
     server: &'a Server,
 ) -> Result<&'a [Column], QueryBuildError> {
-    server.columns(for_table.it)
+    server.columns(for_table)
 }
 
 #[derive(Error, Debug, Clone)]
 pub enum QueryBuildError {
-    DefaultDatabaseNotFound(ServerParams, analyze::TableName),
-    DatabaseNotFound(ServerParams, analyze::TableName),
-    TableNotFound(ServerParams, analyze::TableName),
+    DefaultDatabaseNotFound(ServerParams),
+    DatabaseNotFound(Sourced<analyze::TableName>),
+    TableNotFound(Sourced<analyze::TableName>),
     InvalidForeignKey {
-        from: KeyReference,
-        to: KeyReference,
+        from: Sourced<analyze::TableName>,
+        to: Sourced<analyze::TableName>,
     },
     JoinNotFound {
-        from: analyze::TableName,
-        to: analyze::TableName,
+        from: Sourced<analyze::TableName>,
+        to: Sourced<analyze::TableName>,
     },
 }
 
@@ -110,36 +110,6 @@ pub struct TableName(pub String);
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DatabaseName(pub String);
-
-impl Display for QueryBuildError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            QueryBuildError::DefaultDatabaseNotFound(server, table) => {
-                write!(
-                    f,
-                    "Default database '{}' for server {} not found",
-                    server, table
-                )
-            }
-            QueryBuildError::DatabaseNotFound(server, database) => {
-                write!(f, "Database '{database}' for server {server} not found")
-            }
-            QueryBuildError::TableNotFound(server, table) => {
-                write!(f, "Table '{table}' for server {server} not found")
-            }
-            QueryBuildError::InvalidForeignKey { from, to } => {
-                write!(
-                    f,
-                    "Invalid foreign key found between {} and {}",
-                    from.table, to.table
-                )
-            }
-            QueryBuildError::JoinNotFound { from, to } => {
-                write!(f, "Cannot find how to join tables from {} to {}", from, to)
-            }
-        }
-    }
-}
 
 /// These functions here are special because they *omit the table name*.
 ///

@@ -151,7 +151,7 @@ impl<'a> Stage5Builder<'a> {
         let conditions = match &join.conditions {
             JoinConditions::Auto => self
                 .server
-                .join_conditions(join.source_table.it, join.target_table.it)?,
+                .join_conditions(join.source_table, join.target_table)?,
             JoinConditions::Explicit(conditions) => self.process_conditions(conditions),
         };
 
@@ -273,7 +273,7 @@ impl<'a> Stage5Builder<'a> {
     ) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
         let selected_columns = self
             .server
-            .columns(table.it)?
+            .columns(table)?
             .iter()
             .map(|column| self.as_selectable(column, table))
             .collect();
