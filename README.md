@@ -1,5 +1,3 @@
-All of this is out of date
-
 Rusty Pine
 ==========
 
