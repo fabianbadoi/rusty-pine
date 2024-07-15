@@ -267,16 +267,18 @@ impl<T: Sized + Clone> Sourced<T> {
             source: self.source,
         }
     }
-}
 
-impl<T: Sized + Clone, E: Clone> Sourced<Result<T, E>> {
-    pub fn unwrap_result(self) -> Result<Sourced<T>, E> {
-        let Sourced { it, source } = self;
+    pub fn try_map_ref<D, F, E>(&self, mapper: F) -> Result<Sourced<D>, E>
+    where
+        F: FnOnce(&T) -> Result<D, E>,
+        D: Sized + Clone,
+    {
+        let it = mapper(&self.it)?;
 
-        match it {
-            Ok(it) => Ok(Sourced::from_source(source, it)),
-            Err(error) => Err(error),
-        }
+        Ok(Sourced {
+            it,
+            source: self.source,
+        })
     }
 }
 

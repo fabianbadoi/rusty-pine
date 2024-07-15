@@ -140,8 +140,7 @@ impl<'a> Stage5Builder<'a> {
             .input
             .joins
             .iter()
-            .map(|j| j.map_ref(|j| self.process_join(j)))
-            .map(Sourced::unwrap_result)
+            .map(|j| j.try_map_ref(|j| self.process_join(j)))
             .collect();
 
         joins
