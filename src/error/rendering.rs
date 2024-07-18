@@ -47,7 +47,7 @@ impl QueryBuildError {
             QueryBuildError::TableNotFound(table) => vec![table.source],
             QueryBuildError::InvalidForeignKey { from, to } => vec![from.source, to.source],
             QueryBuildError::JoinNotFound { from, to } => vec![from.source, to.source],
-            QueryBuildError::InvalidImplicitIdCondition(table, value) => {
+            QueryBuildError::InvalidImplicitIdCondition(table, _, value) => {
                 vec![table.source, value.source]
             }
         };
@@ -75,7 +75,7 @@ impl QueryBuildError {
             QueryBuildError::TableNotFound(_) => "Table not found",
             QueryBuildError::InvalidForeignKey { .. } => "Invalid foreign key between tables",
             QueryBuildError::JoinNotFound { .. } => "Can't join tables",
-            QueryBuildError::InvalidImplicitIdCondition(_, _) => "Can't use implicit id filtering",
+            QueryBuildError::InvalidImplicitIdCondition(..) => "Can't use implicit id filtering",
         }
     }
 }
@@ -128,15 +128,16 @@ impl Display for QueryBuildError {
                 to = format!("{}", to).yellow().bold(),
                 pine_analyze = "pine analyze".green().bold(),
             ),
-            QueryBuildError::InvalidImplicitIdCondition(table, value) => write!(
+            QueryBuildError::InvalidImplicitIdCondition(table, primary_key, value) => write!(
                 f,
                 "Cannot use implicit id conditions for `{table} because it has a composite primary key.\n\
-                 You are trying to filter for primary id = '{value}', but the table has a primary key \
-                 consisting of multiple columns.\n\
+                 You are trying to filter for `[{columns}] = {value}`, but that does not work.\n\
                  \n\
                  If your context is out of date, re-run {pine_analyze}.",
                 table = format!("{}", table).yellow().bold(),
                 value = format!("{}", value).yellow().bold(),
+                columns = primary_key.columns.iter().map(|c| c.0.as_str())
+                    .collect::<Vec<_>>().join(", ").yellow().bold(),
                 pine_analyze = "pine analyze".green().bold(),
             ),
         }

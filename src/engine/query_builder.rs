@@ -48,7 +48,11 @@ pub enum QueryBuildError {
         from: Sourced<analyze::TableName>,
         to: Sourced<analyze::TableName>,
     },
-    InvalidImplicitIdCondition(Sourced<analyze::TableName>, Sourced<LiteralValue>),
+    InvalidImplicitIdCondition(
+        Sourced<analyze::TableName>,
+        analyze::Key,
+        Sourced<LiteralValue>,
+    ),
 }
 
 #[derive(Debug)]

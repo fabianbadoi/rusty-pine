@@ -1,3 +1,6 @@
+// I don't really care, and it's not important for this project
+#![allow(clippy::result_large_err)]
+
 pub mod cache;
 pub mod context;
 mod engine;

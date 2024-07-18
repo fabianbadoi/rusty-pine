@@ -249,6 +249,7 @@ impl<'a> Stage5Builder<'a> {
             if primary_key.columns.len() != 1 {
                 return Err(QueryBuildError::InvalidImplicitIdCondition(
                     table_name.map(|t| t.table.it.into()),
+                    primary_key.clone(),
                     id_value.into(),
                 ));
             }
