@@ -170,3 +170,16 @@ LIMIT 10;
 SELECT dateOfBirth, placeOfBirth
 FROM people
 LIMIT 10;
+
+-- Test: people 1
+SELECT *
+FROM people
+WHERE id = 1
+LIMIT 10;
+
+-- Test: people | preferences 1
+SELECT preferences.*
+FROM preferences
+LEFT JOIN people ON people.id = preferences.personId
+WHERE preferences.id = 1
+LIMIT 10;

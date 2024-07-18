@@ -10,7 +10,7 @@ use crate::engine::syntax::{
     Stage4Selectable, Stage4UnaryCondition, TableInput,
 };
 use crate::engine::{
-    JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError,
+    Comparison, JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError,
     SelectableHolder, Sourced,
 };
 use std::fmt::Debug;
@@ -33,12 +33,12 @@ impl<'a> Stage5Builder<'a> {
     }
 
     pub fn try_build(self) -> Result<Query, QueryBuildError> {
-        let select = self.process_selects();
+        let select = self.process_selects()?;
         let select = self.process_unselects(select)?;
-        let filters = self.process_filters();
+        let filters = self.process_filters()?;
         let joins = self.process_joins()?;
-        let orders = self.process_orders();
-        let group_by = self.process_group_by();
+        let orders = self.process_orders()?;
+        let group_by = self.process_group_by()?;
 
         // This makes sure we select FROM the table from the last pine.
         let from = match self.input.joins.last() {
@@ -58,12 +58,12 @@ impl<'a> Stage5Builder<'a> {
         })
     }
 
-    fn process_selects(&self) -> Vec<Sourced<Selectable>> {
+    fn process_selects(&self) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
         self.input
             .selected_columns
             .iter()
             .map(Clone::clone)
-            .map(|selectable| selectable.map(|selectable| self.process_selectable(selectable)))
+            .map(|selectable| selectable.try_map(|selectable| self.process_selectable(selectable)))
             .collect()
     }
 
@@ -107,31 +107,35 @@ impl<'a> Stage5Builder<'a> {
             })
     }
 
-    fn process_filters(&self) -> Vec<Sourced<Condition>> {
+    fn process_filters(&self) -> Result<Vec<Sourced<Condition>>, QueryBuildError> {
         self.process_conditions(&self.input.filters)
     }
 
-    fn process_orders(&self) -> Vec<Sourced<OrderHolder<Selectable>>> {
+    fn process_orders(&self) -> Result<Vec<Sourced<OrderHolder<Selectable>>>, QueryBuildError> {
         self.input
             .orders
             .iter()
             .map(|order| {
-                order.map_ref(|order| OrderHolder {
-                    selectable: order
+                order.try_map_ref(|order| -> Result<_, QueryBuildError> {
+                    let selectable = order
                         .selectable
-                        .map_ref(|comp| self.process_selectable(comp.clone())),
-                    direction: order.direction,
+                        .try_map_ref(|comp| self.process_selectable(comp.clone()))?;
+
+                    Ok(OrderHolder {
+                        selectable,
+                        direction: order.direction,
+                    })
                 })
             })
-            .collect()
+            .collect::<Result<Vec<_>, _>>()
     }
 
-    fn process_group_by(&self) -> Vec<Sourced<Selectable>> {
+    fn process_group_by(&self) -> Result<Vec<Sourced<Selectable>>, QueryBuildError> {
         self.input
             .group_by
             .iter()
             .map(Clone::clone)
-            .map(|selectable| selectable.map(|selectable| self.process_selectable(selectable)))
+            .map(|selectable| selectable.try_map(|selectable| self.process_selectable(selectable)))
             .collect()
     }
 
@@ -151,7 +155,7 @@ impl<'a> Stage5Builder<'a> {
             JoinConditions::Auto => self
                 .server
                 .join_conditions(join.source_table, join.target_table)?,
-            JoinConditions::Explicit(conditions) => self.process_conditions(conditions),
+            JoinConditions::Explicit(conditions) => self.process_conditions(conditions)?,
         };
 
         Ok(ExplicitJoin {
@@ -168,15 +172,20 @@ impl<'a> Stage5Builder<'a> {
         })
     }
 
-    fn process_selectable(&self, selectable: Stage4Selectable) -> Selectable {
-        match selectable {
-            Stage4Selectable::Condition(condition) => {
-                Selectable::Condition(condition.map(|condition| self.process_condition(condition)))
-            }
+    fn process_selectable(
+        &self,
+        selectable: Stage4Selectable,
+    ) -> Result<Selectable, QueryBuildError> {
+        let selectable = match selectable {
+            Stage4Selectable::Condition(condition) => Selectable::Condition(
+                condition.try_map(|condition| self.process_condition(condition))?,
+            ),
             Stage4Selectable::Computation(computation) => Selectable::Computation(
                 computation.map(|computation| self.process_computation(computation)),
             ),
-        }
+        };
+
+        Ok(selectable)
     }
 
     fn process_computation(&self, computation: Stage4ComputationInput) -> Computation {
@@ -200,23 +209,72 @@ impl<'a> Stage5Builder<'a> {
     fn process_conditions(
         &self,
         conditions: &[Sourced<Stage4Condition>],
-    ) -> Vec<Sourced<Condition>> {
+    ) -> Result<Vec<Sourced<Condition>>, QueryBuildError> {
         conditions
             .iter()
             .map(Clone::clone)
-            .map(|c| c.map(|c| self.process_condition(c)))
+            .map(|c| c.try_map(|c| self.process_condition(c)))
             .collect()
     }
 
-    fn process_condition(&self, condition: Stage4Condition) -> Condition {
-        match condition {
+    fn process_condition(&self, condition: Stage4Condition) -> Result<Condition, QueryBuildError> {
+        let condition = match condition {
+            Stage4Condition::ImplicitId(table_name, id_value) => {
+                // TODO method
+
+                Condition::Binary(Sourced::from_source(
+                    id_value.source,
+                    self.process_implicit_id_condition(table_name, id_value)?,
+                ))
+            }
             Stage4Condition::Unary(unary) => {
                 Condition::Unary(unary.map(|unary| self.process_unary_condition(unary)))
             }
             Stage4Condition::Binary(binary) => {
                 Condition::Binary(binary.map(|condition| self.process_binary_condition(condition)))
             }
-        }
+        };
+
+        Ok(condition)
+    }
+
+    fn process_implicit_id_condition(
+        &self,
+        table_name: Sourced<TableInput>,
+        id_value: Sourced<Stage4LiteralValue>,
+    ) -> Result<BinaryCondition, QueryBuildError> {
+        let column_name = {
+            let primary_key = self.server.primary_key(table_name)?;
+
+            if primary_key.columns.len() != 1 {
+                return Err(QueryBuildError::InvalidImplicitIdCondition(
+                    table_name.map(|t| t.table.it.into()),
+                    id_value.into(),
+                ));
+            }
+            primary_key
+                .columns
+                .first()
+                .expect("The primary is guaranteed to have a column because we checked above")
+        };
+
+        let primary_key =
+            Computation::SelectedColumn(Sourced::from_introspection(SelectedColumn {
+                table: if self.input.joins.is_empty() {
+                    Some(table_name.into())
+                } else {
+                    None
+                },
+                column: Sourced::from_introspection(column_name.into()),
+            }));
+
+        let condition = BinaryCondition {
+            left: Sourced::implicit(primary_key),
+            comparison: Sourced::implicit(Comparison::Equals),
+            right: Sourced::from_source(id_value.source, Computation::Value(id_value.into())),
+        };
+
+        Ok(condition)
     }
 
     fn process_binary_condition(&self, condition: Stage4BinaryCondition) -> BinaryCondition {

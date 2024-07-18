@@ -257,6 +257,19 @@ impl<T: Sized + Clone> Sourced<T> {
         }
     }
 
+    pub fn try_map<D, F, E>(self, mapper: F) -> Result<Sourced<D>, E>
+    where
+        F: FnOnce(T) -> Result<D, E>,
+        D: Sized + Clone,
+    {
+        let it = mapper(self.it)?;
+
+        Ok(Sourced {
+            it,
+            source: self.source,
+        })
+    }
+
     pub fn map_ref<D, F>(&self, mapper: F) -> Sourced<D>
     where
         F: FnOnce(&T) -> D,

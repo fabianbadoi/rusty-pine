@@ -1,6 +1,5 @@
-// pine = { SOI ~ simple_compound_expression ~ ("|" ~ operation)* ~ terminal_meta_operation? ~ EOI }
 root = { SOI ~ base ~ ( "|" ~ pine)* ~ meta_pine? ~ EOI }
-base = { ("f:" | "from:")? ~ table ~ condition* }
+base = { ("f:" | "from:")? ~ table ~ wicked_condition? ~ condition* }
 
 pine               = _{
                         select_pine
@@ -31,13 +30,17 @@ show_columns_pine   =  { "c?" }
 
 explicit_join_pine      = { ("j:" | "join:") ~ table ~ condition+ }
 explicit_auto_join_pine = { ("j:" | "join:") ~ table }
-compound_join_pine      = { table ~ condition* }
+compound_join_pine      = { table ~ wicked_condition? ~ condition* }
 
 // Selectables are columns, conditions, values or function calls. They're the things you can put in SELECT or WHERE
 // clauses (and more).
 selectable    = { condition | computation }
 computation   = { function_call | column | literal_value }
 function_call = { sql_name ~ "(" ~ computation* ~ ")"}
+
+// These conditions allow using "1" as a shorthand for "{primary key} = 1"
+wicked_condition = { condition | implicit_condition } // wicked SMART, amirite?
+implicit_condition    = { literal_value }
 
 // The condition rule has a "!". This makes it always accept whitespace, even if in the "order"
 // rule where we disable whitespace for the "+" and "-".

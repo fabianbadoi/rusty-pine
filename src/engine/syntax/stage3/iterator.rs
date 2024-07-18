@@ -358,6 +358,9 @@ fn translate_condition<'a>(
     right_implicit_table: &Sourced<TableInput<'a>>,
 ) -> Sourced<Stage3Condition<'a>> {
     condition.map_ref(|condition| match condition {
+        Stage2Condition::ImplicitId(id_value) => {
+            Stage3Condition::ImplicitId(*left_implicit_table, *id_value)
+        }
         Stage2Condition::Unary(unary) => {
             Stage3Condition::Unary(translate_unary_condition(
                 unary,

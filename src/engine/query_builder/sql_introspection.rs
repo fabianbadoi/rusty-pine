@@ -20,6 +20,7 @@ pub trait Introspective {
     ) -> Result<Vec<Sourced<Condition>>>;
     fn columns(&self, table: Sourced<TableInput>) -> Result<&[Column]>;
     fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>>;
+    fn primary_key(&self, table: Sourced<TableInput>) -> Result<&Key>;
 }
 
 impl Introspective for Server {
@@ -81,6 +82,12 @@ impl Introspective for Server {
         all_joins.dedup_by(|a, b| a == b);
 
         Ok(all_joins)
+    }
+
+    fn primary_key(&self, table: Sourced<TableInput>) -> Result<&Key> {
+        let table = self.table(table)?;
+
+        Ok(&table.primary_key)
     }
 }
 

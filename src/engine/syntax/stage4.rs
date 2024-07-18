@@ -8,8 +8,8 @@ use crate::engine::syntax::stage3::{
 };
 use crate::engine::syntax::{SqlIdentifierInput, TableInput};
 use crate::engine::{
-    BinaryConditionHolder, ConditionHolder, JoinConditions, JoinType, LimitHolder, OrderHolder,
-    SelectableHolder, UnaryConditionHolder,
+    BinaryConditionHolder, JoinConditions, JoinType, LimitHolder, OrderHolder, SelectableHolder,
+    UnaryConditionHolder,
 };
 use crate::engine::{LiteralValueHolder, Sourced};
 
@@ -32,7 +32,14 @@ pub struct Stage4Query<'a> {
 }
 
 pub type Stage4Selectable<'a> = SelectableHolder<Stage4Condition<'a>, Stage4ComputationInput<'a>>;
-pub type Stage4Condition<'a> = ConditionHolder<Stage4ComputationInput<'a>>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Stage4Condition<'a> {
+    ImplicitId(Sourced<TableInput<'a>>, Sourced<Stage4LiteralValue<'a>>),
+    Unary(Sourced<UnaryConditionHolder<Stage4ComputationInput<'a>>>),
+    Binary(Sourced<BinaryConditionHolder<Stage4ComputationInput<'a>>>),
+}
+
 pub type Stage4BinaryCondition<'a> = BinaryConditionHolder<Stage4ComputationInput<'a>>;
 pub type Stage4UnaryCondition<'a> = UnaryConditionHolder<Stage4ComputationInput<'a>>;
 pub type Stage4Order<'a> = OrderHolder<Stage4Selectable<'a>>;
@@ -44,10 +51,10 @@ pub struct Stage4Join<'a> {
     pub source_table: Sourced<TableInput<'a>>,
     /// The table to join to.
     pub target_table: Sourced<TableInput<'a>>,
-    pub conditions: Stage4JoinConditions<'a>,
+    pub conditions: Stage4JoinCondition<'a>,
 }
 
-pub type Stage4JoinConditions<'a> = JoinConditions<Stage4Condition<'a>>;
+pub type Stage4JoinCondition<'a> = JoinConditions<Stage4Condition<'a>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stage4ColumnInput<'a> {

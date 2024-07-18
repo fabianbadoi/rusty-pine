@@ -47,6 +47,9 @@ impl QueryBuildError {
             QueryBuildError::TableNotFound(table) => vec![table.source],
             QueryBuildError::InvalidForeignKey { from, to } => vec![from.source, to.source],
             QueryBuildError::JoinNotFound { from, to } => vec![from.source, to.source],
+            QueryBuildError::InvalidImplicitIdCondition(table, value) => {
+                vec![table.source, value.source]
+            }
         };
 
         let mut positions: Vec<_> = sources
@@ -72,6 +75,7 @@ impl QueryBuildError {
             QueryBuildError::TableNotFound(_) => "Table not found",
             QueryBuildError::InvalidForeignKey { .. } => "Invalid foreign key between tables",
             QueryBuildError::JoinNotFound { .. } => "Can't join tables",
+            QueryBuildError::InvalidImplicitIdCondition(_, _) => "Can't use implicit id filtering",
         }
     }
 }
@@ -122,6 +126,17 @@ impl Display for QueryBuildError {
                  If your context is out of date, re-run {pine_analyze}.",
                 from = format!("{}", from).yellow().bold(),
                 to = format!("{}", to).yellow().bold(),
+                pine_analyze = "pine analyze".green().bold(),
+            ),
+            QueryBuildError::InvalidImplicitIdCondition(table, value) => write!(
+                f,
+                "Cannot use implicit id conditions for `{table} because it has a composite primary key.\n\
+                 You are trying to filter for primary id = '{value}', but the table has a primary key \
+                 consisting of multiple columns.\n\
+                 \n\
+                 If your context is out of date, re-run {pine_analyze}.",
+                table = format!("{}", table).yellow().bold(),
+                value = format!("{}", value).yellow().bold(),
                 pine_analyze = "pine analyze".green().bold(),
             ),
         }

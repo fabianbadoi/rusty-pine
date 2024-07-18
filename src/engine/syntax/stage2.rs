@@ -20,8 +20,8 @@ use crate::engine::syntax::stage2::identifiers::translate_column;
 use crate::engine::syntax::stage4::Stage4Limit;
 use crate::engine::syntax::{ColumnInput, Computation, Stage2LiteralValue, TableInput};
 use crate::engine::{
-    BinaryConditionHolder, Comparison, ConditionHolder, JoinConditions, JoinHolder, JoinType,
-    OrderDirection, OrderHolder, Position, SelectableHolder, Source, Sourced, UnaryConditionHolder,
+    BinaryConditionHolder, Comparison, JoinConditions, JoinHolder, JoinType, OrderDirection,
+    OrderHolder, Position, SelectableHolder, Source, Sourced, UnaryConditionHolder,
 };
 use pest::iterators::{Pair, Pairs};
 use pest::Span;
@@ -91,7 +91,14 @@ pub enum Stage2Pine<'a> {
 }
 
 pub type Stage2Selectable<'a> = SelectableHolder<Stage2Condition<'a>, Computation<'a>>;
-pub type Stage2Condition<'a> = ConditionHolder<Computation<'a>>;
+
+#[derive(Debug, Clone)]
+pub enum Stage2Condition<'a> {
+    ImplicitId(Sourced<Stage2LiteralValue<'a>>),
+    Unary(Sourced<Stage2UnaryCondition<'a>>),
+    Binary(Sourced<Stage2BinaryCondition<'a>>),
+}
+
 pub type Stage2Limit<'a> = Stage4Limit<'a>;
 pub type Stage2Order<'a> = OrderHolder<Stage2Selectable<'a>>;
 pub type Stage2BinaryCondition<'a> = BinaryConditionHolder<Computation<'a>>;
@@ -202,7 +209,7 @@ fn translate_base(base_pair: Pair<Rule>) -> Sourced<Stage2Pine> {
 
     let table_name = identifiers::translate_table(inners.next().expect("Base must have a table"));
 
-    let conditions = inners.map(translate_condition).collect();
+    let conditions = inners.map(translate_wicked_condition).collect();
 
     Sourced::from_input(
         span,
@@ -314,7 +321,7 @@ fn translate_explicit_join(join: Pair<Rule>) -> Stage2Pine {
 }
 
 fn translate_explicit_auto_join(join: Pair<Rule>) -> Stage2Pine {
-    assert!([Rule::explicit_auto_join_pine].contains(&join.as_rule()));
+    assert_eq!(Rule::explicit_auto_join_pine, join.as_rule());
 
     let span = join.as_span();
     let mut inners = join.into_inner();
@@ -346,7 +353,7 @@ fn translate_compound_join(join: Pair<Rule>) -> Stage2Pine {
             .expect("explicit join target table should be present because of pest syntax"),
     );
 
-    let where_conditions = inners.map(translate_condition).collect();
+    let where_conditions = inners.map(translate_wicked_condition).collect();
 
     Stage2Pine::CompoundJoin(Sourced::from_input(
         span,
@@ -480,6 +487,28 @@ fn translate_computation(computation: Pair<Rule>) -> Sourced<Computation> {
     )
 }
 
+fn translate_wicked_condition(wicked: Pair<Rule>) -> Sourced<Stage2Condition> {
+    let inner = wicked
+        .into_inner()
+        .next()
+        .expect("Wicked conditions always have inner pairs");
+
+    match inner.as_rule() {
+        Rule::implicit_condition => {
+            let span = inner.as_span();
+            Sourced::from_input(
+                span,
+                Stage2Condition::ImplicitId(translate_implicit_id_condition(inner)),
+            )
+        }
+        Rule::condition => translate_condition(inner),
+        unexpected_rule => panic!(
+            "Unexpected rule when processing wicked condition: Rule::{:?}",
+            unexpected_rule
+        ),
+    }
+}
+
 fn translate_condition(condition: Pair<Rule>) -> Sourced<Stage2Condition> {
     assert_eq!(Rule::condition, condition.as_rule());
 
@@ -533,6 +562,24 @@ fn translate_unary_condition(condition: Pair<Rule>) -> Sourced<Stage2UnaryCondit
     };
 
     Sourced::from_input(span, condition)
+}
+
+fn translate_implicit_id_condition(id_value: Pair<Rule>) -> Sourced<Stage2LiteralValue> {
+    assert_eq!(Rule::implicit_condition, id_value.as_rule());
+
+    let mut inners = id_value.into_inner();
+    let id_value = translate_value(
+        inners
+            .next()
+            .expect("Valid implicit id condition must have a value"),
+    );
+
+    assert!(
+        inners.next().is_none(),
+        "Valid implicit id condition must only have 1 inner pair"
+    );
+
+    id_value
 }
 
 fn translate_binary_condition(condition: Pair<Rule>) -> Sourced<Stage2BinaryCondition> {
