@@ -12,23 +12,28 @@ use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
 
 type Result<T> = std::result::Result<T, QueryBuildError>;
 
+type STable<'a> = Sourced<TableInput<'a>>;
+
 pub trait Introspective {
-    fn join_conditions(
+    fn join_conditions<'a>(
         &self,
-        from: Sourced<TableInput>,
-        to: Sourced<TableInput>,
+        from: impl Into<STable<'a>>,
+        to: impl Into<STable<'a>>,
     ) -> Result<Vec<Sourced<Condition>>>;
-    fn columns(&self, table: Sourced<TableInput>) -> Result<&[Column]>;
-    fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>>;
-    fn primary_key(&self, table: Sourced<TableInput>) -> Result<&Key>;
+    fn columns<'a>(&self, table: impl Into<STable<'a>>) -> Result<&[Column]>;
+    fn neighbors<'a>(&self, table: impl Into<STable<'a>>) -> Result<Vec<ForeignKey>>;
+    fn primary_key<'a>(&self, table: impl Into<STable<'a>>) -> Result<&Key>;
 }
 
 impl Introspective for Server {
-    fn join_conditions(
+    fn join_conditions<'a>(
         &self,
-        from: Sourced<TableInput>,
-        to: Sourced<TableInput>,
+        from: impl Into<STable<'a>>,
+        to: impl Into<STable<'a>>,
     ) -> Result<Vec<Sourced<Condition>>> {
+        let from = from.into();
+        let to = to.into();
+
         let join = self.find_join(from, to)?;
 
         if join.from.key.columns.len() != join.to.key.columns.len() {
@@ -57,13 +62,15 @@ impl Introspective for Server {
         Ok(conditions)
     }
 
-    fn columns(&self, table: Sourced<TableInput>) -> Result<&[Column]> {
-        let table = self.table(table)?;
+    fn columns<'a>(&self, table: impl Into<STable<'a>>) -> Result<&[Column]> {
+        let table = self.table(table.into())?;
 
         Ok(table.columns.as_slice())
     }
 
-    fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>> {
+    fn neighbors<'a>(&self, table: impl Into<STable<'a>>) -> Result<Vec<ForeignKey>> {
+        let table = table.into();
+
         let direct_joins = self.table(table)?.foreign_keys.iter().cloned();
         let reverse_joins = self
             .database_or_default(table.it.database)?
@@ -84,8 +91,8 @@ impl Introspective for Server {
         Ok(all_joins)
     }
 
-    fn primary_key(&self, table: Sourced<TableInput>) -> Result<&Key> {
-        let table = self.table(table)?;
+    fn primary_key<'a>(&self, table: impl Into<STable<'a>>) -> Result<&Key> {
+        let table = self.table(table.into())?;
 
         Ok(&table.primary_key)
     }
@@ -232,7 +239,7 @@ impl Server {
         Ok(table)
     }
 
-    fn default_database(&self) -> Result<&Database> {
+    pub fn default_database(&self) -> Result<&Database> {
         self.databases
             .get(&self.params.default_database)
             .ok_or_else(|| QueryBuildError::DefaultDatabaseNotFound(self.params.clone()))

@@ -4,16 +4,25 @@ use std::fmt::{Display, Formatter};
 
 impl Display for RenderingError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{input}\n\
-             {underline} {message}",
-            input = self.input,
-            underline = self.underline().red().bold(),
-            message = self.build_error.message().red().bold(),
-        )?;
+        match self {
+            RenderingError::QueryBuildError(input, build_error) => {
+                write!(
+                    f,
+                    "{input}\n\
+                    {underline} {message}",
+                    underline = self.underline().red().bold(),
+                    message = build_error.message().red().bold(),
+                )?;
 
-        write!(f, "\n\n{details}", details = self.build_error)?;
+                write!(f, "\n\n{details}", details = build_error)?;
+            }
+            RenderingError::MetaQueriesNotSupported => {
+                write!(
+                    f,
+                    "Found a meta-query like '|' or '| c?'. These are not supported here"
+                )?;
+            }
+        }
 
         Ok(())
     }
@@ -21,10 +30,18 @@ impl Display for RenderingError {
 
 impl RenderingError {
     fn underline(&self) -> String {
-        let input_ranges = self.build_error.input_ranges();
+        let (input, build_error) = {
+            if let RenderingError::QueryBuildError(input, build_error) = self {
+                (input, build_error)
+            } else {
+                return "".to_string();
+            }
+        };
+
+        let input_ranges = build_error.input_ranges();
 
         if input_ranges.is_empty() {
-            "^".repeat(self.input.len())
+            "^".repeat(input.len())
         } else {
             let mut buffer = "".to_string();
 

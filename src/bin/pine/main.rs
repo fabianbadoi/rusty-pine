@@ -4,10 +4,13 @@ mod commands;
 use crate::args::{Command, ContextParams};
 use args::Args;
 use clap::Parser;
+use env_logger::init;
 use rusty_pine::cache;
 use rusty_pine::context::{Context, ContextName};
 
 fn main() {
+    init();
+
     let args = Args::parse();
 
     match args.command {

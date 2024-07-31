@@ -3,12 +3,15 @@ use std::fmt::Debug;
 use thiserror::Error;
 
 use crate::analyze::{Column, ForeignKey, Server, ServerParams};
-use crate::engine::syntax::{Stage4ComputationInput, Stage4Query, TableInput};
+use crate::engine::syntax::{
+    OptionalInput, SqlIdentifierInput, Stage4ComputationInput, Stage4Query, TableInput,
+};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder, OrderHolder,
     SelectableHolder, Sourced, UnaryConditionHolder,
 };
-use sql_introspection::Introspective;
+
+pub use sql_introspection::Introspective;
 
 mod sql_introspection;
 mod stage5;
@@ -159,9 +162,59 @@ where
 
 impl<T> From<T> for TableName
 where
-    T: AsRef<str>,
+    T: Into<String>,
 {
     fn from(value: T) -> Self {
-        TableName(value.as_ref().to_string())
+        TableName(value.into())
+    }
+}
+
+impl<'a> From<&'a Table> for TableInput<'a> {
+    fn from(value: &'a Table) -> Self {
+        TableInput {
+            database: match &value.db {
+                None => OptionalInput::Implicit,
+                Some(db) => OptionalInput::Specified(Sourced {
+                    it: (&db.it).into(),
+                    source: db.source,
+                }),
+            },
+            table: Sourced {
+                it: (&value.name.it).into(),
+                source: value.name.source,
+            },
+        }
+    }
+}
+
+impl<'a, T> From<&'a T> for SqlIdentifierInput<'a>
+where
+    T: AsRef<str>,
+{
+    fn from(value: &'a T) -> Self {
+        SqlIdentifierInput {
+            name: value.as_ref(),
+        }
+    }
+}
+
+impl AsRef<str> for DatabaseName {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
+    }
+}
+
+impl<T> From<T> for DatabaseName
+where
+    T: Into<String>,
+{
+    fn from(value: T) -> Self {
+        DatabaseName(value.into())
+    }
+}
+
+impl AsRef<str> for TableName {
+    fn as_ref(&self) -> &str {
+        self.0.as_ref()
     }
 }

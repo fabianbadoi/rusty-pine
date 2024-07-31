@@ -8,9 +8,13 @@ mod syntax;
 mod tests;
 
 use crate::analyze::Server;
+pub use query_builder::Introspective;
+use std::borrow::Borrow;
 pub use syntax::Rule;
 
-use crate::engine::query_builder::{build_query, get_columns, get_neighbors};
+use crate::engine::query_builder::{
+    build_query as query_form_stage4, get_columns, get_neighbors, Query,
+};
 use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
@@ -24,7 +28,7 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
 
     match pine {
         Stage4Rep::Query(query) => {
-            let query = map_err(input, build_query(query, server))?;
+            let query = map_err(input, query_form_stage4(query, server))?;
 
             Ok(render_query(query))
         }
@@ -41,17 +45,32 @@ pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Erro
     }
 }
 
+pub fn build_query(input: &str, server: &Server) -> Result<Query, crate::error::Error> {
+    let pine = parse_to_stage4(input)?;
+
+    match pine {
+        Stage4Rep::Query(query) => {
+            let query = map_err(input, query_form_stage4(query, server))?;
+
+            Ok(query)
+        }
+        _ => Err(RenderingError::MetaQueriesNotSupported)?,
+    }
+}
+
 #[derive(Debug, Error)]
-pub struct RenderingError {
-    pub input: String,
-    // Using Box<> here because QueryBuildError is kind of large, and clippy was complaining.
-    pub build_error: Box<QueryBuildError>,
+pub enum RenderingError {
+    QueryBuildError(
+        String,
+        // Using Box<> here because QueryBuildError is kind of large, and clippy was complaining.
+        Box<QueryBuildError>,
+    ),
+    MetaQueriesNotSupported,
 }
 
 fn map_err<T>(input: &str, result: Result<T, QueryBuildError>) -> Result<T, RenderingError> {
-    result.map_err(|build_error| RenderingError {
-        input: input.to_string(),
-        build_error: Box::new(build_error),
+    result.map_err(|build_error| {
+        RenderingError::QueryBuildError(input.to_string(), Box::new(build_error))
     })
 }
 
@@ -242,6 +261,16 @@ impl<T: Sized + Clone> Sourced<T> {
     {
         let source = self.source;
         let it = self.it.into();
+
+        Sourced { it, source }
+    }
+
+    pub fn as_holder<'a, D>(&'a self) -> Sourced<D>
+    where
+        D: Clone + Debug + From<&'a T>,
+    {
+        let source = self.source;
+        let it = (&self.it).into();
 
         Sourced { it, source }
     }

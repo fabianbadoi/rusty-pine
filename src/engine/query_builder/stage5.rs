@@ -447,15 +447,6 @@ impl From<Stage4FunctionCall<'_>> for FunctionCall {
     }
 }
 
-impl<T> From<T> for DatabaseName
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        DatabaseName(value.as_ref().to_string())
-    }
-}
-
 impl From<Stage4LiteralValue<'_>> for LiteralValue {
     fn from(value: Stage4LiteralValue<'_>) -> Self {
         match value {
