@@ -262,9 +262,9 @@ impl<'a> Stage5Builder<'a> {
         let primary_key =
             Computation::SelectedColumn(Sourced::from_introspection(SelectedColumn {
                 table: if self.input.joins.is_empty() {
-                    Some(table_name.into())
-                } else {
                     None
+                } else {
+                    Some(table_name.into())
                 },
                 column: Sourced::from_introspection(column_name.into()),
             }));
