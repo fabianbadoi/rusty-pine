@@ -9,6 +9,7 @@ use mysql::Error as MySqlError;
 use std::env::VarError;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
+use sqlx::Error as SqlxError;
 
 #[derive(Debug, Error)]
 #[error(transparent)]
@@ -32,6 +33,9 @@ pub enum ErrorKind {
     /// Errors originating from the MySQL library
     #[error("{}\n{0}", "Error trying to query database".bold())]
     MySqlError(#[from] MySqlError),
+    /// Errors originating from the sqlx library
+    #[error("{}\n{0}", "Error trying to query database".bold())]
+    SqlError(#[from] SqlxError),
     #[error("{}\n{0}", "Internal error".bold())]
     InternalError(#[from] InternalError),
     #[error("{}\n{0}", "Error parsing database structure".bold())]

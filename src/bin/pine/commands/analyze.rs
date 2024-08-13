@@ -1,25 +1,38 @@
 use colored::Colorize;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{MultiSelect, Password};
-use mysql::{Opts, OptsBuilder, Pool, PooledConn};
 use rusty_pine::analyze::{
-    describe_table, list_databases, list_tables, Database, DbStructureParsingContext,
-    SchemaObjectName, Server, ServerParams, Table, TableName,
+    mariadb, Analyzer, Database, SchemaObjectName, Server, Table, TableName,
 };
 use rusty_pine::context::{Context, ContextName};
 use rusty_pine::{cache, Error};
+use std::collections::HashMap;
+use tokio::runtime::Builder;
 
 pub fn analyze() -> Result<(), Error> {
+    // we need tokio here because sqlx is exclusively async
+    let tokio = Builder::new_current_thread()
+        .enable_io()
+        .enable_time()
+        .build()
+        .expect("Cannot build tokio runtime");
+
+    tokio.block_on(async { run_analyze().await })
+}
+
+async fn run_analyze() -> Result<(), Error> {
     let current_context = ContextName::current()?;
     let context: Context = cache::read(&current_context)?;
 
     let password = ask_for_password(&context)?;
-    let opts: Opts = opts(&context.server_params, password.as_ref());
 
-    let pool = Pool::new::<Opts, _>(opts)?;
-    let mut connection = pool.get_conn()?;
+    let db_connection: Box<dyn Analyzer> = Box::new(
+        mariadb(context.server_params.clone(), &password)
+            .await
+            .expect("Could not connect to db"),
+    );
 
-    let databases = list_databases(&mut connection)?;
+    let databases = db_connection.list_databases().await.unwrap();
 
     println!(
         "Use arrow keys (⬆⬇) to navigate, {} to select, and {} to confirm.",
@@ -42,45 +55,55 @@ pub fn analyze() -> Result<(), Error> {
         .map(|(_, item)| item)
         .collect();
 
+    let mut databases = HashMap::new();
+
+    for db_name in selected_databases {
+        let database = analyze_db(&db_connection, db_name.clone()).await?;
+        let db_name = TableName(db_name.as_str().to_string());
+
+        databases.insert(db_name, database);
+    }
+
     let server = Server {
         params: context.server_params,
-        databases: selected_databases
-            .iter()
-            .map(|db_name| {
-                let database = analyze_db(&mut connection, db_name)?;
-
-                Ok((TableName(db_name.as_str().to_string()), database))
-            })
-            .collect::<Result<_, Error>>()?,
+        databases,
     };
 
     cache::write(&server)?;
 
     println!("Database analyzed and cached");
-
     Ok(())
 }
 
-fn analyze_db(connection: &mut PooledConn, db_name: &SchemaObjectName) -> Result<Database, Error> {
-    let tables = list_tables(connection, db_name)?;
+async fn analyze_db(
+    connection: &Box<dyn Analyzer>,
+    db_name: SchemaObjectName,
+) -> Result<Database, Error> {
+    let table_names = connection.list_tables(&db_name).await?;
+    let mut all_columns = connection.table_columns(&db_name).await?;
+    let mut all_fks = connection.table_foreign_keys(&db_name).await?;
+    let mut all_pks = connection.table_primary_keys(&db_name).await?;
 
-    let tables: Result<_, Error> = tables
-        .into_iter()
-        .map(|table_name| {
-            let create = describe_table(connection, db_name, &table_name)?;
-            let table_name = TableName(table_name.to_string());
+    let mut tables = HashMap::new();
+    for table_name in table_names {
+        let columns = all_columns.remove(&table_name).unwrap_or_default();
+        let foreign_keys = all_fks.remove(&table_name).unwrap_or_default();
+        let primary_key = all_pks.remove(&table_name).expect("TODO error");
 
-            let context = DbStructureParsingContext::Connection {
-                database: db_name.to_string(),
-                table: table_name.0.clone(),
-            };
-            Ok((table_name, Table::from_sql_string(&context, &create)?))
-        })
-        .collect();
+        tables.insert(
+            table_name.clone(),
+            Table {
+                name: table_name,
+                columns,
+                foreign_keys,
+                primary_key,
+            },
+        );
+    }
 
     Ok(Database {
-        name: TableName(db_name.as_str().to_string()),
-        tables: tables?,
+        name: TableName(db_name.to_string()),
+        tables,
     })
 }
 
@@ -98,13 +121,4 @@ fn ask_for_password(context: &Context) -> Result<String, Error> {
     Ok(Password::with_theme(&ColorfulTheme::default())
         .with_prompt("Password: ")
         .interact()?)
-}
-
-fn opts(value: &ServerParams, password: &str) -> Opts {
-    OptsBuilder::new()
-        .ip_or_hostname(Some(value.hostname.clone()))
-        .tcp_port(value.port)
-        .user(Some(&value.user))
-        .pass(Some(password))
-        .into()
 }

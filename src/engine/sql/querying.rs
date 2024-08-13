@@ -11,7 +11,7 @@ use std::fmt::{Display, Formatter};
 ///
 /// Note: it can still happen if the table/database is dropped right after it's first listed, but before
 /// we analyze it.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SchemaObjectName(String);
 
 /// Holds the description of a table, as returned from SHOW CREATE TABLE queries.
@@ -55,7 +55,7 @@ pub fn describe_table(
 
 // We do not export this function because we want all instances of the struct to be created inside this
 // module.
-fn to_id(db_identifier: String) -> SchemaObjectName {
+pub fn to_id(db_identifier: String) -> SchemaObjectName {
     SchemaObjectName(db_identifier)
 }
 
