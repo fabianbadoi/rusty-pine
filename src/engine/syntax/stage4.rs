@@ -20,7 +20,6 @@ pub enum Stage4Rep<'a> {
 }
 
 pub struct Stage4Query<'a> {
-    pub input: &'a str,
     pub from: Sourced<TableInput<'a>>,
     pub filters: Vec<Sourced<Stage4Condition<'a>>>,
     pub joins: Vec<Sourced<Stage4Join<'a>>>,
@@ -79,8 +78,6 @@ pub type Stage4LiteralValue<'a> = LiteralValueHolder<&'a str>;
 
 impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
     fn from(stage3: Stage3Rep<'a>) -> Self {
-        let input = stage3.input;
-
         // In most cases we add an implicit "select *". The situations where we don't do that
         // is when the user uses a manual "select: x".
         // If we didn't do this, you would either always select EVERYTHING and become overwhelmed,
@@ -160,7 +157,6 @@ impl<'a> From<Stage3Rep<'a>> for Stage4Rep<'a> {
         selected_columns.dedup_by(|a, b| a.it == b.it);
 
         Stage4Rep::Query(Stage4Query {
-            input,
             from: from.expect("Impossible: pines without a from are not valid pest syntax"),
             filters,
             joins,
@@ -223,7 +219,6 @@ mod test {
             _ => panic!("must be a query"),
         };
 
-        assert_eq!("table", query.input);
         assert_eq!(0..5, query.from.source);
         assert_eq!(0..5, query.from.source);
         assert_eq!("table", query.from.it.table.it.name);
@@ -240,7 +235,6 @@ mod test {
             _ => panic!("must be a query"),
         };
 
-        assert_eq!("database.table", query.input);
         assert_eq!(0..14, query.from.source);
         assert_eq!(0..14, query.from.source);
         assert_eq!("table", query.from.it.table.it.name);

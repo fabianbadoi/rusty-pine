@@ -47,7 +47,6 @@ impl<'a> Stage5Builder<'a> {
         };
 
         Ok(Query {
-            input: self.input.input.to_owned(),
             from,
             joins,
             select,
@@ -220,8 +219,6 @@ impl<'a> Stage5Builder<'a> {
     fn process_condition(&self, condition: Stage4Condition) -> Result<Condition, QueryBuildError> {
         let condition = match condition {
             Stage4Condition::ImplicitId(table_name, id_value) => {
-                // TODO method
-
                 Condition::Binary(Sourced::from_source(
                     id_value.source,
                     self.process_implicit_id_condition(table_name, id_value)?,

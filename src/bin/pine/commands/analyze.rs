@@ -5,7 +5,7 @@ use rusty_pine::analyze::{
     mariadb, Analyzer, Database, SchemaObjectName, Server, Table, TableName,
 };
 use rusty_pine::context::{Context, ContextName};
-use rusty_pine::{cache, Error};
+use rusty_pine::{cache, Error, InternalError};
 use std::collections::HashMap;
 use tokio::runtime::Builder;
 
@@ -32,7 +32,7 @@ async fn run_analyze() -> Result<(), Error> {
             .expect("Could not connect to db"),
     );
 
-    let databases = db_connection.list_databases().await.unwrap();
+    let databases = db_connection.list_databases().await?;
 
     println!(
         "Use arrow keys (⬆⬇) to navigate, {} to select, and {} to confirm.",
@@ -58,7 +58,7 @@ async fn run_analyze() -> Result<(), Error> {
     let mut databases = HashMap::new();
 
     for db_name in selected_databases {
-        let database = analyze_db(&db_connection, db_name.clone()).await?;
+        let database = analyze_db(db_connection.as_ref(), db_name.clone()).await?;
         let db_name = TableName(db_name.as_str().to_string());
 
         databases.insert(db_name, database);
@@ -76,7 +76,7 @@ async fn run_analyze() -> Result<(), Error> {
 }
 
 async fn analyze_db(
-    connection: &Box<dyn Analyzer>,
+    connection: &dyn Analyzer,
     db_name: SchemaObjectName,
 ) -> Result<Database, Error> {
     let table_names = connection.list_tables(&db_name).await?;
@@ -88,7 +88,9 @@ async fn analyze_db(
     for table_name in table_names {
         let columns = all_columns.remove(&table_name).unwrap_or_default();
         let foreign_keys = all_fks.remove(&table_name).unwrap_or_default();
-        let primary_key = all_pks.remove(&table_name).expect("TODO error");
+        let primary_key = all_pks.remove(&table_name).ok_or(InternalError(
+            "Encountered tables without primary keys".to_string(),
+        ))?;
 
         tables.insert(
             table_name.clone(),

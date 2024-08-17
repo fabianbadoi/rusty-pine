@@ -1,6 +1,28 @@
+//! I use this mod to parse CREATE TABLE statements in my .sql test files.
+//!
+//! The main idea behind it is to have SQL files that contain acceptance tests. Benefits?:
+//! - autocomplete from editors
+//! - syntax highlighting
+//! - easy to write tests
+//!
+//! I can write some CREATE TABLE statements at the start of the file that will be treated as my
+//! test fixtures. A test could look like this:
+//! ```sql
+//! CREATE TABLE table1 ...
+//! CREATE TABLE table2 ...
+//! CREATE TABLE table3 ...
+//!
+//! -- Test: table1 | table2
+//! SELECT *
+//! FROM table2
+//! LEFT JOIN table2 ON ...
+//! LIMIT 10;
+//! ```
+//!
+//! Because this project started out being used for MariaDB, the CREATE TABLE statements are in its
+//! dialect.
 use super::{DbStructureParseError, InputWindow};
 use crate::analyze::DbStructureParsingContext;
-use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::structure::{Column, ForeignKey, Key, KeyReference, Table, TableName};
 use crate::error::InternalError;
 use once_cell::sync::Lazy;
@@ -28,6 +50,7 @@ impl Column {
     }
 }
 
+#[cfg(test)]
 impl ForeignKey {
     fn from_sql_string(from_table: &str, input: &str) -> Result<Self, String> {
         static FK_LINE_REGEX: Lazy<Regex> = Lazy::new(|| {
@@ -65,6 +88,7 @@ impl ForeignKey {
     }
 }
 
+#[cfg(test)]
 impl KeyReference {
     fn from_sql_str(table: &str, input: &str) -> Self {
         static SQL_NAME_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\b[\w_]+\b").unwrap());
@@ -84,6 +108,7 @@ impl KeyReference {
     }
 }
 
+#[cfg(test)]
 impl<'a, T> From<T> for Key
 where
     T: Into<&'a [&'a str]>,
@@ -95,6 +120,7 @@ where
     }
 }
 
+#[cfg(test)]
 impl Key {
     fn try_from_sql_string(
         input_window: &InputWindow,
@@ -118,16 +144,17 @@ impl Key {
     }
 }
 
+#[cfg(test)]
 impl Table {
     pub fn from_sql_string(
         context: &DbStructureParsingContext,
-        input: &TableDescription,
+        input: &str,
     ) -> Result<Self, crate::Error> {
-        let mut lines = input.as_str().trim_start().lines().enumerate().peekable();
+        let mut lines = input.trim_start().lines().enumerate().peekable();
         let window = InputWindow {
             start_line: 0,
             context: context.clone(),
-            content: input.as_str().to_string(),
+            content: input.to_string(),
         };
 
         let name: TableName = Self::parse_table_name_line(&window, &mut lines)?.into();
@@ -275,8 +302,7 @@ CREATE TABLE `teams` (
   CONSTRAINT `FK_96C22258F17FD7A5` FOREIGN KEY (`customerId`) REFERENCES `customers` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
 ";
-        let input = TableDescription::new_for_tests(input);
-        let table = Table::from_sql_string(&Default::default(), &input).unwrap();
+        let table = Table::from_sql_string(&Default::default(), input).unwrap();
 
         assert_eq!(table.name, "teams");
         assert_eq!(table.primary_key.columns.len(), 2);

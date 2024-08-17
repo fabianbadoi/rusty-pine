@@ -15,7 +15,7 @@ use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
 pub use query_builder::QueryBuildError;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::ops::Range;
 use thiserror::Error;
 

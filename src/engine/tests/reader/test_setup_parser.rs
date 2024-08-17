@@ -4,7 +4,6 @@
 //! Because I'm lazy, the create table statements have to be written in just the right way.
 
 use crate::analyze::{Database, Server, ServerParams, Table};
-use crate::engine::sql::querying::TableDescription;
 use crate::engine::sql::DbStructureParsingContext as Context;
 use crate::engine::sql::{DbStructureParseError, InputWindow};
 use crate::engine::tests::reader::TestLineIterator;
@@ -87,9 +86,8 @@ impl<'a> TableParser<'a> {
         let (start_line, _) = *self.lines.peek().expect("lines.peek() is checked above");
 
         let statement = self.read_entire_create_statement()?;
-        let table =
-            Table::from_sql_string(&self.context, &TableDescription::new_for_tests(statement))
-                .map_err(|err| move_start_line(err, start_line))?;
+        let table = Table::from_sql_string(&self.context, statement.as_str())
+            .map_err(|err| move_start_line(err, start_line))?;
 
         Ok(Some(table))
     }

@@ -5,11 +5,10 @@ use crate::engine::sql::DbStructureParseError;
 use crate::engine::RenderingError;
 use crate::error::pest::WrappedPestError;
 use colored::Colorize;
-use mysql::Error as MySqlError;
+use sqlx::Error as SqlxError;
 use std::env::VarError;
 use std::fmt::{Display, Formatter};
 use thiserror::Error;
-use sqlx::Error as SqlxError;
 
 #[derive(Debug, Error)]
 #[error(transparent)]
@@ -30,9 +29,6 @@ pub enum ErrorKind {
     /// Errors originating from the Pest library
     #[error("{}\n{0}", "Invalid syntax, failed to parse".bold())]
     SyntaxError(#[from] WrappedPestError),
-    /// Errors originating from the MySQL library
-    #[error("{}\n{0}", "Error trying to query database".bold())]
-    MySqlError(#[from] MySqlError),
     /// Errors originating from the sqlx library
     #[error("{}\n{0}", "Error trying to query database".bold())]
     SqlError(#[from] SqlxError),

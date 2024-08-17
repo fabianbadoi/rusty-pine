@@ -3,7 +3,7 @@ use crate::analyze::{
     Column, ColumnName, ForeignKey, Key, KeyReference, SchemaObjectName, TableName,
 };
 use crate::engine::sql::querying::to_id;
-use crate::engine::sql::querying2::Analyzer;
+use crate::engine::sql::querying::Analyzer;
 use crate::Error;
 use async_trait::async_trait;
 use sqlx::{MySql as MariaDB, Pool};
@@ -103,9 +103,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
             ) = row;
 
             let table_name = TableName(table_name);
-            let table_fks = foreign_keys
-                .entry(table_name.clone(/* :'( */))
-                .or_insert_with(HashMap::new);
+            let table_fks = foreign_keys.entry(table_name.clone(/* :'( */)).or_default();
             let fk = table_fks
                 .entry(constraint_name)
                 .or_insert_with(|| ForeignKey {

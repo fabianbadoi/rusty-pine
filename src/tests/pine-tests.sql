@@ -17,7 +17,6 @@ FROM humans
 WHERE id = 1
 LIMIT 10;
 
--- TODO scalars in select
 -- Test: humans | s: call()
 SELECT call()
 FROM humans

@@ -57,7 +57,6 @@ pub enum QueryBuildError {
 
 #[derive(Debug)]
 pub struct Query {
-    pub input: String,
     pub from: Sourced<Table>,
     pub filters: Vec<Sourced<Condition>>,
     pub joins: Vec<Sourced<ExplicitJoin>>,

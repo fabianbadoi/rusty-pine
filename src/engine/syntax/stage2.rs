@@ -40,7 +40,6 @@ mod identifiers;
 /// ```
 ///
 pub struct Stage2Rep<'a> {
-    pub input: &'a str,
     /// Our syntax is formed by a chain of "pines".
     ///
     /// We use an iterator here instead of a vector to avoid passing over all the pines in each stage.
@@ -128,10 +127,7 @@ impl<'a> From<Stage1Rep<'a>> for Stage2Rep<'a> {
     fn from(stage1: Stage1Rep<'a>) -> Self {
         let pines = translate_root(stage1.pest);
 
-        Stage2Rep {
-            input: stage1.input,
-            pines,
-        }
+        Stage2Rep { pines }
     }
 }
 
@@ -714,8 +710,6 @@ mod test {
     fn test_simple_parse() {
         let stage1 = parse_stage1("name").unwrap();
         let mut stage2: Stage2Rep = stage1.into();
-
-        assert_eq!("name", stage2.input);
 
         let base = &stage2.pines.next().unwrap();
         assert!(matches!(

@@ -1,7 +1,7 @@
 /// Parses CREATE TABLE queries into Database instances.
-mod parsing;
+#[cfg(test)]
+mod create_table_parsing;
 pub mod querying;
-pub mod querying2;
 /// Structs used to represent database structure.
 pub mod structure;
 

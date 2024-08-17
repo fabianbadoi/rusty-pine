@@ -19,7 +19,6 @@ use crate::engine::Sourced;
 mod iterator;
 
 pub struct Stage3Rep<'a> {
-    pub input: &'a str,
     // the iteration code got a bit complex here, so I split it off.
     pub pines: Stage3Iterator<'a>,
 }
@@ -56,10 +55,7 @@ impl<'a> From<Stage2Rep<'a>> for Stage3Rep<'a> {
     fn from(stage2: Stage2Rep<'a>) -> Self {
         let context = Stage3Iterator::new(stage2.pines);
 
-        Stage3Rep {
-            input: stage2.input,
-            pines: context,
-        }
+        Stage3Rep { pines: context }
     }
 }
 
@@ -75,8 +71,6 @@ mod test {
     fn test_simple_convert() {
         let stage2: Stage2Rep = parse_stage1("table").unwrap().into();
         let mut stage3: Stage3Rep = stage2.into();
-
-        assert_eq!("table", stage3.input);
 
         let first = stage3.pines.next().unwrap();
         assert_eq!(0..5, first.source);

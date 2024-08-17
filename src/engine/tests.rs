@@ -43,22 +43,14 @@ fn run_all_tests_in_test_folder() -> Vec<SuiteResult> {
 
     // I could have also used .map(|file| ...) instead
     for file in test_files.flatten() {
-        let file_path = file.path();
-        // Rust strings are UTF-8, but the files on an OS can be in other encodings. Because of
-        // this .to_str() can actually fail! I don't really care, so you'll see me unwrapping OS
-        // strings like that all over the place.
-        let file_path_as_str = file_path.to_str().unwrap().to_owned();
-        let test_reader = SqlTestFileReader::new(file_path);
+        let test_reader = SqlTestFileReader::new(file.path());
 
         match test_reader {
             Ok(reader) => {
                 results.push(run_tests(reader));
             }
             // This can happen if we can't open the file at all.
-            Err(error) => results.push(SuiteResult {
-                file: file_path_as_str,
-                result: Err(error),
-            }),
+            Err(error) => results.push(SuiteResult { result: Err(error) }),
         };
     }
 
@@ -68,7 +60,6 @@ fn run_all_tests_in_test_folder() -> Vec<SuiteResult> {
 fn run_tests(tests: SqlTestFileReader) -> SuiteResult {
     let mock_server = tests.mock_server.clone();
     let mut test_results = Vec::new();
-    let file = tests.file_path.to_str().unwrap().to_owned();
 
     for test in tests {
         match test {
@@ -78,17 +69,11 @@ fn run_tests(tests: SqlTestFileReader) -> SuiteResult {
             }
             // Even if we successfully read bytes from the file, they might not be valid UTF-8
             // bytes, so failures are still possible even here.
-            Err(error) => {
-                return SuiteResult {
-                    file,
-                    result: Err(error),
-                }
-            }
+            Err(error) => return SuiteResult { result: Err(error) },
         };
     }
 
     SuiteResult {
-        file,
         result: Ok(test_results),
     }
 }
@@ -113,7 +98,6 @@ fn run_single_test(test: &Test, server: &Server) -> Outcome {
 }
 
 struct SuiteResult {
-    file: String,
     result: Result<Vec<TestResult>, crate::Error>,
 }
 

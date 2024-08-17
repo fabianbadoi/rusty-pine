@@ -8,9 +8,12 @@ pub mod analyze;
 pub mod pine_server;
 
 pub fn translate_one(input: String) {
-    let current_context = ContextName::current().unwrap();
-    let context: Context = cache::read(&current_context).unwrap();
-    let server: Server = cache::read(&context.server_params).unwrap();
+    let current_context = ContextName::current()
+        .expect("Can't find current context, create one using `pine create-context`");
+    let context: Context = cache::read(&current_context)
+        .expect("Your current context is corrupted. They're in ~/.cache/rusty-pine/. Good luck!");
+    let server: Server = cache::read(&context.server_params)
+        .expect("Your current context is corrupted. They're in ~/.cache/rusty-pine/. Good luck!");
 
     let result = render(input.as_str(), &server);
     match result {

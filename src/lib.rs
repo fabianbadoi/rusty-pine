@@ -9,10 +9,11 @@ mod error;
 pub use engine::render;
 
 pub mod analyze {
-    pub use crate::engine::sql::querying::{list_databases, list_tables, SchemaObjectName};
-    pub use crate::engine::sql::querying2::{mariadb, Analyzer, Connection, MariaDBConnection};
+    pub use crate::engine::sql::querying::{
+        mariadb, Analyzer, Connection, MariaDBConnection, SchemaObjectName,
+    };
     pub use crate::engine::sql::structure::*;
     pub use crate::engine::sql::DbStructureParsingContext;
 }
 
-pub use error::Error;
+pub use error::{Error, InternalError};

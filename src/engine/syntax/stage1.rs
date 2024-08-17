@@ -32,7 +32,7 @@ pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, crate::error::Error> {
         input,
     )?; // "?" automatically transforms Pest errors into Stage1Errors into crate::error:Errors
 
-    Ok(Stage1Rep { input, pest })
+    Ok(Stage1Rep { pest })
 }
 
 /// Pest pair holder
@@ -44,11 +44,6 @@ pub fn parse_stage1(input: &str) -> Result<Stage1Rep<'_>, crate::error::Error> {
 /// All of the <'a> parameters get annoying VERY QUICKLY.
 #[derive(Debug)]
 pub struct Stage1Rep<'a> {
-    /// The initial input
-    ///
-    /// We always keep a reference to the initial input, this way if something fails we can also
-    /// print it.
-    pub input: &'a str,
     pub pest: Pairs<'a, Rule>,
 }
 
