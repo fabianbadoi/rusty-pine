@@ -30,26 +30,9 @@ pub trait Analyzer {
     ) -> Result<HashMap<TableName, Key>, Error>;
 }
 
-#[derive(Debug)]
-pub struct Constraint {
-    // table name,
-}
-
 pub struct Connection<T> {
     pool: T,
     server_params: ServerParams,
-}
-
-pub async fn describe_table(
-    connection: &Box<dyn Analyzer>,
-    database: &SchemaObjectName,
-    table: &SchemaObjectName,
-) -> Result<TableDescription, Error> {
-    let columns = connection.table_columns(database).await?;
-
-    panic!("{columns:#?}");
-
-    todo!()
 }
 
 pub type MariaDBConnection<'a> = Connection<Pool<MariaDB>>;
@@ -65,7 +48,7 @@ pub async fn mariadb(
         port = &server_params.port,
         db_name = &server_params.default_database,
     ))
-    .await
+    .await?;
 
     Ok(Connection {
         pool,

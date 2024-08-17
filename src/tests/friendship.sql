@@ -183,3 +183,9 @@ FROM preferences
 LEFT JOIN people ON people.id = preferences.personId
 WHERE preferences.id = 1
 LIMIT 10;
+
+-- Test: preferences 1
+SELECT *
+FROM preferences
+WHERE id = 1
+LIMIT 10;
