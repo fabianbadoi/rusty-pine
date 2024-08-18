@@ -1,11 +1,13 @@
 mod mariadb;
+mod postgres;
 
 use std::fmt::{Display, Formatter};
 
 use crate::analyze::{Column, ForeignKey, Key, ServerParams, TableName};
 use crate::Error;
 use async_trait::async_trait;
-use sqlx::{MySql as MariaDB, MySqlPool, Pool};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::{MySql as MariaDB, MySqlPool, Pool, Postgres};
 use std::collections::HashMap;
 
 /// Holds the name of a database or table.
@@ -53,6 +55,23 @@ pub struct Connection<T> {
 
 pub type MariaDBConnection<'a> = Connection<Pool<MariaDB>>;
 
+pub async fn postgres(
+    server_params: ServerParams,
+    password: &str,
+) -> Result<Connection<Pool<Postgres>>, Error> {
+    let pool = PgPoolOptions::new()
+        .connect(&format!(
+            "postgres://{user}:{password}@{host}:{port}/{catalog}",
+            user = &server_params.user,
+            host = &server_params.hostname,
+            port = &server_params.port,
+            catalog = &server_params.database,
+        ))
+        .await?;
+
+    Ok(Connection { pool })
+}
+
 pub async fn mariadb(
     server_params: ServerParams,
     password: &str,
@@ -62,7 +81,7 @@ pub async fn mariadb(
         user = &server_params.user,
         host = &server_params.hostname,
         port = &server_params.port,
-        db_name = &server_params.default_database,
+        db_name = &server_params.database,
     ))
     .await?;
 

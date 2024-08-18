@@ -1,6 +1,5 @@
-use crate::analyze::{ColumnName, ForeignKey};
+use crate::analyze::ForeignKey;
 use crate::engine::rendering::OptionalClause;
-use std::fmt::{Display, Formatter};
 
 pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
     // We wrap the response in a comment. This makes sure we probably won't actually
@@ -10,7 +9,7 @@ pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
     for fk in neighbors {
         let intro = format!(
             "{}.{} using",
-            fk.to.table.0.as_str(),
+            fk.to.table.name.as_str(),
             fk.to
                 .key
                 .columns
@@ -40,10 +39,4 @@ pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
     rendering.push_str("*/--");
 
     rendering
-}
-
-impl Display for ColumnName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
 }

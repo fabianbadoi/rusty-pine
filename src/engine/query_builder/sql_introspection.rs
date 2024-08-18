@@ -1,14 +1,15 @@
 use crate::analyze::{
-    Column, ColumnName, Database, ForeignKey, Key, KeyReference, Server, Table, TableName,
+    Column, ColumnName, DBType, Database, DatabaseName, ForeignKey, Key, KeyReference, Server,
+    Table, TableName,
 };
-use crate::engine::Comparison;
-use std::collections::HashSet;
-use std::fmt::Debug;
-
 use crate::engine::query_builder::{
     BinaryCondition, Computation, Condition, QueryBuildError, SelectedColumn, Sourced,
 };
 use crate::engine::syntax::{OptionalInput, SqlIdentifierInput, TableInput};
+use crate::engine::Comparison;
+use log::info;
+use std::collections::HashSet;
+use std::fmt::Debug;
 
 type Result<T> = std::result::Result<T, QueryBuildError>;
 
@@ -64,7 +65,9 @@ impl Introspective for Server {
     }
 
     fn neighbors(&self, table: Sourced<TableInput>) -> Result<Vec<ForeignKey>> {
+        info!("searching for direct joins");
         let direct_joins = self.table(table)?.foreign_keys.iter().cloned();
+        info!("searching for reverse joins");
         let reverse_joins = self
             .database_or_default(table.it.database)?
             .tables
@@ -79,6 +82,7 @@ impl Introspective for Server {
 
         let mut all_joins: Vec<_> = direct_joins.chain(reverse_joins).collect();
 
+        info!("deduplicating joins");
         all_joins.dedup_by(|a, b| a == b);
 
         Ok(all_joins)
@@ -223,7 +227,7 @@ impl Server {
             OptionalInput::Specified(name) => self.database(name)?,
         };
 
-        let table_name = TableName(name.it.table.it.name.to_string());
+        let table_name = TableName::named(name.it.table.it.name.to_string());
         let table = database
             .tables
             .get(&table_name)
@@ -233,8 +237,17 @@ impl Server {
     }
 
     fn default_database(&self) -> Result<&Database> {
+        let db_or_schema = match self.params.db_type {
+            DBType::PostgresSQL => self
+                .params
+                .default_schema
+                .as_ref()
+                .ok_or(QueryBuildError::InvalidPostgresConfig)?,
+            DBType::MariaDB => &self.params.database,
+        };
+
         self.databases
-            .get(&self.params.default_database)
+            .get(db_or_schema)
             .ok_or_else(|| QueryBuildError::DefaultDatabaseNotFound(self.params.clone()))
     }
 
@@ -249,11 +262,11 @@ impl Server {
     }
 
     fn database<T: AsRef<str> + Clone + Debug>(&self, name: Sourced<T>) -> Result<&Database> {
-        let table = TableName(name.it.as_ref().to_string());
+        let db_name = DatabaseName(name.it.as_ref().to_string());
 
         self.databases
-            .get(&table)
-            .ok_or_else(|| QueryBuildError::DatabaseNotFound(name.map(|_| table)))
+            .get(&db_name)
+            .ok_or_else(|| QueryBuildError::DatabaseNotFound(name.map(|_| db_name)))
     }
 }
 
@@ -261,7 +274,7 @@ fn selected_column(from: TableInput, from_column: &ColumnName) -> Sourced<Comput
     Sourced::from_introspection(Computation::SelectedColumn(Sourced::from_introspection(
         SelectedColumn {
             table: Some(Sourced::from_introspection(from.into())),
-            column: Sourced::from_introspection(from_column.clone().into()),
+            column: Sourced::from_introspection(from_column.clone()),
         },
     )))
 }
@@ -283,6 +296,6 @@ where
 
 impl PartialEq<SqlIdentifierInput<'_>> for TableName {
     fn eq(&self, other: &SqlIdentifierInput<'_>) -> bool {
-        self.0 == other.name
+        self.name == other.name
     }
 }

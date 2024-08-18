@@ -1,6 +1,6 @@
+use crate::analyze::{ColumnName, DatabaseName, TableName};
 use crate::engine::query_builder::{
-    ColumnName, Computation, DatabaseName, ExplicitJoin, FunctionCall, Query, Selectable,
-    SelectedColumn, Table, TableName,
+    Computation, ExplicitJoin, FunctionCall, Query, Selectable, SelectedColumn, Table,
 };
 use crate::engine::rendering::OptionalClause;
 use crate::engine::{
@@ -256,7 +256,7 @@ impl Display for DatabaseName {
 
 impl Display for TableName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", self.name)
     }
 }
 

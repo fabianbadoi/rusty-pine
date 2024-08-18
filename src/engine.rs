@@ -14,13 +14,18 @@ use crate::engine::query_builder::{build_query, get_columns, get_neighbors};
 use crate::engine::rendering::{render_columns, render_neighbors, render_query};
 use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
+use log::info;
 pub use query_builder::QueryBuildError;
 use std::fmt::Debug;
 use std::ops::Range;
 use thiserror::Error;
 
 pub fn render(input: &str, server: &Server) -> Result<String, crate::error::Error> {
+    info!("translating {input}");
+
     let pine = parse_to_stage4(input)?;
+
+    info!("stage 4 pine compiled");
 
     match pine {
         Stage4Rep::Query(query) => {

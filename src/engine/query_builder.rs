@@ -1,8 +1,11 @@
 use crate::analyze;
+use log::info;
 use std::fmt::Debug;
 use thiserror::Error;
 
-use crate::analyze::{Column, ForeignKey, Server, ServerParams};
+use crate::analyze::{
+    Column, ColumnName, DatabaseName, ForeignKey, Server, ServerParams, TableName,
+};
 use crate::engine::syntax::{Stage4ComputationInput, Stage4Query, TableInput};
 use crate::engine::{
     BinaryConditionHolder, ConditionHolder, JoinType, LimitHolder, LiteralValueHolder, OrderHolder,
@@ -14,8 +17,10 @@ mod sql_introspection;
 mod stage5;
 
 pub fn build_query(input: Stage4Query<'_>, server: &Server) -> Result<Query, QueryBuildError> {
+    info!("creating stage 5 builder");
     let builder = stage5::Stage5Builder::new(input, server);
 
+    info!("starting stage 5 build");
     builder.try_build()
 }
 
@@ -23,6 +28,7 @@ pub fn get_neighbors(
     for_table: Sourced<TableInput>,
     server: &Server,
 ) -> Result<Vec<ForeignKey>, QueryBuildError> {
+    info!("showing neighbors for '{}'", for_table.it.table.it.name);
     let neighboring_tables = server.neighbors(for_table)?;
 
     Ok(neighboring_tables)
@@ -37,8 +43,9 @@ pub fn get_columns<'a>(
 
 #[derive(Error, Debug, Clone)]
 pub enum QueryBuildError {
+    InvalidPostgresConfig,
     DefaultDatabaseNotFound(ServerParams),
-    DatabaseNotFound(Sourced<analyze::TableName>),
+    DatabaseNotFound(Sourced<DatabaseName>),
     TableNotFound(Sourced<analyze::TableName>),
     InvalidForeignKey {
         from: Sourced<analyze::TableName>,
@@ -106,15 +113,6 @@ pub struct ExplicitJoin {
 
 pub type LiteralValue = LiteralValueHolder<String>;
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ColumnName(pub String);
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct TableName(pub String);
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct DatabaseName(pub String);
-
 /// These functions here are special because they *omit the table name*.
 ///
 /// The idea behind "from_singly_selected" is that if there is only one table involved, we can
@@ -144,23 +142,5 @@ impl Computation {
             }
             Stage4ComputationInput::Value(value) => Computation::Value(value.into()),
         }
-    }
-}
-
-impl<T> From<T> for ColumnName
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        ColumnName(value.as_ref().to_string())
-    }
-}
-
-impl<T> From<T> for TableName
-where
-    T: AsRef<str>,
-{
-    fn from(value: T) -> Self {
-        TableName(value.as_ref().to_string())
     }
 }

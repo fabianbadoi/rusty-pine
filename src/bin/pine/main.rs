@@ -4,10 +4,13 @@ mod commands;
 use crate::args::{Command, ContextParams};
 use args::Args;
 use clap::Parser;
-use rusty_pine::cache;
+use rusty_pine::analyze::DBType;
 use rusty_pine::context::{Context, ContextName};
+use rusty_pine::{cache, InternalError};
 
 fn main() {
+    env_logger::init();
+
     let args = Args::parse();
 
     match args.command {
@@ -24,6 +27,8 @@ fn create_context(params: ContextParams) -> Result<(), rusty_pine::Error> {
     let use_it = params.use_it;
     let new_context: Context = params.into();
 
+    validate_new_context(&new_context)?;
+
     cache::write(&new_context)?;
 
     println!("Create new context \x1b[1m{}\x1b[0m.", new_context.name);
@@ -35,6 +40,20 @@ fn create_context(params: ContextParams) -> Result<(), rusty_pine::Error> {
             "Switch to it by running \x1b[1mpine use-context {}\x1b[0m.",
             new_context.name
         );
+    }
+
+    Ok(())
+}
+
+fn validate_new_context(context: &Context) -> Result<(), rusty_pine::Error> {
+    if context.server_params.db_type == DBType::PostgresSQL
+        && context.server_params.default_schema.is_none()
+    {
+        Err(InternalError(
+            "You must specify the default schema when using postgres. \
+                See --help for more info"
+                .to_string(),
+        ))?;
     }
 
     Ok(())
@@ -67,7 +86,7 @@ fn list_contexts() -> Result<(), rusty_pine::Error> {
             },
             context.name.to_string().bold(),
             context.server_params.hostname,
-            context.server_params.default_database
+            context.server_params.database
         )
     }
 

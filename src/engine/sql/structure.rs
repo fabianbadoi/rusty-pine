@@ -1,9 +1,10 @@
 //! Structures used to represent the structure of the database. Used for using foreign keys to
 //! augment our Pines.
-
+use crate::cache::CacheableMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
+use std::hash::{Hash, Hasher};
 
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
@@ -11,23 +12,32 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Server {
     pub params: ServerParams,
-    pub databases: HashMap<TableName, Database>,
+    pub databases: HashMap<DatabaseName, Database>,
 }
 
 /// Parameters used to connect to a server
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ServerParams {
+    pub db_type: DBType,
     pub hostname: String,
     pub port: u16,
     // Because the different users may have access to different databases and different tables,
     pub user: String,
-    pub default_database: TableName,
+    /// Used for the default db for MariaDB and the database for Postgres.
+    pub database: DatabaseName,
+    pub default_schema: Option<DatabaseName>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum DBType {
+    PostgresSQL,
+    MariaDB,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Database {
-    pub name: TableName,
-    pub tables: HashMap<TableName, Table>,
+    pub name: TableName, // TODO DB name
+    pub tables: CacheableMap<TableName, Table>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -63,8 +73,53 @@ pub struct KeyReference {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Ord, PartialOrd, Hash)]
 pub struct ColumnName(pub String);
 
+#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
+pub struct TableName {
+    pub schema: Option<DatabaseName>, // Option because MariaDB does not have schemas
+    pub name: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TableName(pub String);
+pub struct DatabaseName(pub String);
+
+impl TableName {
+    /// Creates a TableName without a schema. Useful for MariaDB.
+    pub fn named(name: String) -> Self {
+        Self { schema: None, name }
+    }
+
+    pub fn with(schema: String, name: String) -> Self {
+        Self {
+            schema: Some(DatabaseName(schema)),
+            name,
+        }
+    }
+
+    pub fn new(pair: (String, String)) -> Self {
+        Self {
+            schema: Some(DatabaseName(pair.0)),
+            name: pair.1,
+        }
+    }
+}
+
+impl PartialEq for TableName {
+    fn eq(&self, other: &Self) -> bool {
+        let schemas_match =
+            self.schema.is_none() || other.schema.is_none() || self.schema == other.schema;
+
+        schemas_match && self.name == other.name
+    }
+}
+
+// I have to implement this manually because the schema should sometimes not play a part in Eq.
+// Without this form of Hash, HashMap<TableName, _> would not work.
+impl Hash for TableName {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // intentionally ignoring schema
+        self.name.hash(state)
+    }
+}
 
 impl Table {
     pub fn get_foreign_key(&self, to_table: &str) -> Option<&ForeignKey> {
@@ -100,7 +155,7 @@ impl PartialEq<&str> for ColumnName {
 
 impl PartialEq<&str> for TableName {
     fn eq(&self, other: &&str) -> bool {
-        self.0 == *other
+        self.name == *other
     }
 }
 
@@ -118,7 +173,7 @@ impl AsRef<str> for ColumnName {
 
 impl<T: Into<String>> From<T> for TableName {
     fn from(name: T) -> TableName {
-        TableName(name.into())
+        TableName::named(name.into())
     }
 }
 
@@ -132,7 +187,7 @@ impl<T: Into<String>> From<T> for Column {
 
 impl<'a> From<&'a TableName> for &'a str {
     fn from(name: &'a TableName) -> &'a str {
-        name.0.as_str()
+        name.name.as_str()
     }
 }
 
@@ -146,11 +201,5 @@ impl Display for ServerParams {
         }
 
         Ok(())
-    }
-}
-
-impl Display for TableName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }

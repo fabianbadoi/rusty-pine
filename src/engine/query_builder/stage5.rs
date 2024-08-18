@@ -1,8 +1,8 @@
-use crate::analyze::{Column, Server};
+use crate::analyze::{Column, ColumnName, DatabaseName, Server};
 use crate::engine::query_builder::sql_introspection::Introspective;
 use crate::engine::query_builder::{
-    BinaryCondition, Computation, Condition, DatabaseName, ExplicitJoin, FunctionCall,
-    LiteralValue, Query, Selectable, SelectedColumn, Table, UnaryCondition,
+    BinaryCondition, Computation, Condition, ExplicitJoin, FunctionCall, LiteralValue, Query,
+    Selectable, SelectedColumn, Table, UnaryCondition,
 };
 use crate::engine::syntax::{
     OptionalInput, Stage4BinaryCondition, Stage4ColumnInput, Stage4ComputationInput,
@@ -13,6 +13,7 @@ use crate::engine::{
     Comparison, JoinConditions, LimitHolder, LiteralValueHolder, OrderHolder, QueryBuildError,
     SelectableHolder, Sourced,
 };
+use log::info;
 use std::fmt::Debug;
 
 pub struct Stage5Builder<'a> {
@@ -33,12 +34,20 @@ impl<'a> Stage5Builder<'a> {
     }
 
     pub fn try_build(self) -> Result<Query, QueryBuildError> {
+        info!("processing selects");
         let select = self.process_selects()?;
+        info!("processing unselects");
         let select = self.process_unselects(select)?;
+        info!("processing filters");
         let filters = self.process_filters()?;
+        info!("processing joins");
         let joins = self.process_joins()?;
+        info!("processing order");
         let orders = self.process_orders()?;
+        info!("processing group by");
         let group_by = self.process_group_by()?;
+
+        info!("processing from");
 
         // This makes sure we select FROM the table from the last pine.
         let from = match self.input.joins.last() {
@@ -263,7 +272,7 @@ impl<'a> Stage5Builder<'a> {
                 } else {
                     Some(table_name.into())
                 },
-                column: Sourced::from_introspection(column_name.into()),
+                column: Sourced::from_introspection(ColumnName(column_name.to_string())),
             }));
 
         let condition = BinaryCondition {
@@ -342,7 +351,7 @@ impl<'a> Stage5Builder<'a> {
         } else {
             Some(table.into())
         };
-        let column = Sourced::from_introspection(column.name.clone().into());
+        let column = Sourced::from_introspection(column.name.clone());
 
         let computation = Sourced::from_introspection(SelectedColumn { table, column });
 
@@ -390,7 +399,7 @@ impl PartialEq<SelectedColumn> for Stage4ColumnInput<'_> {
 
 impl PartialEq<TableInput<'_>> for Table {
     fn eq(&self, other: &TableInput<'_>) -> bool {
-        if self.name.it.0 != other.table.it.name {
+        if self.name.it.name != other.table.it.name {
             return false;
         }
 
@@ -510,7 +519,7 @@ impl PartialEq<Option<Sourced<Table>>> for Sourced<TableInput<'_>> {
 
 #[cfg(test)]
 mod test {
-    use crate::analyze::{Server, ServerParams};
+    use crate::analyze::{DBType, Server, ServerParams};
     use crate::engine::query_builder::stage5::Stage5Builder;
     use crate::engine::syntax::{parse_to_stage4, Stage4Rep};
 
@@ -518,10 +527,11 @@ mod test {
     fn test_try_from_simple() {
         let server = Server {
             params: ServerParams {
+                db_type: DBType::MariaDB,
                 hostname: "".to_string(),
                 port: 0,
                 user: "".to_string(),
-                default_database: "".into(),
+                database: "".into(),
             },
             databases: Default::default(),
         };
@@ -539,6 +549,6 @@ mod test {
 
         let query = result.unwrap();
 
-        assert_eq!(query.from.it.name.it.0, "table");
+        assert_eq!(query.from.it.name.it.name, "table");
     }
 }

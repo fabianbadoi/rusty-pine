@@ -42,7 +42,8 @@ impl RenderingError {
 impl QueryBuildError {
     fn input_ranges(&self) -> Vec<Position> {
         let sources = match self {
-            QueryBuildError::DefaultDatabaseNotFound(_) => return vec![], // It's not found in the input
+            QueryBuildError::InvalidPostgresConfig
+            | QueryBuildError::DefaultDatabaseNotFound(_) => return vec![], // It's not found in the input
             QueryBuildError::DatabaseNotFound(db) => vec![db.source],
             QueryBuildError::TableNotFound(table) => vec![table.source],
             QueryBuildError::InvalidForeignKey { from, to } => vec![from.source, to.source],
@@ -70,6 +71,7 @@ impl QueryBuildError {
 
     fn message(&self) -> &str {
         match self {
+            QueryBuildError::InvalidPostgresConfig => "Postgres context is misconfigured",
             QueryBuildError::DefaultDatabaseNotFound(_) => "Default database not found",
             QueryBuildError::DatabaseNotFound(_) => "Database not found",
             QueryBuildError::TableNotFound(_) => "Table not found",
@@ -83,7 +85,11 @@ impl QueryBuildError {
 impl Display for QueryBuildError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            // Context?
+            QueryBuildError::InvalidPostgresConfig => write!(
+                f,
+                "Your postgres context is corrupted, it is missing the default schema.\n\
+                Your only option is to recreate it."
+            ),
             QueryBuildError::DefaultDatabaseNotFound(server) => write!(
                 f,
                 "The {server} server is configured to use {default_db} as a default database \
@@ -91,7 +97,7 @@ impl Display for QueryBuildError {
                  Either switch to another context using {switch_context} or try recreating the \
                  current one.",
                 server = format!("{}", server).yellow().bold(),
-                default_db = format!("{}", server.default_database).yellow().bold(),
+                default_db = format!("{}", server.database).yellow().bold(),
                 switch_context = "pine use-context <context name>".green().bold(),
             ),
             QueryBuildError::DatabaseNotFound(database) => write!(

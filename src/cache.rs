@@ -5,11 +5,16 @@
 //! use the read() and write() functions.
 use crate::analyze::{Server, ServerParams};
 use crate::context::{Context, ContextName};
+use log::info;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fs;
 use std::fs::{read_dir, DirEntry};
 use std::path::PathBuf;
+
+mod cacheable_map;
+
+pub use cacheable_map::CacheableMap;
 
 /// You need a cache key in order to read something for cache. Why not just use a string
 /// as a cache key? Find out in part 2...
@@ -23,7 +28,7 @@ pub trait CacheKey {
 /// with its cache key. The benefit of doing things this way is some compile time protection:
 ///
 /// ```no_run
-/// use rusty_pine::analyze::{Server, ServerParams};
+/// use rusty_pine::analyze::{DBType, Server, ServerParams};
 /// use rusty_pine::cache::read;
 ///
 /// let data: Server = read(
@@ -32,7 +37,7 @@ pub trait CacheKey {
 /// //                  any struct that does not have it as a CacheKey will likewise fail
 /// //                  to compile. So we the compiler now makes sure we read and write to our
 /// //                  cache in a type safe manner.
-///     &ServerParams { hostname: "".to_string(), port: 0, user: "".to_string(), default_database: "".into()}
+///     &ServerParams { db_type: DBType::PostgresSQL, hostname: "".to_string(), port: 0, user: "".to_string(), database: "".into(), default_schema: Some("public".into())}
 /// ).unwrap();
 /// ```
 ///
@@ -61,7 +66,9 @@ where
     D: Cacheable<CacheKey = K> + DeserializeOwned,
     K: CacheKey,
 {
-    let file_location = get_cache_path(D::type_id(), cache_key.as_path().as_str())?;
+    let type_id = D::type_id();
+    let file_location = get_cache_path(type_id, cache_key.as_path().as_str())?;
+    info!(target: "reading cache", "Reading cache for {type_id} from {file_location:?}");
 
     let data = serde_json::from_reader(fs::File::open(file_location)?)?;
 

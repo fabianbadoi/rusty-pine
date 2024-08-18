@@ -2,7 +2,8 @@ use colored::Colorize;
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{MultiSelect, Password};
 use rusty_pine::analyze::{
-    mariadb, Analyzer, Database, SchemaObjectName, Server, Table, TableName,
+    mariadb, postgres, Analyzer, DBType, Database, DatabaseName, SchemaObjectName, Server, Table,
+    TableName,
 };
 use rusty_pine::context::{Context, ContextName};
 use rusty_pine::{cache, Error, InternalError};
@@ -26,11 +27,18 @@ async fn run_analyze() -> Result<(), Error> {
 
     let password = ask_for_password(&context)?;
 
-    let db_connection: Box<dyn Analyzer> = Box::new(
-        mariadb(context.server_params.clone(), &password)
-            .await
-            .expect("Could not connect to db"),
-    );
+    let db_connection: Box<dyn Analyzer> = match context.server_params.db_type {
+        DBType::PostgresSQL => Box::new(
+            postgres(context.server_params.clone(), &password)
+                .await
+                .expect("Could not connect to the PostgresSQL instance"),
+        ),
+        DBType::MariaDB => Box::new(
+            mariadb(context.server_params.clone(), &password)
+                .await
+                .expect("Could not connect to the MariaDB instance"),
+        ),
+    };
 
     let databases = db_connection.list_databases().await?;
 
@@ -59,7 +67,7 @@ async fn run_analyze() -> Result<(), Error> {
 
     for db_name in selected_databases {
         let database = analyze_db(db_connection.as_ref(), db_name.clone()).await?;
-        let db_name = TableName(db_name.as_str().to_string());
+        let db_name = DatabaseName(db_name.as_str().to_string());
 
         databases.insert(db_name, database);
     }
@@ -104,8 +112,8 @@ async fn analyze_db(
     }
 
     Ok(Database {
-        name: TableName(db_name.to_string()),
-        tables,
+        name: TableName::named(db_name.to_string()),
+        tables: tables.into(),
     })
 }
 

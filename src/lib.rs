@@ -10,7 +10,7 @@ pub use engine::render;
 
 pub mod analyze {
     pub use crate::engine::sql::querying::{
-        mariadb, Analyzer, Connection, MariaDBConnection, SchemaObjectName,
+        mariadb, postgres, Analyzer, Connection, MariaDBConnection, SchemaObjectName,
     };
     pub use crate::engine::sql::structure::*;
     pub use crate::engine::sql::DbStructureParsingContext;

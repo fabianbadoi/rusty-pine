@@ -3,7 +3,7 @@
 //!
 //! Because I'm lazy, the create table statements have to be written in just the right way.
 
-use crate::analyze::{Database, Server, ServerParams, Table};
+use crate::analyze::{DBType, Database, Server, ServerParams, Table};
 use crate::engine::sql::DbStructureParsingContext as Context;
 use crate::engine::sql::{DbStructureParseError, InputWindow};
 use crate::engine::tests::reader::TestLineIterator;
@@ -22,17 +22,22 @@ pub fn read_mock_server(
         "default".into(),
         Database {
             name: "default".into(),
-            tables: tables.into_iter().map(|t| (t.name.clone(), t)).collect(),
+            tables: tables
+                .into_iter()
+                .map(|t| (t.name.clone(), t))
+                .collect::<HashMap<_, _>>()
+                .into(),
         },
     )]);
 
     Ok(Server {
         // these don't matter
         params: ServerParams {
+            db_type: DBType::MariaDB,
             hostname: "".to_string(),
             port: 0,
             user: "".to_string(),
-            default_database: "default".into(),
+            database: "default".into(),
         },
         databases,
     })

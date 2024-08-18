@@ -1,5 +1,5 @@
-use clap::{Parser, Subcommand};
-use rusty_pine::analyze::ServerParams;
+use clap::{Parser, Subcommand, ValueEnum};
+use rusty_pine::analyze::{DBType as AnalyzeDBType, DatabaseName, ServerParams};
 use rusty_pine::context::Context;
 
 #[derive(Parser, Debug)]
@@ -34,8 +34,11 @@ pub struct ContextParams {
     /// You can reuse your context by referencing this name
     name: String,
 
+    ///. Database type: PostgresSQL, MariaDB.
+    #[arg(long = "type")]
+    db_type: DBType,
     /// Hostname or ip address of the MySQL server (without the port number)
-    #[arg(long = "host")]
+    #[arg(value_enum, long = "host")]
     hostname_or_ip: String,
     /// Port number of the database server
     #[arg(short, long)]
@@ -43,12 +46,21 @@ pub struct ContextParams {
     /// Username
     #[arg(short, long)]
     username: String,
-    /// Default database from the server
+    /// Database. Will be used for the database to scan or the default database for MariaDB.
     #[arg(short, long)]
-    default_database: String,
+    database: String,
+    /// When using Postgres, this is the schema used when the user does not specify one.
+    #[arg(short = 's', long)]
+    default_schema: Option<String>,
     /// Use the new context
     #[arg(long = "use")]
     pub use_it: bool,
+}
+
+#[derive(Debug, ValueEnum, Clone)]
+pub enum DBType {
+    MariaDB,
+    PostgresSQL,
 }
 
 impl From<ContextParams> for Context {
@@ -56,11 +68,22 @@ impl From<ContextParams> for Context {
         Context {
             name: value.name.into(),
             server_params: ServerParams {
+                db_type: value.db_type.into(),
                 hostname: value.hostname_or_ip,
                 port: value.port,
                 user: value.username,
-                default_database: value.default_database.into(),
+                database: value.database.into(),
+                default_schema: value.default_schema.map(DatabaseName),
             },
+        }
+    }
+}
+
+impl From<DBType> for AnalyzeDBType {
+    fn from(value: DBType) -> Self {
+        match value {
+            DBType::MariaDB => Self::MariaDB,
+            DBType::PostgresSQL => Self::PostgresSQL,
         }
     }
 }

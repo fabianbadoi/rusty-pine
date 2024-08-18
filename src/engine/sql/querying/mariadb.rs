@@ -37,7 +37,10 @@ impl Analyzer for Connection<Pool<MariaDB>> {
         .fetch_all(&self.pool)
         .await?;
 
-        let rows = rows.into_iter().map(|row| TableName(row.0)).collect();
+        let rows = rows
+            .into_iter()
+            .map(|row| TableName::named(row.0))
+            .collect();
 
         Ok(rows)
     }
@@ -59,7 +62,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
 
         let mut columns = HashMap::new();
         for (table_name, column_name) in rows {
-            let table_name = TableName(table_name);
+            let table_name = TableName::named(table_name);
             if !columns.contains_key(&table_name) {
                 columns.insert(table_name.clone(), Vec::new());
             }
@@ -102,7 +105,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
                 referenced_column_name,
             ) = row;
 
-            let table_name = TableName(table_name);
+            let table_name = TableName::named(table_name);
             let table_fks = foreign_keys.entry(table_name.clone(/* :'( */)).or_default();
             let fk = table_fks
                 .entry(constraint_name)
@@ -112,7 +115,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
                         key: Key { columns: vec![] },
                     },
                     to: KeyReference {
-                        table: TableName(referenced_table_name),
+                        table: TableName::named(referenced_table_name),
                         key: Key { columns: vec![] },
                     },
                 });
@@ -146,7 +149,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
 
         let mut pks = HashMap::new();
         for (table, column) in rows {
-            let table = TableName(table);
+            let table = TableName::named(table);
             let pk = pks.entry(table).or_insert_with(|| Key {
                 columns: Vec::new(),
             });
