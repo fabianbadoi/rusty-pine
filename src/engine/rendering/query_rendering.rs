@@ -26,8 +26,8 @@ impl Display for Query {
         }
 
         write!(f, "{}", OptionalClause::filter(self.filters.as_slice()))?;
-        write!(f, "{}", OptionalClause::order_by(self.orders.as_slice()))?;
         write!(f, "{}", OptionalClause::group_by(self.group_by.as_slice()))?;
+        write!(f, "{}", OptionalClause::order_by(self.orders.as_slice()))?;
         write!(f, "LIMIT {}", self.limit)?;
 
         Ok(())

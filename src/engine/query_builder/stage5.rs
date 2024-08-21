@@ -532,6 +532,7 @@ mod test {
                 port: 0,
                 user: "".to_string(),
                 database: "".into(),
+                default_schema: None,
             },
             databases: Default::default(),
         };

@@ -74,3 +74,10 @@ SELECT name, count(1)
 FROM humans
 GROUP BY name
 LIMIT 10;
+
+-- Test: humans | g: name | o: count(1)+
+SELECT name, *
+FROM humans
+GROUP BY name
+ORDER BY count(1)
+LIMIT 10;

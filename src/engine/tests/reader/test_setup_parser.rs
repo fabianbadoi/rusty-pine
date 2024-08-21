@@ -38,6 +38,7 @@ pub fn read_mock_server(
             port: 0,
             user: "".to_string(),
             database: "default".into(),
+            default_schema: None,
         },
         databases,
     })
