@@ -15,14 +15,9 @@
 
 # Input comes from STDIN.
 input="$(cat)"
-# Param 1: which server to query.
-#database_server="$1"
 database_server="ec2-34-246-225-22.eu-west-1.compute.amazonaws.com"
 database_user="read-only"
 database_name="dcfu16noklj2ih"
-# Param 2: (optiona) use another query terminator. Default ';'.
-# For example, using '\G' structures the output of mysql differently.
-query_terminator="${2:-;}"
 
 # Make sure that the working directory is the root dir
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -37,14 +32,14 @@ if [ "$?" -ne 0 ]; then
     exit 1
 fi
 
-query="$query${query_terminator}"
+query="$query;"
 
 echo "$input"
 echo "$input"
 echo $(echo "$input" | sed 's/./-/g')
 echo "$query"
 
-result=$(echo "$query" | psql --host "$database_server" -U "$database_user" -d "$database_name" 2>&1)
+result=$(echo "$query" | psql "$@" --host "$database_server" -U "$database_user" -d "$database_name" 2>&1)
 echo "${result};"
 echo ""
 echo ""
