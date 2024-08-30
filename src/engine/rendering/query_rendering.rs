@@ -256,6 +256,10 @@ impl Display for DatabaseName {
 
 impl Display for TableName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        if let Some(schema) = &self.schema {
+            write!(f, "{}.", schema)?;
+        }
+
         write!(f, "{}", self.name)
     }
 }
