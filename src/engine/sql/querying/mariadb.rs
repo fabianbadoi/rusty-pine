@@ -86,6 +86,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
         "SELECT CONSTRAINT_NAME, TABLE_NAME, COLUMN_NAME, REFERENCED_TABLE_SCHEMA, REFERENCED_TABLE_NAME, REFERENCED_COLUMN_NAME\n\
             FROM information_schema.KEY_COLUMN_USAGE\n\
             WHERE REFERENCED_TABLE_NAME is not null\n\
+                AND TABLE_SCHEMA = ?\n\
 	        ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION\n\
             LIMIT 25000",
         )
@@ -140,6 +141,7 @@ impl Analyzer for Connection<Pool<MariaDB>> {
             "SELECT TABLE_NAME, COLUMN_NAME\n\
             FROM information_schema.KEY_COLUMN_USAGE\n\
             WHERE REFERENCED_TABLE_NAME is null\n\
+                AND TABLE_SCHEMA = ?\n\
 	        ORDER BY TABLE_NAME, ORDINAL_POSITION\n\
             LIMIT 25000",
         )
