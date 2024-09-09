@@ -1,4 +1,4 @@
-use crate::analyze::{ColumnName, DatabaseName, TableName};
+use crate::analyze::{ColumnName, DatabaseName};
 use crate::engine::query_builder::{
     Computation, ExplicitJoin, FunctionCall, Query, Selectable, SelectedColumn, Table,
 };
@@ -251,16 +251,6 @@ impl Display for Table {
 impl Display for DatabaseName {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
-    }
-}
-
-impl Display for TableName {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        if let Some(schema) = &self.schema {
-            write!(f, "{}.", schema)?;
-        }
-
-        write!(f, "{}", self.name)
     }
 }
 

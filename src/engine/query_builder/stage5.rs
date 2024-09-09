@@ -399,7 +399,7 @@ impl PartialEq<SelectedColumn> for Stage4ColumnInput<'_> {
 
 impl PartialEq<TableInput<'_>> for Table {
     fn eq(&self, other: &TableInput<'_>) -> bool {
-        if self.name.it.name != other.table.it.name {
+        if self.name.it != other.table.it.name {
             return false;
         }
 
@@ -550,6 +550,6 @@ mod test {
 
         let query = result.unwrap();
 
-        assert_eq!(query.from.it.name.it.name, "table");
+        assert_eq!(query.from.it.name.it, "table");
     }
 }

@@ -2,10 +2,10 @@
 //! augment our Pines.
 use crate::analyze::SchemaObjectName;
 use crate::cache::CacheableMap;
+use crate::engine::syntax::SqlIdentifierInput;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
-use std::hash::{Hash, Hasher};
 
 /// Each server config will be cached to disk to responding to queries way snappier.
 ///
@@ -74,51 +74,20 @@ pub struct KeyReference {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Ord, PartialOrd, Hash)]
 pub struct ColumnName(pub String);
 
-#[derive(Debug, Clone, Eq, Serialize, Deserialize)]
-pub struct TableName {
-    pub schema: Option<DatabaseName>, // Option because MariaDB does not have schemas
-    pub name: String,
-}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+pub struct TableName(String);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DatabaseName(pub String);
 
 impl TableName {
     /// Creates a TableName without a schema. Useful for MariaDB.
-    pub fn named(name: String) -> Self {
-        Self { schema: None, name }
+    pub fn new(name: String) -> Self {
+        TableName(name)
     }
 
-    pub fn with(schema: String, name: String) -> Self {
-        Self {
-            schema: Some(DatabaseName(schema)),
-            name,
-        }
-    }
-
-    pub fn new(pair: (String, String)) -> Self {
-        Self {
-            schema: Some(DatabaseName(pair.0)),
-            name: pair.1,
-        }
-    }
-}
-
-impl PartialEq for TableName {
-    fn eq(&self, other: &Self) -> bool {
-        let schemas_match =
-            self.schema.is_none() || other.schema.is_none() || self.schema == other.schema;
-
-        schemas_match && self.name == other.name
-    }
-}
-
-// I have to implement this manually because the schema should sometimes not play a part in Eq.
-// Without this form of Hash, HashMap<TableName, _> would not work.
-impl Hash for TableName {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        // intentionally ignoring schema
-        self.name.hash(state)
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -156,7 +125,19 @@ impl PartialEq<&str> for ColumnName {
 
 impl PartialEq<&str> for TableName {
     fn eq(&self, other: &&str) -> bool {
-        self.name == *other
+        self.0 == *other
+    }
+}
+
+impl PartialEq<SqlIdentifierInput<'_>> for TableName {
+    fn eq(&self, other: &SqlIdentifierInput<'_>) -> bool {
+        self.0 == other.name
+    }
+}
+
+impl Display for TableName {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -174,7 +155,7 @@ impl AsRef<str> for ColumnName {
 
 impl<T: Into<String>> From<T> for TableName {
     fn from(name: T) -> TableName {
-        TableName::named(name.into())
+        TableName::new(name.into())
     }
 }
 
@@ -188,7 +169,7 @@ impl<T: Into<String>> From<T> for Column {
 
 impl<'a> From<&'a TableName> for &'a str {
     fn from(name: &'a TableName) -> &'a str {
-        name.name.as_str()
+        name.0.as_str()
     }
 }
 

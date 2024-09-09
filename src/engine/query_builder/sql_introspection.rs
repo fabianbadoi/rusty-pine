@@ -227,7 +227,7 @@ impl Server {
             OptionalInput::Specified(name) => self.database(name)?,
         };
 
-        let table_name = TableName::named(name.it.table.it.name.to_string());
+        let table_name = TableName::new(name.it.table.it.name.to_string());
         let table = database
             .tables
             .get(&table_name)
@@ -292,10 +292,4 @@ where
         .map(|(from_column, _)| from_column)
         .map(|col| (*col).clone())
         .collect()
-}
-
-impl PartialEq<SqlIdentifierInput<'_>> for TableName {
-    fn eq(&self, other: &SqlIdentifierInput<'_>) -> bool {
-        self.name == other.name
-    }
 }

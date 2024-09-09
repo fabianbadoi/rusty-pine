@@ -9,7 +9,7 @@ pub fn render_neighbors(neighbors: Vec<ForeignKey>) -> String {
     for fk in neighbors {
         let intro = format!(
             "{}.{} using",
-            fk.to.table.name.as_str(),
+            fk.to.table,
             fk.to
                 .key
                 .columns

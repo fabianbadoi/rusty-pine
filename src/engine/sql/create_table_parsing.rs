@@ -160,7 +160,7 @@ impl Table {
         let name: TableName = Self::parse_table_name_line(&window, &mut lines)?.into();
         let columns = Self::parse_columns(&mut lines);
         let primary_key = Self::parse_primary_key(&window, &mut lines)?;
-        let foreign_keys = Self::parse_foreign_keys(name.name.as_str(), &mut lines);
+        let foreign_keys = Self::parse_foreign_keys(name.as_str(), &mut lines);
 
         Ok(Table {
             name,

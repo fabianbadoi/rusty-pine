@@ -4,8 +4,9 @@ use crate::analyze::{
 };
 use crate::engine::sql::querying::to_id;
 use crate::engine::sql::querying::Analyzer;
-use crate::Error;
+use crate::{Error, InternalError};
 use async_trait::async_trait;
+use sqlx::postgres::PgConnectOptions;
 use sqlx::{Pool, Postgres};
 use std::collections::HashMap;
 
@@ -13,9 +14,6 @@ use std::collections::HashMap;
 impl Analyzer for Connection<Pool<Postgres>> {
     async fn list_databases(&self) -> Result<Vec<SchemaObjectName>, Error> {
         let rows: Vec<(String,)> = sqlx::query_as(
-            // "SELECT TABLE_NAME\n\
-            //  FROM information_schema.TABLES\n\
-            //  WHERE TABLE_SCHEMA = ?",
             "SELECT SCHEMA_NAME\n\
             FROM information_schema.SCHEMATA",
         )
@@ -28,8 +26,8 @@ impl Analyzer for Connection<Pool<Postgres>> {
     }
 
     async fn list_tables(&self, database: &SchemaObjectName) -> Result<Vec<TableName>, Error> {
-        let rows: Vec<(String, String)> = sqlx::query_as(
-            "SELECT table_schema, table_name\n\
+        let rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT table_name\n\
              FROM information_schema.tables\n\
              WHERE TABLE_SCHEMA = $1",
         )
@@ -37,7 +35,10 @@ impl Analyzer for Connection<Pool<Postgres>> {
         .fetch_all(&self.pool)
         .await?;
 
-        let rows = rows.into_iter().map(TableName::new).collect();
+        let rows = rows
+            .into_iter()
+            .map(|(name,)| TableName::new(name))
+            .collect();
 
         Ok(rows)
     }
@@ -46,20 +47,23 @@ impl Analyzer for Connection<Pool<Postgres>> {
         &self,
         database: &SchemaObjectName,
     ) -> Result<HashMap<TableName, Vec<Column>>, Error> {
-        let rows: Vec<(String, String, String)> = sqlx::query_as(
-            "SELECT table_schema, table_name, column_name\n\
+        // it's called "database" for MySQL, but we use this field for schema
+        let schema = database;
+
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT table_name, column_name\n\
              FROM information_schema.columns\n\
              WHERE TABLE_SCHEMA = $1\n\
              ORDER BY ordinal_position\n\
              LIMIT 25000",
         )
-        .bind(database.as_str())
+        .bind(schema.as_str())
         .fetch_all(&self.pool)
         .await?;
 
         let mut columns = HashMap::new();
-        for (schema_name, table_name, column_name) in rows {
-            let table_name = TableName::with(schema_name, table_name);
+        for (table_name, column_name) in rows {
+            let table_name = TableName::new(table_name);
             if !columns.contains_key(&table_name) {
                 columns.insert(table_name.clone(), Vec::new());
             }
@@ -79,15 +83,16 @@ impl Analyzer for Connection<Pool<Postgres>> {
         &self,
         database: &SchemaObjectName,
     ) -> Result<HashMap<TableName, Vec<ForeignKey>>, Error> {
+        // it's called "database" for MySQL, but we use this field for schema
+        let schema = database;
+
         #[derive(sqlx::FromRow)]
         struct FKRow {
             ct_catalog: String,
             ct_schema: String,
             ct_name: String,
-            table_schema: String,
             table_name: String,
             column_name: String,
-            foreign_table_schema: String,
             foreign_table_name: String,
             foreign_column_name: String,
         }
@@ -97,10 +102,8 @@ impl Analyzer for Connection<Pool<Postgres>> {
                     kcu.constraint_catalog AS ct_catalog,\n\
                     kcu.constraint_schema AS ct_schema,\n\
                     kcu.constraint_name AS ct_name,\n\
-                    t.table_schema AS table_schema,\n\
                     t.table_name AS table_name,\n\
                     kcu.column_name as column_name,\n\
-                    ccu.table_schema AS foreign_table_schema,\n\
                     ccu.table_name AS foreign_table_name,\n\
                     ccu.column_name AS foreign_column_name\n\
                 FROM information_schema.table_constraints AS tc\n\
@@ -123,9 +126,8 @@ impl Analyzer for Connection<Pool<Postgres>> {
                     ORDER BY kcu.ordinal_position asc\n\
                     limit 25000",
         )
-        // TODO catalogs or dbs?
-        .bind(self.pool.connect_options().get_database().expect("TODO"))
-        .bind(database.as_str())
+        .bind(require_database(&self.pool.connect_options())?)
+        .bind(schema.as_str())
         .fetch_all(&self.pool)
         .await?;
 
@@ -137,15 +139,13 @@ impl Analyzer for Connection<Pool<Postgres>> {
                 ct_catalog,
                 ct_schema,
                 ct_name,
-                table_schema,
                 table_name,
                 column_name,
-                foreign_table_schema,
                 foreign_table_name,
                 foreign_column_name,
             } = row;
 
-            let table_name = TableName::with(table_schema, table_name);
+            let table_name = TableName::new(table_name);
             let table_fks = foreign_keys
                 .entry(table_name.clone(/* :'''(*/))
                 .or_default();
@@ -157,7 +157,7 @@ impl Analyzer for Connection<Pool<Postgres>> {
                         key: Key { columns: vec![] },
                     },
                     to: KeyReference {
-                        table: TableName::with(foreign_table_schema, foreign_table_name),
+                        table: TableName::new(foreign_table_name),
                         key: Key { columns: vec![] },
                     },
                 });
@@ -178,9 +178,11 @@ impl Analyzer for Connection<Pool<Postgres>> {
         &self,
         database: &SchemaObjectName,
     ) -> Result<HashMap<TableName, Key>, Error> {
-        let rows: Vec<(String, String, String)> = sqlx::query_as(
-            "SELECT tab.table_schema,
-                    tab.table_name,
+        // it's called "database" for MySQL, but we use this field for schema
+        let schema = database;
+
+        let rows: Vec<(String, String)> = sqlx::query_as(
+            "SELECT tab.table_name,
                     kcu.column_name
                 FROM information_schema.tables tab
                 LEFT JOIN information_schema.table_constraints tco
@@ -198,14 +200,14 @@ impl Analyzer for Connection<Pool<Postgres>> {
                 ORDER BY tab.table_schema, tab.table_name
                 LIMIT 25000",
         )
-        .bind(self.pool.connect_options().get_database().expect("TODO"))
-        .bind(database.as_str())
+        .bind(require_database(&self.pool.connect_options())?)
+        .bind(schema.as_str())
         .fetch_all(&self.pool)
         .await?;
 
         let mut pks = HashMap::new();
-        for (schema, table, column) in rows {
-            let table = TableName::with(schema, table);
+        for (table, column) in rows {
+            let table = TableName::new(table);
             let pk = pks.entry(table).or_insert_with(|| Key {
                 columns: Vec::new(),
             });
@@ -215,4 +217,11 @@ impl Analyzer for Connection<Pool<Postgres>> {
 
         Ok(pks)
     }
+}
+
+fn require_database(options: &PgConnectOptions) -> Result<&str, InternalError> {
+    options.get_database().ok_or(InternalError(format!(
+        "Invalid config for Postgres db: missing default database for {host}",
+        host = &options.get_host()
+    )))
 }
