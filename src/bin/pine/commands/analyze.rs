@@ -3,7 +3,6 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{MultiSelect, Password};
 use rusty_pine::analyze::{
     mariadb, postgres, Analyzer, DBType, Database, DatabaseName, SchemaObjectName, Server, Table,
-    TableName,
 };
 use rusty_pine::context::{Context, ContextName};
 use rusty_pine::{cache, Error, InternalError};
@@ -112,7 +111,7 @@ async fn analyze_db(
     }
 
     Ok(Database {
-        name: TableName::named(db_name.to_string()),
+        name: DatabaseName::new(db_name),
         tables: tables.into(),
     })
 }

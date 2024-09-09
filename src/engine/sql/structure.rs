@@ -1,5 +1,6 @@
 //! Structures used to represent the structure of the database. Used for using foreign keys to
 //! augment our Pines.
+use crate::analyze::SchemaObjectName;
 use crate::cache::CacheableMap;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -36,7 +37,7 @@ pub enum DBType {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Database {
-    pub name: TableName, // TODO DB name
+    pub name: DatabaseName,
     pub tables: CacheableMap<TableName, Table>,
 }
 
@@ -201,5 +202,11 @@ impl Display for ServerParams {
         }
 
         Ok(())
+    }
+}
+
+impl DatabaseName {
+    pub fn new(id: SchemaObjectName) -> Self {
+        DatabaseName(id.into_string())
     }
 }
