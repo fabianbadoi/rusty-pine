@@ -349,7 +349,15 @@ fn translate_compound_join(join: Pair<Rule>) -> Stage2Pine {
             .expect("explicit join target table should be present because of pest syntax"),
     );
 
-    let where_conditions = inners.map(translate_wicked_condition).collect();
+    // The first condition can be a wicked condition ("1" ~ "primary_key=1"), the rest of the
+    // conditions are regular conditions.
+    let wicked_conditions = inners.next().map(translate_wicked_condition);
+    let normal_conditions = inners.map(translate_condition);
+
+    let where_conditions = wicked_conditions
+        .into_iter()
+        .chain(normal_conditions)
+        .collect();
 
     Stage2Pine::CompoundJoin(Sourced::from_input(
         span,

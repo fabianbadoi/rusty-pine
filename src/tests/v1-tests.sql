@@ -144,3 +144,10 @@ Columns for `people`:
   dateOfBirth
   placeOfBirth
 */--;
+
+-- Test: people | friendshipLog friendA=1 friendB=2
+SELECT friendshipLog.*
+FROM friendshipLog
+LEFT JOIN people ON people.id = friendshipLog.friendA
+WHERE friendshipLog.friendA = 1 AND friendshipLog.friendB = 2
+LIMIT 10;
