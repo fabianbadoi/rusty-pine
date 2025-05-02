@@ -20,16 +20,23 @@ database_user="read-only"
 database_name="dcfu16noklj2ih"
 
 # Make sure that the working directory is the root dir
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR/.."
+
+trimmed="$(echo -e "$input" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+if [[ "$trimmed" == "|" || -z "$trimmed" ]]; then
+  # This is a helpful feature: show me all known tables
+  ./target/release/pine list-tables
+  exit 0
+fi
 
 query="$(./target/release/pine translate "$input" 2>&1)"
 
 if [ "$?" -ne 0 ]; then
-    echo "$input"
-    echo $(echo "$input" | sed 's/./=/g')
-    echo "$query"
-    exit 1
+  echo "$input"
+  echo $(echo "$input" | sed 's/./=/g')
+  echo "$query"
+  exit 1
 fi
 
 query="$query;"

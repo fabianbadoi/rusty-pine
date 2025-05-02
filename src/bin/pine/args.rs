@@ -27,6 +27,11 @@ pub enum Command {
     PineServer,
     /// Translates a single pine to SQL using the current context.
     Translate { input: String },
+    /// List all known tables.
+    ///
+    /// This is usefull to do when you can't remember the name of a table, or you just want to
+    /// get your bearings when starting to work on something.
+    ListTables,
 }
 
 #[derive(clap::Args, Debug)]
