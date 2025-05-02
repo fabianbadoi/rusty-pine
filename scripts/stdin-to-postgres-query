@@ -39,6 +39,13 @@ if [ "$?" -ne 0 ]; then
   exit 1
 fi
 
+if [[ "$query" == '/*'* ]]; then
+  echo "$input"
+  echo $(echo "$input" | sed 's/./=/g')
+  echo "$query"
+  exit 0
+fi
+
 query="$query;"
 
 echo "$input"
