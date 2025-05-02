@@ -151,7 +151,7 @@ pub enum TestOutcome {
     Failure,
 }
 
-impl<'a> Display for TestErrorReport<'a> {
+impl Display for TestErrorReport<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         // Since all of our data structs here implement Display printing the result means just
         // printing the structs in the right order.
@@ -169,7 +169,7 @@ impl<'a> Display for TestErrorReport<'a> {
     }
 }
 
-impl<'a> Display for TestHeaderLine<'a> {
+impl Display for TestHeaderLine<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -179,13 +179,13 @@ impl<'a> Display for TestHeaderLine<'a> {
     }
 }
 
-impl<'a> Display for ErrorMessage<'a> {
+impl Display for ErrorMessage<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", "error".red().bold(), self.message.bold())
     }
 }
 
-impl<'a> Display for FileExtract<'a> {
+impl Display for FileExtract<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", self.location)?;
         writeln!(f, "{}", self.test_input)?;
@@ -193,7 +193,7 @@ impl<'a> Display for FileExtract<'a> {
     }
 }
 
-impl<'a> Display for TestLocation<'a> {
+impl Display for TestLocation<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let gutter = " ".repeat(self.gutter_width - 1);
         // An example of using the colored crate: .blue() and .bold() are not part of &str, but
@@ -207,7 +207,7 @@ impl<'a> Display for TestLocation<'a> {
     }
 }
 
-impl<'a> Display for TestInput<'a> {
+impl Display for TestInput<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let gutter = self.gutter_width;
 
@@ -234,7 +234,7 @@ impl<'a> Display for TestInput<'a> {
     }
 }
 
-impl<'a> Display for FileExtractMessage<'a> {
+impl Display for FileExtractMessage<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             FileExtractMessage::ExpectedOutcome(expected) => write!(f, "{}", expected),
@@ -245,7 +245,7 @@ impl<'a> Display for FileExtractMessage<'a> {
     }
 }
 
-impl<'a> Display for ExpectedOutcome<'a> {
+impl Display for ExpectedOutcome<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let gutter = self.gutter_width;
         let mut max_line_width = 0;
@@ -274,7 +274,7 @@ impl<'a> Display for ExpectedOutcome<'a> {
     }
 }
 
-impl<'a> Display for TestOutcomeDiff<'a> {
+impl Display for TestOutcomeDiff<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let left_lines = self.expected.lines();
         let right_lines = self.found.lines();

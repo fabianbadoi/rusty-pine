@@ -145,7 +145,7 @@ pub struct PestIterator<'a> {
 }
 
 impl<'a> PestIterator<'a> {
-    fn new(base: Pairs<'a, Rule>) -> PestIterator {
+    fn new(base: Pairs<'a, Rule>) -> PestIterator<'a> {
         Self {
             base_done: false,
             inners: base,

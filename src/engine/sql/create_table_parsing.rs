@@ -254,11 +254,7 @@ impl Table {
         lines: &mut dyn Iterator<Item = (usize, &str)>,
     ) -> Vec<ForeignKey> {
         lines
-            .filter_map(|fk| match ForeignKey::from_sql_string(table, fk.1) {
-                Ok(fk) => Some(fk),
-                // This means we've gone past the FK section in the create table statement.
-                Err(_) => None,
-            })
+            .filter_map(|fk| ForeignKey::from_sql_string(table, fk.1).ok())
             .collect()
     }
 }

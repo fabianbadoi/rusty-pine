@@ -41,7 +41,7 @@ impl<'a, T> OptionalClause<'a, T> {
 
 /// Displays things like "WHERE x AND Y AND Z", "GROUP BY 1, 2, 3", and "ORDER BY 1, 2, 3".
 /// These are all optional fields that have a ligature between each element.
-impl<'a, T> Display for OptionalClause<'a, T>
+impl<T> Display for OptionalClause<'_, T>
 where
     T: Display,
 {

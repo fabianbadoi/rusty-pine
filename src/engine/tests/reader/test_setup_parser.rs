@@ -9,13 +9,9 @@ use crate::engine::sql::{DbStructureParseError, InputWindow};
 use crate::engine::tests::reader::TestLineIterator;
 use crate::error::ErrorKind;
 use std::collections::HashMap;
-use std::io::Error as IOError;
-use std::path::PathBuf;
+use std::{io::Error as IOError, path::Path};
 
-pub fn read_mock_server(
-    file: &PathBuf,
-    lines: &mut TestLineIterator,
-) -> Result<Server, crate::Error> {
+pub fn read_mock_server(file: &Path, lines: &mut TestLineIterator) -> Result<Server, crate::Error> {
     let tables = read_create_table_statements(file, lines)?;
 
     let databases = HashMap::from([(
@@ -45,14 +41,14 @@ pub fn read_mock_server(
 }
 
 fn read_create_table_statements(
-    file: &PathBuf,
+    file: &Path,
     lines: &mut TestLineIterator,
 ) -> Result<Vec<Table>, crate::Error> {
     let table_reader = TableParser::new(file, lines);
 
-    Ok(table_reader
+    table_reader
         .into_iter()
-        .collect::<Result<Vec<Table>, crate::Error>>()?)
+        .collect::<Result<Vec<Table>, crate::Error>>()
 }
 
 struct TableParser<'a> {
@@ -65,16 +61,16 @@ impl Iterator for TableParser<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.next_table() {
-            Ok(table_or_none) => table_or_none.map(|table| Ok(table)),
+            Ok(table_or_none) => table_or_none.map(Ok),
             Err(err) => Some(Err(err)),
         }
     }
 }
 
 impl<'a> TableParser<'a> {
-    fn new(file: &'a PathBuf, lines: &'a mut TestLineIterator) -> Self {
+    fn new(file: &'a Path, lines: &'a mut TestLineIterator) -> Self {
         TableParser {
-            context: Context::File(file.clone()),
+            context: Context::File(file.to_path_buf()),
             lines,
         }
     }
@@ -150,21 +146,24 @@ struct SingleCreateTableStatementReader<'a> {
 
 impl<'a> SingleCreateTableStatementReader<'a> {
     fn new(context: &'a Context, lines: &'a mut TestLineIterator) -> Option<Self> {
-        match lines.peek() {
-            None => None,
-            Some((start_line, _)) => Some(Self {
-                input: InputWindow {
-                    start_line: *start_line,
-                    context: context.clone(),
-                    content: String::new(),
-                },
-                lines,
-            }),
-        }
+        let start_line = if let Some((start_line, _)) = lines.peek() {
+            start_line
+        } else {
+            return None;
+        };
+
+        Some(Self {
+            input: InputWindow {
+                start_line: *start_line,
+                context: context.clone(),
+                content: String::new(),
+            },
+            lines,
+        })
     }
 
     fn read_statement(mut self) -> Result<String, DbStructureParseError> {
-        while let Some((line_number, next_item)) = self.lines.next() {
+        for (line_number, next_item) in self.lines.by_ref() {
             let in_buffer_line_nr = line_number - self.input.start_line;
 
             let line = valid_line(in_buffer_line_nr, next_item, &self.input)?;
